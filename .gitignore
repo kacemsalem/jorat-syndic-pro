@@ -1,0 +1,34 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+jorat_django/venv/
+jorat_django/.env
+jorat_django/media/
+jorat_django/staticfiles/
+jorat_django/db.sqlite3
+jorat_django/**/__pycache__/
+
+# Node / React
+jorat_react/node_modules/
+jorat_react/dist/
+jorat_react/.env
+jorat_react/.env.local
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+.env
+*.env
