@@ -11,6 +11,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY jorat_django/ .
 
-RUN python manage.py collectstatic --noinput
-
 EXPOSE 8000
