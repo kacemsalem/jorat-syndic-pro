@@ -1,0 +1,41 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: syndic_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: bhr7777777
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+
+  react:
+    build:
+      context: ./jorat_react
+      dockerfile: Dockerfile.local
+    volumes:
+      - ./jorat_react:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - DJANGO_HOST=http://django:8000
+    depends_on:
+      - django
+
+volumes:
+  postgres_data:

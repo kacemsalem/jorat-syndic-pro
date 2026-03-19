@@ -1,4 +1,6 @@
 # Python / Django
+# settings.py contient des mots de passe locaux — ne jamais committer
+jorat_django/config/settings.py
 __pycache__/
 *.py[cod]
 *.pyo
