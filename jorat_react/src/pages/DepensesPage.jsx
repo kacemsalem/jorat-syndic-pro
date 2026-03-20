@@ -19,6 +19,7 @@ const INPUT_AUTO   = `${INPUT_BASE} border-blue-300 bg-blue-50 focus:border-blue
 
 const EMPTY_FORM = {
   modele_depense:    "",
+  categorie:         "",
   libelle:           "",
   compte:            "",
   fournisseur:       "",
@@ -75,10 +76,32 @@ function SubFormFamille({ onBack, onCreated }) {
   );
 }
 
-function SubFormModele({ familles, comptes, fournisseurs, onBack, onCreated }) {
+function SubFormModele({ familles: initialFamilles, comptes, fournisseurs, onBack, onCreated, onFamilleAdded }) {
   const [form, setForm] = useState({ nom: "", famille: "", compte_comptable: "", fournisseur: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [localFamilles, setLocalFamilles] = useState(initialFamilles);
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [newCatNom, setNewCatNom] = useState("");
+  const [savingCat, setSavingCat] = useState(false);
+
+  const handleCreateCat = async () => {
+    if (!newCatNom.trim()) return;
+    setSavingCat(true);
+    try {
+      const res = await fetch("/api/familles-depense/", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ nom_famille: newCatNom.trim() }),
+      });
+      if (!res.ok) return;
+      const created = await res.json();
+      setLocalFamilles(prev => [...prev, created]);
+      setForm(f => ({ ...f, famille: String(created.id) }));
+      onFamilleAdded(created);
+      setNewCatNom(""); setShowNewCat(false);
+    } finally { setSavingCat(false); }
+  };
 
   const handleSave = async () => {
     if (!form.nom.trim()) { setError("Le nom est obligatoire."); return; }
@@ -113,14 +136,34 @@ function SubFormModele({ familles, comptes, fournisseurs, onBack, onCreated }) {
         <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
         <input className={INPUT_NORMAL} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Ex : Nettoyage mensuel" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Famille</label>
-          <select className={INPUT_NORMAL} value={form.famille} onChange={e => setForm(f => ({ ...f, famille: e.target.value }))}>
+      {/* Catégorie avec + inline */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Catégorie</label>
+        <div className="flex gap-2">
+          <select className={`flex-1 ${INPUT_NORMAL}`} value={form.famille} onChange={e => setForm(f => ({ ...f, famille: e.target.value }))}>
             <option value="">— Aucune —</option>
-            {familles.map(f => <option key={f.id} value={f.id}>{f.nom_famille}</option>)}
+            {localFamilles.map(f => <option key={f.id} value={f.id}>{f.nom_famille}</option>)}
           </select>
+          <button type="button" onClick={() => setShowNewCat(v => !v)}
+            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
+            +
+          </button>
         </div>
+        {showNewCat && (
+          <div className="mt-2 flex gap-2 items-center">
+            <input className={`flex-1 ${INPUT_NORMAL}`} value={newCatNom}
+              onChange={e => setNewCatNom(e.target.value)}
+              placeholder="Nom de la catégorie…" />
+            <button onClick={handleCreateCat} disabled={savingCat}
+              className="shrink-0 px-3 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+              {savingCat ? "…" : "Créer"}
+            </button>
+            <button onClick={() => { setShowNewCat(false); setNewCatNom(""); }}
+              className="shrink-0 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50">✕</button>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Compte comptable</label>
           <select className={INPUT_NORMAL} value={form.compte_comptable} onChange={e => setForm(f => ({ ...f, compte_comptable: e.target.value }))}>
@@ -320,6 +363,7 @@ export default function DepensesPage() {
   const openEdit   = (d)  => {
     setForm({
       modele_depense:    String(d.modele_depense   || ""),
+      categorie:         String(d.categorie        || ""),
       libelle:           d.libelle                  || "",
       compte:            String(d.compte            || ""),
       fournisseur:       String(d.fournisseur       || ""),
@@ -341,6 +385,7 @@ export default function DepensesPage() {
     setSaving(true); setError("");
     const payload = {
       modele_depense:    form.modele_depense    || null,
+      categorie:         form.categorie         || null,
       libelle:           form.libelle,
       compte:            form.compte            || null,
       fournisseur:       form.fournisseur       || null,
@@ -400,6 +445,7 @@ export default function DepensesPage() {
   // ── Sub-form callbacks ────────────────────────────────────────────────────
   const onFamilleCreated = (created) => {
     setFamilles(prev => [...prev, created]);
+    setForm(f => ({ ...f, categorie: String(created.id) }));
     setSubForm(null);
   };
   const onModeleCreated = (created) => {
@@ -479,62 +525,51 @@ export default function DepensesPage() {
       ) : (
         <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map(dep => (
-            <div key={dep.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex flex-col gap-1.5 relative">
-              {/* Top row: date + famille + menu */}
+            <div key={dep.id} className="bg-white rounded-xl border border-slate-100 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
+              {/* Ligne 1 : date · famille · menu */}
               <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                  <span className="text-[11px] text-slate-400 font-mono shrink-0">{dep.date_depense}</span>
-                  {dep.mois && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{dep.mois}</span>
-                  )}
-                  {dep.modele_famille_nom && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wide truncate">
-                      {dep.modele_famille_nom}
+                <div className="flex items-center gap-1 min-w-0 flex-wrap">
+                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{dep.date_depense}</span>
+                  {dep.mois && <span className="text-[10px] font-semibold px-1 rounded bg-amber-100 text-amber-700">{dep.mois}</span>}
+                  {(dep.modele_famille_nom || dep.categorie_famille) && (
+                    <span className="text-[10px] px-1 rounded bg-slate-100 text-slate-500 truncate">
+                      {dep.modele_famille_nom || dep.categorie_famille}
                     </span>
                   )}
                 </div>
-                {/* 3-dot menu */}
                 <div className="relative shrink-0">
-                  <button
-                    onClick={() => setOpenMenu(openMenu === dep.id ? null : dep.id)}
-                    className="p-0.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <button onClick={() => setOpenMenu(openMenu === dep.id ? null : dep.id)}
+                    className="p-0.5 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition">
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                       <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
                     </svg>
                   </button>
                   {openMenu === dep.id && (
-                    <div className="absolute right-0 top-6 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-32">
+                    <div className="absolute right-0 top-5 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
                       <button onClick={() => { openEdit(dep); setOpenMenu(null); }}
-                        className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">Modifier</button>
+                        className="w-full text-left px-3 py-1 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
                       <button onClick={() => { handleDelete(dep); setOpenMenu(null); }}
-                        className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50">Supprimer</button>
+                        className="w-full text-left px-3 py-1 text-xs text-red-600 hover:bg-red-50">Supprimer</button>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Libellé + compte sur une ligne */}
-              <div className="font-semibold text-slate-800 text-sm leading-snug truncate">{dep.libelle}</div>
-              <div className="flex items-center gap-1.5">
-                <span className={`font-mono text-[11px] px-1.5 py-0.5 rounded shrink-0 ${dep.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-600"}`}>
-                  {dep.compte_code}
+              {/* Ligne 2 : libellé + montant */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-800 text-[13px] leading-tight truncate">{dep.libelle}</span>
+                <span className="font-bold text-amber-700 text-[13px] shrink-0">
+                  {parseFloat(dep.montant).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
                 </span>
-                <span className="text-[11px] text-slate-400 truncate">{dep.compte_libelle}</span>
-                {dep.compte_code === "000" && <span className="text-[10px] font-bold text-orange-500 shrink-0">⚠</span>}
               </div>
 
-              {/* Fournisseur + réf en une ligne */}
-              {(dep.fournisseur_nom || dep.facture_reference) && (
-                <div className="text-[11px] text-slate-500 flex gap-x-2 flex-wrap">
-                  {dep.fournisseur_nom    && <span>{dep.fournisseur_nom}</span>}
-                  {dep.facture_reference  && <span className="text-slate-400">Réf: {dep.facture_reference}</span>}
-                </div>
-              )}
-
-              {/* Montant */}
-              <div className="pt-1.5 border-t border-slate-50 text-right font-bold text-amber-700 text-sm">
-                {parseFloat(dep.montant).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
+              {/* Ligne 3 : compte · fournisseur · réf (si présents) */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className={`font-mono text-[10px] px-1 rounded ${dep.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
+                  {dep.compte_code}{dep.compte_code === "000" ? " ⚠" : ""}
+                </span>
+                {dep.fournisseur_nom   && <span className="text-[10px] text-slate-400 truncate">{dep.fournisseur_nom}</span>}
+                {dep.facture_reference && <span className="text-[10px] text-slate-300">Réf: {dep.facture_reference}</span>}
               </div>
             </div>
           ))}
@@ -561,7 +596,8 @@ export default function DepensesPage() {
             )}
             {subForm === "modele" && (
               <SubFormModele familles={familles} comptes={comptes} fournisseurs={fournisseurs}
-                onBack={() => setSubForm(null)} onCreated={onModeleCreated} />
+                onBack={() => setSubForm(null)} onCreated={onModeleCreated}
+                onFamilleAdded={created => setFamilles(prev => [...prev, created])} />
             )}
             {subForm === "compte" && (
               <SubFormCompte onBack={() => setSubForm(null)} onCreated={onCompteCreated} />
@@ -606,6 +642,26 @@ export default function DepensesPage() {
                       </select>
                       <button type="button" onClick={() => setSubForm("modele")}
                         title="Nouveau modèle"
+                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Catégorie */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Catégorie</label>
+                    <div className="flex gap-2">
+                      <select
+                        className={`flex-1 ${INPUT_NORMAL}`}
+                        value={form.categorie}
+                        onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}
+                      >
+                        <option value="">— Aucune —</option>
+                        {familles.map(f => <option key={f.id} value={f.id}>{f.nom_famille}</option>)}
+                      </select>
+                      <button type="button" onClick={() => setSubForm("famille")}
+                        title="Nouvelle catégorie"
                         className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
                         +
                       </button>

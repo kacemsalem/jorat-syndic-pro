@@ -59,7 +59,6 @@ const BASE_NAV_GROUPS = [
       { label: "Paiements", path: "/paiements", icon: "paiements" },
       { label: "Dépenses",  path: "/depenses",  icon: "depenses" },
       { label: "Caisse",    path: "/caisse",    icon: "caisse" },
-      { label: "Recettes",  path: "/recettes",  icon: "recettes" },
     ],
   },
   {

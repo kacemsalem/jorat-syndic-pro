@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -36,9 +37,11 @@ const EMPTY_FORM = {
 const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-sky-400 transition";
 
 export default function CaissePage() {
-  const [mouvements,  setMouvements]  = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [showForm,    setShowForm]    = useState(false);
+  const navigate = useNavigate();
+  const [mouvements,      setMouvements]      = useState([]);
+  const [loading,         setLoading]         = useState(true);
+  const [showForm,        setShowForm]        = useState(false);
+  const [showRecetteConfirm, setShowRecetteConfirm] = useState(false);
   const [form,        setForm]        = useState(EMPTY_FORM);
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState("");
@@ -75,12 +78,15 @@ export default function CaissePage() {
     });
   }, [mouvements, filterAnnee, filterMois, filterType, filterSens]);
 
+  // Solde réel = TOUJOURS sur l'ensemble des mouvements (non filtré)
+  // Entrée (DEBIT) → ajoute au solde, Sortie (CREDIT) → réduit le solde
   const balance = useMemo(() =>
-    filtered.reduce((acc, m) => {
+    mouvements.reduce((acc, m) => {
       const v = parseFloat(m.montant) || 0;
       return m.sens === "DEBIT" ? acc + v : acc - v;
-    }, 0), [filtered]);
+    }, 0), [mouvements]);
 
+  // Totaux sur les données filtrées pour les KPI du bas
   const totalEntrees = useMemo(() =>
     filtered.filter(m => m.sens === "DEBIT").reduce((s, m) => s + (parseFloat(m.montant) || 0), 0),
     [filtered]);
@@ -128,13 +134,53 @@ export default function CaissePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
         <h1 className="text-2xl font-bold text-slate-800">Caisse</h1>
-        <button
-          onClick={() => { setForm(EMPTY_FORM); setError(""); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-xl font-semibold text-sm hover:bg-sky-600 transition shadow self-start sm:self-auto"
-        >
-          + Nouveau mouvement
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowRecetteConfirm(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-emerald-300 text-emerald-700 rounded-xl font-semibold text-sm hover:bg-emerald-50 transition self-start sm:self-auto"
+          >
+            Recettes
+          </button>
+          <button
+            onClick={() => { setForm(EMPTY_FORM); setError(""); setShowForm(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-xl font-semibold text-sm hover:bg-sky-600 transition shadow self-start sm:self-auto"
+          >
+            + Nouveau mouvement
+          </button>
+        </div>
       </div>
+
+      {/* Modale confirmation Recettes */}
+      {showRecetteConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="shrink-0 w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-lg">ℹ</div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800 mb-1">Opération peu fréquente</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Les <strong>recettes</strong> concernent des encaissements exceptionnels hors paiements copropriétaires
+                  (ex : location de salle commune, subvention municipale, remboursement assurance, produit financier…).
+                </p>
+                <p className="text-sm text-slate-500 mt-2">
+                  En gestion courante de copropriété, cette opération est <strong>rare</strong>.
+                  Les paiements des copropriétaires se gèrent dans la section <em>Paiements</em>.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowRecetteConfirm(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button onClick={() => { setShowRecetteConfirm(false); navigate("/recettes"); }}
+                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
+                Continuer vers Recettes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI — compact pour mobile */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
@@ -159,6 +205,11 @@ export default function CaissePage() {
           <div className="text-[10px] text-slate-400">total</div>
         </div>
       </div>
+
+      {/* Légende formule */}
+      <p className="text-[10px] text-slate-400 mb-3">
+        Solde actuel = total général (toutes dates) · Entrée (DÉBIT) ajoute · Sortie (CRÉDIT) réduit
+      </p>
 
       {/* Filtres */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -198,13 +249,16 @@ export default function CaissePage() {
             )}
 
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Type <span className="text-red-500">*</span></label>
-                  <select value={form.type_mouvement} onChange={e => setForm(f => ({ ...f, type_mouvement: e.target.value }))} className={INPUT}>
-                    {MANUAL_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-                  </select>
-                </div>
+              {/* Type — pleine largeur, fond bleu léger */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Type <span className="text-red-500">*</span></label>
+                <select value={form.type_mouvement} onChange={e => setForm(f => ({ ...f, type_mouvement: e.target.value }))}
+                  className="w-full border border-blue-200 bg-blue-50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 transition">
+                  {MANUAL_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+                </select>
+              </div>
+              {/* Sens + Date — même ligne */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Sens <span className="text-red-500">*</span></label>
                   <select value={form.sens} onChange={e => setForm(f => ({ ...f, sens: e.target.value }))} className={INPUT}>
@@ -319,16 +373,11 @@ export default function CaissePage() {
                   <div className="text-[11px] text-slate-500 truncate">{m.commentaire}</div>
                 )}
 
-                {/* Montant + solde cumulé */}
-                <div className="pt-1.5 border-t border-white/50 flex items-center justify-between">
+                {/* Montant */}
+                <div className="pt-1 border-t border-white/50">
                   <span className={`text-sm font-bold ${isEntree ? "text-emerald-700" : "text-red-700"}`}>
-                    {isEntree ? "+" : "−"}{fmt(m.montant)}
+                    {isEntree ? "+" : "−"} {fmt(m.montant)} MAD
                   </span>
-                  {m.running_balance != null && (
-                    <span className={`text-[11px] font-semibold ${m.running_balance >= 0 ? "text-sky-700" : "text-red-700"}`}>
-                      ≡ {fmt(m.running_balance)}
-                    </span>
-                  )}
                 </div>
               </div>
             );
