@@ -264,101 +264,66 @@ export default function DetailsAppelPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Kanban par statut */}
       {loading ? (
         <p className="text-slate-400 text-sm">Chargement…</p>
       ) : details.length === 0 ? (
         <p className="text-slate-400 text-sm">Aucun détail pour cet appel.</p>
       ) : (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
-              <tr>
-                <th
-                  className="px-4 py-3 text-left cursor-pointer select-none hover:text-indigo-600 transition"
-                  onClick={() => setSortDir((d) => d === "asc" ? "desc" : "asc")}
-                >
-                  Lot {sortDir === "asc" ? "↑" : "↓"}
-                </th>
-                <th className="px-4 py-3 text-left">Contact</th>
-                <th className="px-4 py-3 text-right">Montant</th>
-                <th className="px-4 py-3 text-left">Statut</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {detailsTries.map((d) => (
-                <tr key={d.id} className="hover:bg-slate-50">
-
-                  {/* Lot */}
-                  <td className="px-4 py-3 font-semibold text-indigo-700">
-                    {d.lot_numero}
-                  </td>
-
-                  {/* Contact */}
-                  <td className="px-4 py-3">
-                    {d.contact_nom ? (
-                      <div>
-                        <p className="font-medium text-slate-700">
-                          {d.contact_nom} {d.contact_prenom ?? ""}
-                        </p>
-                        {d.contact_telephone && (
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            📞 {d.contact_telephone}
-                          </p>
-                        )}
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {[
+            { key: "NON_PAYE", label: "Non payé",  color: "bg-red-600",     light: "bg-red-50 border-red-100"         },
+            { key: "PARTIEL",  label: "Partiel",   color: "bg-amber-500",   light: "bg-amber-50 border-amber-100"     },
+            { key: "PAYE",     label: "Payé",      color: "bg-emerald-600", light: "bg-emerald-50 border-emerald-100" },
+          ].map(({ key, label, color, light }) => {
+            const cartes = detailsTries.filter(d => d.statut === key);
+            const colTotal = cartes.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
+            return (
+              <div key={key} className="flex-shrink-0 w-72">
+                <div className={`${color} text-white rounded-xl px-4 py-2 mb-3 flex items-center justify-between`}>
+                  <span className="font-bold text-sm">{label}</span>
+                  <span className="bg-white/20 text-white text-xs font-semibold px-2 py-0.5 rounded-full">{cartes.length}</span>
+                </div>
+                {cartes.length > 0 && (
+                  <p className="text-xs text-slate-400 font-mono text-right mb-2 pr-1">
+                    {colTotal.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} MAD
+                  </p>
+                )}
+                <div className="space-y-3">
+                  {cartes.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-300">Aucun lot</div>
+                  ) : cartes.map(d => (
+                    <div key={d.id} className={`rounded-xl border ${light} p-3 shadow-sm hover:shadow-md transition-shadow`}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-bold text-indigo-700 text-sm">{d.lot_numero}</span>
+                        <span className="font-mono text-xs font-semibold text-slate-600">
+                          {parseFloat(d.montant).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} MAD
+                        </span>
                       </div>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">— Aucun contact</span>
-                    )}
-                  </td>
-
-                  {/* Montant */}
-                  <td className="px-4 py-3 text-right tabular-nums font-medium">
-                    {parseFloat(d.montant).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} MAD
-                  </td>
-
-                  {/* Statut */}
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUT_BADGE[d.statut]}`}>
-                      {d.statut_label}
-                    </span>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        onClick={() => openEdit(d)}
-                        className="text-indigo-600 hover:underline text-xs"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDelete(d.id)}
-                        className="text-red-500 hover:underline text-xs"
-                      >
-                        Supprimer
-                      </button>
+                      {d.contact_nom ? (
+                        <div className="mb-2">
+                          <p className="text-xs font-medium text-slate-600 leading-tight">{d.contact_nom} {d.contact_prenom ?? ""}</p>
+                          {d.contact_telephone && <p className="text-xs text-slate-400">📞 {d.contact_telephone}</p>}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-300 italic mb-2">Aucun contact</p>
+                      )}
+                      <div className="flex gap-1.5">
+                        <button onClick={() => openEdit(d)}
+                          className="flex-1 py-1 rounded-lg border border-indigo-200 text-xs text-indigo-600 hover:bg-indigo-50 transition">
+                          ✏️ Modifier
+                        </button>
+                        <button onClick={() => handleDelete(d.id)}
+                          className="px-2.5 py-1 rounded-lg border border-red-200 text-xs text-red-500 hover:bg-red-50 transition">
+                          🗑️
+                        </button>
+                      </div>
                     </div>
-                  </td>
-
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-slate-50 border-t border-slate-200">
-              <tr>
-                <td className="px-4 py-3 font-semibold text-slate-700">Total</td>
-                <td></td>
-                <td className="px-4 py-3 text-right font-bold text-slate-800 tabular-nums">
-                  {total.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} MAD
-                </td>
-                <td colSpan={2}></td>
-              </tr>
-            </tfoot>
-          </table>
-          </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

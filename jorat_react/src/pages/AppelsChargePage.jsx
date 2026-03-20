@@ -222,68 +222,61 @@ export default function AppelsChargePage() {
         </div>
       </div>
 
-      {/* ── Liste ── */}
-      <div className="bg-white rounded-2xl shadow overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-slate-400 text-sm">Chargement…</div>
-        ) : appelsFiltres.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-sm">Aucun appel trouvé.</div>
-        ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-              <tr>
-                <th className="px-5 py-3 text-left">Référence</th>
-                <th className="px-5 py-3 text-left">Nom</th>
-                <th className="px-5 py-3 text-left">Type</th>
-                <th className="px-5 py-3 text-left">Exercice</th>
-                <th className="px-5 py-3 text-left">Période</th>
-                <th className="px-5 py-3 text-center">Lots</th>
-                <th className="px-5 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {appelsFiltres.map((a) => (
-                <tr key={a.id} className="border-t hover:bg-slate-50 transition">
-                  <td className="px-5 py-3 font-mono text-xs text-slate-700">{a.code_fond || "—"}</td>
-                  <td className="px-5 py-3 text-slate-600">{a.nom_fond || "—"}</td>
-                  <td className="px-5 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGE[a.type_charge]}`}>
-                      {a.type_charge_label ?? a.type_charge}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">{a.exercice}</td>
-                  <td className="px-5 py-3 text-slate-600">{a.periode_label ?? a.periode}</td>
-                  <td className="px-5 py-3 text-center font-bold text-indigo-600">{a.nombre_details ?? 0}</td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="inline-flex gap-1.5">
-                      <button
-                        onClick={() => navigate(`/details-appel?appel=${a.id}&residence=${residenceId}&filtre=${filtre}`)}
-                        className="px-2.5 py-1 rounded-lg border border-emerald-500 bg-emerald-500 text-xs hover:bg-emerald-600 hover:border-emerald-600 transition text-white font-semibold"
-                      >
-                        Détails
-                      </button>
-                      <button
-                        onClick={() => openEdit(a)}
-                        className="px-2.5 py-1 rounded-lg border border-indigo-200 text-xs hover:bg-indigo-50 transition text-indigo-600"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDelete(a.id)}
-                        className="px-2.5 py-1 rounded-lg border border-red-200 text-xs hover:bg-red-50 transition text-red-500"
-                      >
-                        🗑️
-                      </button>
+      {/* ── Kanban ── */}
+      {loading ? (
+        <div className="p-8 text-center text-slate-400 text-sm">Chargement…</div>
+      ) : appelsFiltres.length === 0 ? (
+        <div className="bg-white rounded-2xl p-8 text-center text-slate-400 text-sm">Aucun appel trouvé.</div>
+      ) : (
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {[...new Set(appelsFiltres.map(a => a.exercice))].sort((a, b) => b - a).map(exercice => {
+            const cartes = appelsFiltres.filter(a => a.exercice === exercice);
+            const colColor = filtre === "FOND" ? "bg-amber-600" : "bg-indigo-600";
+            const colLight = filtre === "FOND" ? "bg-amber-50 border-amber-100" : "bg-indigo-50 border-indigo-100";
+            return (
+              <div key={exercice} className="flex-shrink-0 w-72">
+                <div className={`${colColor} text-white rounded-xl px-4 py-2 mb-3 flex items-center justify-between`}>
+                  <span className="font-bold text-sm">Exercice {exercice}</span>
+                  <span className="bg-white/20 text-white text-xs font-semibold px-2 py-0.5 rounded-full">{cartes.length}</span>
+                </div>
+                <div className="space-y-3">
+                  {cartes.map(a => (
+                    <div key={a.id} className={`rounded-xl border ${colLight} p-3 shadow-sm hover:shadow-md transition-shadow`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono text-xs text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-lg">{a.code_fond || "—"}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${TYPE_BADGE[a.type_charge]}`}>{a.type_charge_label ?? a.type_charge}</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-700 leading-tight mb-2">
+                        {a.nom_fond || <span className="text-slate-300 italic font-normal">Sans nom</span>}
+                      </p>
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <span className="text-xs text-slate-500">{a.nombre_details ?? 0} lot{(a.nombre_details ?? 0) > 1 ? "s" : ""}</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => navigate(`/details-appel?appel=${a.id}&residence=${residenceId}&filtre=${filtre}`)}
+                          className="flex-1 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition">
+                          Détails
+                        </button>
+                        <button onClick={() => openEdit(a)}
+                          className="px-2.5 py-1.5 rounded-lg border border-indigo-200 text-xs text-indigo-600 hover:bg-indigo-50 transition">
+                          ✏️
+                        </button>
+                        <button onClick={() => handleDelete(a.id)}
+                          className="px-2.5 py-1.5 rounded-lg border border-red-200 text-xs text-red-500 hover:bg-red-50 transition">
+                          🗑️
+                        </button>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        )}
-      </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Modal create/edit ── */}
       {showModal && (
