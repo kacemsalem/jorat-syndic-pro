@@ -35,9 +35,10 @@ export default function RecettesPage() {
   const [showForm,  setShowForm]  = useState(false);
   const [editItem,  setEditItem]  = useState(null);
   const [form,      setForm]      = useState(EMPTY_FORM);
-  const [saving,    setSaving]    = useState(false);
-  const [error,     setError]     = useState("");
-  const [openMenu,  setOpenMenu]  = useState(null);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState("");
+  const [openMenu,      setOpenMenu]      = useState(null);
+  const [defaultCompte, setDefaultCompte] = useState("");
   const menuRef = useRef(null);
 
   const [filterAnnee,   setFilterAnnee]   = useState("");
@@ -58,7 +59,11 @@ export default function RecettesPage() {
       fetch("/api/comptes-comptables/?actif=true", { credentials: "include" }).then(r => r.json()),
     ]).then(([rec, cpt]) => {
       setRecettes(Array.isArray(rec) ? rec : (rec.results ?? []));
-      setComptes(Array.isArray(cpt)  ? cpt : (cpt.results ?? []));
+      const cptList = Array.isArray(cpt) ? cpt : (cpt.results ?? []);
+      setComptes(cptList);
+      // Pré-sélectionner le compte 000 par défaut
+      const compte000 = cptList.find(c => c.code === "000");
+      if (compte000) setDefaultCompte(String(compte000.id));
       setLoading(false);
     }).catch(() => setLoading(false));
   };
@@ -97,7 +102,9 @@ export default function RecettesPage() {
   }, [recettes]);
 
   const openCreate = () => {
-    setEditItem(null); setForm(EMPTY_FORM); setError(""); setQuickOpen(false); setShowForm(true);
+    setEditItem(null);
+    setForm({ ...EMPTY_FORM, compte: defaultCompte });
+    setError(""); setQuickOpen(false); setShowForm(true);
   };
   const openEdit = (r) => {
     setEditItem(r);
