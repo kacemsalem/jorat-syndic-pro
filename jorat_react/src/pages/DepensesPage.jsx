@@ -479,16 +479,16 @@ export default function DepensesPage() {
       ) : (
         <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map(dep => (
-            <div key={dep.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col gap-2 relative">
+            <div key={dep.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex flex-col gap-1.5 relative">
               {/* Top row: date + famille + menu */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-slate-400 font-mono">{dep.date_depense}</span>
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                  <span className="text-[11px] text-slate-400 font-mono shrink-0">{dep.date_depense}</span>
                   {dep.mois && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{dep.mois}</span>
                   )}
                   {dep.modele_famille_nom && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wide">
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wide truncate">
                       {dep.modele_famille_nom}
                     </span>
                   )}
@@ -497,54 +497,43 @@ export default function DepensesPage() {
                 <div className="relative shrink-0">
                   <button
                     onClick={() => setOpenMenu(openMenu === dep.id ? null : dep.id)}
-                    className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
+                    className="p-0.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
                     </svg>
                   </button>
                   {openMenu === dep.id && (
-                    <div className="absolute right-0 top-7 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-36">
+                    <div className="absolute right-0 top-6 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-32">
                       <button onClick={() => { openEdit(dep); setOpenMenu(null); }}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Modifier</button>
+                        className="w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">Modifier</button>
                       <button onClick={() => { handleDelete(dep); setOpenMenu(null); }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Supprimer</button>
+                        className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50">Supprimer</button>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Libellé */}
-              <div className="font-semibold text-slate-800 text-sm leading-snug">
-                {dep.libelle}
-              </div>
-
-              {/* Compte + warning */}
+              {/* Libellé + compte sur une ligne */}
+              <div className="font-semibold text-slate-800 text-sm leading-snug truncate">{dep.libelle}</div>
               <div className="flex items-center gap-1.5">
-                <span className={`font-mono text-xs px-2 py-0.5 rounded ${dep.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-600"}`}>
+                <span className={`font-mono text-[11px] px-1.5 py-0.5 rounded shrink-0 ${dep.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-600"}`}>
                   {dep.compte_code}
                 </span>
-                <span className="text-xs text-slate-400 truncate">{dep.compte_libelle}</span>
-                {dep.compte_code === "000" && (
-                  <span className="text-[10px] font-bold text-orange-500">⚠</span>
-                )}
+                <span className="text-[11px] text-slate-400 truncate">{dep.compte_libelle}</span>
+                {dep.compte_code === "000" && <span className="text-[10px] font-bold text-orange-500 shrink-0">⚠</span>}
               </div>
 
-              {/* Fournisseur + modèle */}
-              {(dep.fournisseur_nom || dep.modele_nom) && (
-                <div className="text-xs text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
-                  {dep.fournisseur_nom && <span>{dep.fournisseur_nom}</span>}
-                  {dep.modele_nom     && <span className="text-slate-400">{dep.modele_nom}</span>}
+              {/* Fournisseur + réf en une ligne */}
+              {(dep.fournisseur_nom || dep.facture_reference) && (
+                <div className="text-[11px] text-slate-500 flex gap-x-2 flex-wrap">
+                  {dep.fournisseur_nom    && <span>{dep.fournisseur_nom}</span>}
+                  {dep.facture_reference  && <span className="text-slate-400">Réf: {dep.facture_reference}</span>}
                 </div>
               )}
 
-              {/* Réf */}
-              {dep.facture_reference && (
-                <div className="text-xs text-slate-400">Réf: {dep.facture_reference}</div>
-              )}
-
               {/* Montant */}
-              <div className="mt-auto pt-2 border-t border-slate-50 text-right font-bold text-amber-700 text-base">
+              <div className="pt-1.5 border-t border-slate-50 text-right font-bold text-amber-700 text-sm">
                 {parseFloat(dep.montant).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
               </div>
             </div>
@@ -564,7 +553,7 @@ export default function DepensesPage() {
       {/* Modal formulaire */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[92vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[96vh] overflow-y-auto">
 
             {/* Sub-forms */}
             {subForm === "famille" && (
@@ -604,7 +593,7 @@ export default function DepensesPage() {
                     </label>
                     <div className="flex gap-2">
                       <select
-                        className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
+                        className="flex-1 border border-blue-200 bg-blue-50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
                         value={form.modele_depense}
                         onChange={e => handleModeleChange(e.target.value)}
                       >
@@ -677,72 +666,62 @@ export default function DepensesPage() {
                     />
                   </div>
 
-                  {/* Compte + Fournisseur */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">
-                        Compte comptable
-                        {autoFilled.compte && <span className="ml-1.5 text-[10px] font-normal text-blue-400">pré-rempli</span>}
-                      </label>
-                      <div className="flex gap-2">
-                        <select
-                          className={`flex-1 ${autoFilled.compte ? INPUT_AUTO : INPUT_NORMAL}`}
-                          value={form.compte}
-                          onChange={e => { clearAuto("compte"); setForm(f => ({ ...f, compte: e.target.value })); }}
-                        >
-                          <option value="">— Attente (000) —</option>
-                          {comptes.filter(c => c.code !== "000").map(c => (
-                            <option key={c.id} value={c.id}>{c.code} — {c.libelle}</option>
-                          ))}
-                        </select>
-                        <button type="button" onClick={() => setSubForm("compte")}
-                          title="Nouveau compte"
-                          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">
-                        Fournisseur
-                        {autoFilled.fournisseur && <span className="ml-1.5 text-[10px] font-normal text-blue-400">pré-rempli</span>}
-                      </label>
-                      <div className="flex gap-2">
-                        <select
-                          className={`flex-1 ${autoFilled.fournisseur ? INPUT_AUTO : INPUT_NORMAL}`}
-                          value={form.fournisseur}
-                          onChange={e => { clearAuto("fournisseur"); setForm(f => ({ ...f, fournisseur: e.target.value })); }}
-                        >
-                          <option value="">— Aucun —</option>
-                          {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
-                        </select>
-                        <button type="button" onClick={() => setSubForm("fournisseur")}
-                          title="Nouveau fournisseur"
-                          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
-                          +
-                        </button>
-                      </div>
+                  {/* Compte comptable — ligne complète */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Compte comptable
+                      {autoFilled.compte && <span className="ml-1.5 text-[10px] font-normal text-blue-400">pré-rempli</span>}
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        className={`flex-1 ${autoFilled.compte ? INPUT_AUTO : INPUT_NORMAL}`}
+                        value={form.compte}
+                        onChange={e => { clearAuto("compte"); setForm(f => ({ ...f, compte: e.target.value })); }}
+                      >
+                        <option value="">— Attente (000) —</option>
+                        {comptes.filter(c => c.code !== "000").map(c => (
+                          <option key={c.id} value={c.id}>{c.code} — {c.libelle}</option>
+                        ))}
+                      </select>
+                      <button type="button" onClick={() => setSubForm("compte")}
+                        title="Nouveau compte"
+                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
+                        +
+                      </button>
                     </div>
                   </div>
 
-                  {/* Détail | Commentaire */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Détail</label>
-                      <textarea rows={2} className={INPUT_NORMAL}
-                        value={form.detail}
-                        onChange={e => setForm(f => ({ ...f, detail: e.target.value }))}
-                        placeholder="Description détaillée (optionnel)"
-                      />
+                  {/* Fournisseur — ligne complète */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Fournisseur
+                      {autoFilled.fournisseur && <span className="ml-1.5 text-[10px] font-normal text-blue-400">pré-rempli</span>}
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        className={`flex-1 ${autoFilled.fournisseur ? INPUT_AUTO : INPUT_NORMAL}`}
+                        value={form.fournisseur}
+                        onChange={e => { clearAuto("fournisseur"); setForm(f => ({ ...f, fournisseur: e.target.value })); }}
+                      >
+                        <option value="">— Aucun —</option>
+                        {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
+                      </select>
+                      <button type="button" onClick={() => setSubForm("fournisseur")}
+                        title="Nouveau fournisseur"
+                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
+                        +
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1">Commentaire interne</label>
-                      <textarea rows={2} className={INPUT_NORMAL}
-                        value={form.commentaire}
-                        onChange={e => setForm(f => ({ ...f, commentaire: e.target.value }))}
-                        placeholder="Note interne…"
-                      />
-                    </div>
+                  </div>
+
+                  {/* Détail — ligne complète */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Détail</label>
+                    <textarea rows={2} className={INPUT_NORMAL}
+                      value={form.detail}
+                      onChange={e => setForm(f => ({ ...f, detail: e.target.value }))}
+                      placeholder="Description détaillée (optionnel)"
+                    />
                   </div>
                 </div>
 
