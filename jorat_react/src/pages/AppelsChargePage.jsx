@@ -283,6 +283,12 @@ export default function AppelsChargePage() {
                 <p className="text-sm font-semibold text-slate-700 leading-tight mb-2">
                   {a.nom_fond || <span className="text-slate-300 italic font-normal">Sans nom</span>}
                 </p>
+                {/* Total montant */}
+                {parseFloat(a.montant_total ?? 0) > 0 && (
+                  <p className="font-mono text-xs font-semibold text-slate-600 mb-2">
+                    {parseFloat(a.montant_total).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} MAD
+                  </p>
+                )}
                 {/* Lots + bouton détails */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400">{a.nombre_details ?? 0} lot{(a.nombre_details ?? 0) > 1 ? "s" : ""}</span>
@@ -296,6 +302,17 @@ export default function AppelsChargePage() {
           })}
         </div>
       )}
+      {/* Total général */}
+      {!loading && appelsFiltres.length > 0 && (() => {
+        const gt = appelsFiltres.reduce((s, a) => s + parseFloat(a.montant_total ?? 0), 0);
+        return gt > 0 ? (
+          <div className="flex justify-end">
+            <span className="text-xs text-slate-500 font-mono bg-slate-100 px-3 py-1.5 rounded-xl">
+              Total : <span className="font-bold text-slate-700">{gt.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} MAD</span>
+            </span>
+          </div>
+        ) : null;
+      })()}
 
       {/* ── Modal create/edit ── */}
       {showModal && (

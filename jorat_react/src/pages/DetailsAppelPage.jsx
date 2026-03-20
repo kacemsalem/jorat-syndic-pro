@@ -272,6 +272,14 @@ export default function DetailsAppelPage() {
         </div>
       </div>
 
+      {/* Total général */}
+      {!loading && details.length > 0 && (
+        <div className="flex justify-end mb-1">
+          <span className="text-xs text-slate-500 font-mono bg-slate-100 px-3 py-1.5 rounded-xl">
+            Total : <span className="font-bold text-slate-700">{total.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} MAD</span>
+          </span>
+        </div>
+      )}
       {/* Kanban par statut */}
       {loading ? (
         <p className="text-slate-400 text-sm">Chargement…</p>

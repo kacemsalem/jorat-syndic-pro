@@ -408,7 +408,7 @@ class AppelChargeViewSet(ModelViewSet):
         qs = AppelCharge.objects.filter(
             residence=residence,
             archive_comptable__isnull=True,   # exclure les appels archivés
-        ).annotate(nombre_details=Count("details"))
+        ).annotate(nombre_details=Count("details"), montant_total=Sum("details__montant"))
         exercice = self.request.query_params.get("exercice")
         if exercice:
             qs = qs.filter(exercice=exercice)

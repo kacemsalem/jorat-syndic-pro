@@ -155,6 +155,7 @@ class AppelChargeSerializer(serializers.ModelSerializer):
     periode_label     = serializers.SerializerMethodField()
     type_charge_label = serializers.SerializerMethodField()
     nombre_details    = serializers.IntegerField(read_only=True)
+    montant_total     = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, default=0)
 
     class Meta:
         model = AppelCharge
