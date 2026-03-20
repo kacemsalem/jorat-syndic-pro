@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import RecouvrementNav from "../components/RecouvrementNav";
 
@@ -195,6 +195,14 @@ export default function AppelsChargePage() {
     FOND:   "bg-amber-100 text-amber-700",
   };
 
+  const [openMenu, setOpenMenu] = useState(null);
+  const menuRef = useRef(null);
+  useEffect(() => {
+    const close = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenu(null); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
   return (
     <div className="max-w-5xl mx-auto space-y-4">
 
@@ -228,49 +236,60 @@ export default function AppelsChargePage() {
       ) : appelsFiltres.length === 0 ? (
         <div className="bg-white rounded-2xl p-8 text-center text-slate-400 text-sm">Aucun appel trouvé.</div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {[...new Set(appelsFiltres.map(a => a.exercice))].sort((a, b) => b - a).map(exercice => {
-            const cartes = appelsFiltres.filter(a => a.exercice === exercice);
-            const colColor = filtre === "FOND" ? "bg-amber-600" : "bg-indigo-600";
-            const colLight = filtre === "FOND" ? "bg-amber-50 border-amber-100" : "bg-indigo-50 border-indigo-100";
+        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {appelsFiltres.map(a => {
+            const cardBg = filtre === "FOND" ? "bg-amber-50 border-amber-100" : "bg-indigo-50 border-indigo-100";
             return (
-              <div key={exercice} className="flex-shrink-0 w-72">
-                <div className={`${colColor} text-white rounded-xl px-4 py-2 mb-3 flex items-center justify-between`}>
-                  <span className="font-bold text-sm">Exercice {exercice}</span>
-                  <span className="bg-white/20 text-white text-xs font-semibold px-2 py-0.5 rounded-full">{cartes.length}</span>
-                </div>
-                <div className="space-y-3">
-                  {cartes.map(a => (
-                    <div key={a.id} className={`rounded-xl border ${colLight} p-3 shadow-sm hover:shadow-md transition-shadow`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-xs text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-lg">{a.code_fond || "—"}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${TYPE_BADGE[a.type_charge]}`}>{a.type_charge_label ?? a.type_charge}</span>
-                      </div>
-                      <p className="text-sm font-semibold text-slate-700 leading-tight mb-2">
-                        {a.nom_fond || <span className="text-slate-300 italic font-normal">Sans nom</span>}
-                      </p>
-                      <div className="flex items-center gap-1.5 mb-3">
-                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                        <span className="text-xs text-slate-500">{a.nombre_details ?? 0} lot{(a.nombre_details ?? 0) > 1 ? "s" : ""}</span>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <button onClick={() => navigate(`/details-appel?appel=${a.id}&residence=${residenceId}&filtre=${filtre}`)}
-                          className="flex-1 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition">
+              <div key={a.id} className={`rounded-xl border ${cardBg} p-3 shadow-sm hover:shadow-md transition-shadow`}>
+                {/* Ligne 1 : exercice + type + menu */}
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-lg">
+                      {a.exercice}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${TYPE_BADGE[a.type_charge]}`}>
+                      {a.type_charge_label ?? a.type_charge}
+                    </span>
+                  </div>
+                  {/* Menu 3 points */}
+                  <div className="relative">
+                    <button onClick={() => setOpenMenu(openMenu === a.id ? null : a.id)}
+                      className="p-1 rounded-lg hover:bg-white/70 transition text-slate-400 hover:text-slate-600">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                      </svg>
+                    </button>
+                    {openMenu === a.id && (
+                      <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-xl shadow-lg z-20 w-36 py-1 text-xs">
+                        <button onClick={() => { navigate(`/details-appel?appel=${a.id}&residence=${residenceId}&filtre=${filtre}`); setOpenMenu(null); }}
+                          className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-emerald-700 font-semibold">
                           Détails
                         </button>
-                        <button onClick={() => openEdit(a)}
-                          className="px-2.5 py-1.5 rounded-lg border border-indigo-200 text-xs text-indigo-600 hover:bg-indigo-50 transition">
-                          ✏️
+                        <button onClick={() => { openEdit(a); setOpenMenu(null); }}
+                          className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-indigo-600">
+                          ✏️ Modifier
                         </button>
-                        <button onClick={() => handleDelete(a.id)}
-                          className="px-2.5 py-1.5 rounded-lg border border-red-200 text-xs text-red-500 hover:bg-red-50 transition">
-                          🗑️
+                        <button onClick={() => { handleDelete(a.id); setOpenMenu(null); }}
+                          className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-500">
+                          🗑️ Supprimer
                         </button>
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                </div>
+                {/* Référence */}
+                <p className="font-mono text-xs text-slate-400 mb-0.5">{a.code_fond || "—"}</p>
+                {/* Nom */}
+                <p className="text-sm font-semibold text-slate-700 leading-tight mb-2">
+                  {a.nom_fond || <span className="text-slate-300 italic font-normal">Sans nom</span>}
+                </p>
+                {/* Lots + bouton détails */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">{a.nombre_details ?? 0} lot{(a.nombre_details ?? 0) > 1 ? "s" : ""}</span>
+                  <button onClick={() => navigate(`/details-appel?appel=${a.id}&residence=${residenceId}&filtre=${filtre}`)}
+                    className="py-1 px-3 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition">
+                    Détails
+                  </button>
                 </div>
               </div>
             );
