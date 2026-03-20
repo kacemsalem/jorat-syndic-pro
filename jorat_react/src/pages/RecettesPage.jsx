@@ -119,7 +119,7 @@ export default function RecettesPage() {
       const res = await fetch(url, {
         method, credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ ...form, compte: Number(form.compte) }),
+        body: JSON.stringify({ ...form, compte: form.compte ? Number(form.compte) : null }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(JSON.stringify(d)); return; }
       closeForm(); fetchAll();

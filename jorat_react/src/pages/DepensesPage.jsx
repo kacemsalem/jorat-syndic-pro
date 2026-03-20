@@ -19,7 +19,6 @@ const INPUT_AUTO   = `${INPUT_BASE} border-blue-300 bg-blue-50 focus:border-blue
 
 const EMPTY_FORM = {
   modele_depense:    "",
-  categorie:         "",
   libelle:           "",
   compte:            "",
   fournisseur:       "",
@@ -363,7 +362,6 @@ export default function DepensesPage() {
   const openEdit   = (d)  => {
     setForm({
       modele_depense:    String(d.modele_depense   || ""),
-      categorie:         String(d.categorie        || ""),
       libelle:           d.libelle                  || "",
       compte:            String(d.compte            || ""),
       fournisseur:       String(d.fournisseur       || ""),
@@ -385,7 +383,6 @@ export default function DepensesPage() {
     setSaving(true); setError("");
     const payload = {
       modele_depense:    form.modele_depense    || null,
-      categorie:         form.categorie         || null,
       libelle:           form.libelle,
       compte:            form.compte            || null,
       fournisseur:       form.fournisseur       || null,
@@ -445,7 +442,6 @@ export default function DepensesPage() {
   // ── Sub-form callbacks ────────────────────────────────────────────────────
   const onFamilleCreated = (created) => {
     setFamilles(prev => [...prev, created]);
-    setForm(f => ({ ...f, categorie: String(created.id) }));
     setSubForm(null);
   };
   const onModeleCreated = (created) => {
@@ -642,26 +638,6 @@ export default function DepensesPage() {
                       </select>
                       <button type="button" onClick={() => setSubForm("modele")}
                         title="Nouveau modèle"
-                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Catégorie */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Catégorie</label>
-                    <div className="flex gap-2">
-                      <select
-                        className={`flex-1 ${INPUT_NORMAL}`}
-                        value={form.categorie}
-                        onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}
-                      >
-                        <option value="">— Aucune —</option>
-                        {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                      </select>
-                      <button type="button" onClick={() => setSubForm("famille")}
-                        title="Nouvelle catégorie"
                         className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
                         +
                       </button>
