@@ -46,7 +46,7 @@ function SubFormFamille({ onBack, onCreated }) {
       const res = await fetch("/api/familles-depense/", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ nom_famille: nom.trim() }),
+        body: JSON.stringify({ nom: nom.trim() }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
       const created = await res.json();
@@ -92,7 +92,7 @@ function SubFormModele({ familles: initialFamilles, comptes, fournisseurs, onBac
       const res = await fetch("/api/familles-depense/", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ nom_famille: newCatNom.trim() }),
+        body: JSON.stringify({ nom: newCatNom.trim() }),
       });
       if (!res.ok) return;
       const created = await res.json();
@@ -109,7 +109,7 @@ function SubFormModele({ familles: initialFamilles, comptes, fournisseurs, onBac
     try {
       const payload = {
         nom: form.nom.trim(),
-        famille: form.famille || null,
+        famille_depense: form.famille || null,
         compte_comptable: form.compte_comptable || null,
         fournisseur: form.fournisseur || null,
         actif: true,
@@ -142,7 +142,7 @@ function SubFormModele({ familles: initialFamilles, comptes, fournisseurs, onBac
         <div className="flex gap-2">
           <select className={`flex-1 ${INPUT_NORMAL}`} value={form.famille} onChange={e => setForm(f => ({ ...f, famille: e.target.value }))}>
             <option value="">— Aucune —</option>
-            {localFamilles.map(f => <option key={f.id} value={f.id}>{f.nom_famille}</option>)}
+            {localFamilles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
           </select>
           <button type="button" onClick={() => setShowNewCat(v => !v)}
             className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
@@ -658,7 +658,7 @@ export default function DepensesPage() {
                         onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}
                       >
                         <option value="">— Aucune —</option>
-                        {familles.map(f => <option key={f.id} value={f.id}>{f.nom_famille}</option>)}
+                        {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                       </select>
                       <button type="button" onClick={() => setSubForm("famille")}
                         title="Nouvelle catégorie"
