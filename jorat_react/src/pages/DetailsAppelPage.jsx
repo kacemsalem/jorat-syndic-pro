@@ -216,8 +216,8 @@ export default function DetailsAppelPage() {
             <p className="font-medium">{appel.exercice}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400 mb-0.5">Période</p>
-            <p className="font-medium">{appel.periode_label ?? "—"}</p>
+            <p className="text-xs text-slate-400 mb-0.5">Nom</p>
+            <p className="font-medium">{appel.nom_fond || "—"}</p>
           </div>
           <div>
             <p className="text-xs text-slate-400 mb-0.5">Total</p>
