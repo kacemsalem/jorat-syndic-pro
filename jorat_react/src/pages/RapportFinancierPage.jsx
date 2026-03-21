@@ -48,43 +48,17 @@ function Section({ title, children, defaultOpen = true }) {
   );
 }
 
-function DataTable({ headers, rows, widths }) {
-  if (!rows || rows.length === 0) return (
-    <div style={{ textAlign: "center", padding: "24px 0", color: "#94a3b8", fontSize: 13, background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
-      Aucune donnée
-    </div>
+function KanbanList({ items, emptyText = "Aucune donnée" }) {
+  if (!items || items.length === 0) return (
+    <div className="text-center py-6 text-slate-400 text-xs bg-slate-50 rounded-xl border border-slate-100">{emptyText}</div>
   );
   return (
-    <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid #e2e8f0" }}>
-      <div className="overflow-x-auto">
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-        <thead>
-          <tr style={{ background: "#0f172a" }}>
-            {headers.map((h, i) => (
-              <th key={i} style={{
-                padding: "10px 14px", color: "#fff", fontWeight: 600,
-                fontSize: 11, textAlign: i === headers.length - 1 || h.includes("MAD") || h.includes("Débit") || h.includes("Crédit") ? "right" : "left",
-                whiteSpace: "nowrap",
-                width: widths?.[i],
-              }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri} style={{ background: ri % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
-              {row.map((cell, ci) => (
-                <td key={ci} style={{
-                  padding: "9px 14px", color: "#334155",
-                  textAlign: ci === row.length - 1 || (typeof cell === "number") ? "right" : "left",
-                  fontVariantNumeric: "tabular-nums",
-                }}>{cell ?? "—"}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      </div>
+    <div className="space-y-1.5">
+      {items.map((item, i) => (
+        <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5 flex items-center justify-between gap-3 hover:shadow-sm transition">
+          {item}
+        </div>
+      ))}
     </div>
   );
 }
@@ -180,6 +154,8 @@ export default function RapportFinancierPage() {
   return (
     <div className="max-w-5xl mx-auto">
 
+      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-4 transition">← Tableau de bord</button>
+
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
         <div className="flex items-center gap-3">
@@ -269,36 +245,102 @@ export default function RapportFinancierPage() {
           </Section>
 
           <Section title={`Mouvements de caisse (${data.mouvements.length})`}>
-            <DataTable
-              headers={["Date", "Type", "Libellé", "Débit (MAD)", "Crédit (MAD)"]}
-              rows={mvRows}
-              widths={["110px", "140px", null, "140px", "140px"]}
-            />
+            <div className="space-y-1.5">
+              {data.mouvements.length === 0 ? (
+                <div className="text-center py-6 text-slate-400 text-xs bg-slate-50 rounded-xl border border-slate-100">Aucun mouvement</div>
+              ) : data.mouvements.map((m, i) => (
+                <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5 flex items-center gap-3 hover:shadow-sm transition">
+                  <span className="text-xs font-mono text-slate-400 whitespace-nowrap w-20 flex-shrink-0">{m.date}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                    m.type_mouvement === "PAIEMENT" ? "bg-emerald-100 text-emerald-700" :
+                    m.type_mouvement === "DEPENSE"  ? "bg-red-100 text-red-700" :
+                    m.type_mouvement === "RECETTE"  ? "bg-blue-100 text-blue-700" :
+                    "bg-slate-100 text-slate-600"
+                  }`}>{TYPE_LABELS[m.type_mouvement] || m.type_mouvement}</span>
+                  <span className="text-xs text-slate-700 flex-1 truncate">{m.libelle}</span>
+                  {parseFloat(m.debit) > 0 && <span className="text-xs font-mono font-semibold text-red-600 whitespace-nowrap flex-shrink-0">{fmt(m.debit)} MAD</span>}
+                  {parseFloat(m.credit) > 0 && <span className="text-xs font-mono font-semibold text-emerald-600 whitespace-nowrap flex-shrink-0">{fmt(m.credit)} MAD</span>}
+                </div>
+              ))}
+            </div>
           </Section>
 
           <Section title="Analyse des dépenses">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600, textTransform: "uppercase" }}>Par compte comptable</div>
-                <DataTable headers={["Compte", "Montant"]} rows={depCompteRows} />
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Par compte comptable</p>
+                <div className="space-y-1.5">
+                  {depCompteRows.length === 0 ? <div className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-slate-100">Aucune donnée</div>
+                  : depCompteRows.map(([k, v], i) => (
+                    <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2 flex items-center justify-between gap-3 hover:shadow-sm transition">
+                      <span className="text-xs text-slate-700 truncate">{k}</span>
+                      <span className="text-xs font-mono font-semibold text-red-600 whitespace-nowrap flex-shrink-0">{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600, textTransform: "uppercase" }}>Par catégorie</div>
-                <DataTable headers={["Catégorie", "Montant"]} rows={depCatRows} />
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Par catégorie</p>
+                <div className="space-y-1.5">
+                  {depCatRows.length === 0 ? <div className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-slate-100">Aucune donnée</div>
+                  : depCatRows.map(([k, v], i) => (
+                    <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2 flex items-center justify-between gap-3 hover:shadow-sm transition">
+                      <span className="text-xs text-slate-700 truncate">{k}</span>
+                      <span className="text-xs font-mono font-semibold text-red-600 whitespace-nowrap flex-shrink-0">{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </Section>
 
           <Section title="Recettes & paiements">
-            <DataTable headers={["Source", "Montant"]} rows={recRows} />
+            <div className="space-y-1.5">
+              {recRows.length === 0 ? <div className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-slate-100">Aucune donnée</div>
+              : recRows.map(([k, v], i) => (
+                <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2 flex items-center justify-between gap-3 hover:shadow-sm transition">
+                  <span className="text-xs text-slate-700 truncate">{k}</span>
+                  <span className="text-xs font-mono font-semibold text-emerald-600 whitespace-nowrap flex-shrink-0">{v}</span>
+                </div>
+              ))}
+            </div>
           </Section>
 
           <Section title={`Situation des lots (${data.situation_lots?.length ?? 0})`} defaultOpen={false}>
-            <DataTable
-              headers={["Lot", "Propriétaire", "Total dû", "Total payé", "Reste", "Statut"]}
-              rows={situationLotsRows}
-              widths={["70px", null, "130px", "130px", "130px", "90px"]}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+              {[
+                { label: "À jour",    color: "border-emerald-100", header: "bg-emerald-50", textColor: "text-emerald-700",
+                  items: (data.situation_lots ?? []).filter(l => l.statut === "A_JOUR") },
+                { label: "En retard", color: "border-red-100",     header: "bg-red-50",     textColor: "text-red-700",
+                  items: (data.situation_lots ?? []).filter(l => l.statut !== "A_JOUR") },
+              ].map(({ label, color, header, textColor, items }) => (
+                <div key={label} className={`rounded-2xl border ${color} overflow-hidden`}>
+                  <div className={`${header} px-3 py-2 flex items-center justify-between`}>
+                    <span className={`text-xs font-bold ${textColor} uppercase tracking-wide`}>{label}</span>
+                    <span className="text-xs text-slate-400">{items.length}</span>
+                  </div>
+                  <div className="p-2 space-y-1.5">
+                    {items.length === 0 && <p className="text-xs text-slate-300 text-center py-3">Aucun lot</p>}
+                    {items.map((lot, i) => {
+                      const reste = parseFloat(lot.reste);
+                      return (
+                        <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2 space-y-1 hover:shadow-sm transition">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold text-slate-800">{lot.lot}</span>
+                            <span className={`text-xs font-mono font-bold ${reste > 0 ? "text-red-600" : "text-emerald-600"}`}>{fmt(lot.reste)} MAD</span>
+                          </div>
+                          <p className="text-xs text-slate-500 truncate">{lot.proprietaire}</p>
+                          <div className="flex items-center justify-between text-[10px] text-slate-400">
+                            <span>Dû : {fmt(lot.total_du)} MAD</span>
+                            <span>Payé : {fmt(lot.total_paye)} MAD</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </Section>
         </>
       )}

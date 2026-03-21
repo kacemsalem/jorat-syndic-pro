@@ -62,15 +62,6 @@ const BASE_NAV_GROUPS = [
     ],
   },
   {
-    label: "Espace Résident",
-    collapsible: true,
-    items: [
-      { label: "Notifications",  path: "/gouvernance/notifications",        icon: "notif"        },
-      { label: "Messages",       path: "/espace-resident/messages",         icon: "message"      },
-      { label: "Consultation",   path: "/espace-resident/consultation",     icon: "consultation" },
-    ],
-  },
-  {
     label: "Administration",
     collapsible: true,
     items: [

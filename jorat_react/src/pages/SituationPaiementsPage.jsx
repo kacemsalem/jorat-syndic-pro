@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const MONTHS = ["JAN","FÉV","MAR","AVR","MAI","JUN","JUL","AOÛ","SEP","OCT","NOV","DÉC"];
 
@@ -128,6 +129,7 @@ function StatusDot({ totalDu, paiements }) {
 
 // ── Main page ─────────────────────────────────────────────────
 export default function SituationPaiementsPage() {
+  const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
   const [lots,        setLots]       = useState([]);
   const [yearOptions, setYearOptions] = useState([currentYear]);
@@ -173,6 +175,7 @@ export default function SituationPaiementsPage() {
 
   return (
     <div className="space-y-4">
+      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
 
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -283,63 +286,57 @@ export default function SituationPaiementsPage() {
         ))}
       </div>
 
-      {/* ── Table ── */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="w-7 h-7 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="text-center py-16 text-slate-400 text-sm">
-            Aucun lot trouvé pour {year}.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap" style={{ width: 90 }}>
-                    Lot
-                  </th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide" style={{ width: 160 }}>
-                    Nom
-                  </th>
-                  <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap" style={{ width: 120 }}>
-                    Total dû
-                  </th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                    {typeCharge === "CHARGE" ? "Appel de charge" : "Appel de fond"} {year}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map((row) => (
-                  <tr key={row.lot} className="hover:bg-slate-50/60 transition">
-                    <td className="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">
+      {/* ── Kanban ── */}
+      {loading ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="w-7 h-7 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 py-16 text-center text-slate-400 text-sm">
+          Aucun lot trouvé pour {year}.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+          {[
+            { label: "Soldés",   dotColor: "#10b981", border: "border-emerald-100", header: "bg-emerald-50",
+              items: rows.filter(r => r.total_du > 0 && r.paiements.reduce((s,p)=>s+p.montant,0) >= r.total_du) },
+            { label: "Partiels", dotColor: "#f59e0b", border: "border-amber-100",   header: "bg-amber-50",
+              items: rows.filter(r => { const p=r.paiements.reduce((s,p)=>s+p.montant,0); return r.total_du>0 && p>0 && p<r.total_du; }) },
+            { label: "Impayés",  dotColor: "#ef4444", border: "border-red-100",     header: "bg-red-50",
+              items: rows.filter(r => r.total_du > 0 && r.paiements.reduce((s,p)=>s+p.montant,0) === 0) },
+          ].map(({ label, dotColor, border, header, items }) => (
+            <div key={label} className={`rounded-2xl border ${border} overflow-hidden`}>
+              <div className={`${header} px-3 py-2 flex items-center gap-2`}>
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{label}</span>
+                <span className="ml-auto text-xs font-semibold text-slate-400">{items.length}</span>
+              </div>
+              <div className="p-2 space-y-2 bg-slate-50/30">
+                {items.length === 0 && (
+                  <p className="text-xs text-slate-300 text-center py-4">Aucun lot</p>
+                )}
+                {items.map(row => (
+                  <div key={row.lot} className="bg-white rounded-xl border border-slate-100 p-3 space-y-2 hover:shadow-sm transition">
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5">
                         <StatusDot totalDu={row.total_du} paiements={row.paiements} />
-                        {row.lot}
+                        <span className="font-bold text-slate-800 text-sm">{row.lot}</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 max-w-[160px] truncate">
-                      {row.nom}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700 whitespace-nowrap">
-                      {row.total_du > 0
-                        ? <>{fmt(row.total_du)} <span className="text-slate-400 text-xs">MAD</span></>
-                        : <span className="text-slate-400">—</span>
-                      }
-                    </td>
-                    <td className="px-4 py-3">
-                      <PaymentBar totalDu={row.total_du} paiements={row.paiements} />
-                    </td>
-                  </tr>
+                      {row.total_du > 0 && (
+                        <span className="text-xs font-mono font-semibold text-slate-600 whitespace-nowrap">
+                          {fmt(row.total_du)} <span className="text-slate-400 font-normal">MAD</span>
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 truncate">{row.nom}</p>
+                    <PaymentBar totalDu={row.total_du} paiements={row.paiements} />
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
     </div>
   );

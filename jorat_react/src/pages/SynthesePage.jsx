@@ -31,7 +31,6 @@ function buildSynthesePdf({ residence, exercice, colonnesCharge, colonnesFond, l
     ? (residence.logo.startsWith("http") ? residence.logo : `${window.location.origin}${residence.logo}`)
     : null;
 
-  // ── Helper: compute totaux for a set of colonnes ─────────────
   const computeTotaux = (colonnes) => {
     const t = {};
     let gM = 0, gR = 0;
@@ -47,115 +46,75 @@ function buildSynthesePdf({ residence, exercice, colonnesCharge, colonnesFond, l
     return { byCol: t, montant: gM, recu: gR };
   };
 
-  // ── Helper: build one section table ──────────────────────────
   const buildTable = (colonnes, totaux, headerColor, sectionTitle) => {
     if (colonnes.length === 0) return "";
 
     const colHeaders = colonnes.map(col =>
-      `<th style="padding:5px 6px;text-align:center;white-space:nowrap;font-size:9px;min-width:80px">${col.code_fond ?? col.periode}</th>`
+      `<th style="padding:4px 5px;text-align:center;white-space:nowrap;font-size:8px;border:1px solid #94a3b8;min-width:70px">${col.code_fond ?? col.periode}<br/><span style="font-weight:400;color:#94a3b8">${col.exercice}</span></th>`
     ).join("");
 
     const totauxRow = colonnes.map(col => {
       const t = totaux.byCol[col.id] ?? { montant: 0, recu: 0 };
-      if (!t.montant) return `<td style="padding:4px 6px;text-align:center;color:#94a3b8;font-size:10px">—</td>`;
+      if (!t.montant) return `<td style="padding:3px 4px;text-align:center;color:#94a3b8;font-size:8px;border:1px solid #cbd5e1">—</td>`;
       const r2 = t.recu / t.montant;
-      const bg = r2 >= 1 ? "#d1fae5" : r2 > 0 ? "#fef3c7" : "#fee2e2";
       const color = r2 >= 1 ? "#059669" : r2 > 0 ? "#d97706" : "#dc2626";
-      return `<td style="padding:4px 6px;text-align:center">
-        <div style="display:inline-flex;flex-direction:column;align-items:center;background:${bg};border-radius:6px;padding:3px 6px">
-          <span style="font-family:monospace;font-weight:700;color:${color};font-size:10px">${fmt(t.recu)}</span>
-          <span style="font-family:monospace;color:#94a3b8;font-size:9px">${fmt(t.montant)}</span>
-        </div>
-      </td>`;
+      return `<td style="padding:3px 4px;text-align:center;font-family:monospace;font-size:8px;border:1px solid #cbd5e1;font-weight:700;color:${color}">${fmt(t.recu)}<br/><span style="color:#6b7280;font-weight:400">${fmt(t.montant)}</span></td>`;
     }).join("");
 
     const groupRows = lotsParGroupe.map(({ groupe, lots }) => {
-      const headerRow = `<tr style="background:#f8fafc">
-        <td colspan="${colonnes.length + 3}" style="padding:4px 10px;font-size:10px;font-weight:700;color:${headerColor};text-transform:uppercase;letter-spacing:0.05em">${groupe}</td>
-      </tr>`;
-
+      const headerRow = `<tr><td colspan="${colonnes.length + 3}" style="padding:3px 6px;font-size:8px;font-weight:700;color:${headerColor};background:#f8fafc;border:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.05em">${groupe}</td></tr>`;
       const lotRows = lots.map((lot, li) => {
         let lotM = 0, lotR = 0;
         colonnes.forEach(col => {
           const d = detailMap[lot.id]?.[col.id];
           if (d) { lotM += parseFloat(d.montant ?? 0); lotR += parseFloat(d.montant_recu ?? 0); }
         });
-        const rowBg = li % 2 === 0 ? "#fff" : "#f8fafc";
-        const residentNom = lot.representant
-          ? `${lot.representant.nom ?? ""} ${lot.representant.prenom ?? ""}`.trim()
-          : "—";
-        const tel = phoneMap[lot.id] ? `<br/><span style="color:#94a3b8;font-size:9px">📞 ${phoneMap[lot.id]}</span>` : "";
-
+        const rowBg = li % 2 === 0 ? "#fff" : "#f9fafb";
+        const residentNom = lot.representant ? `${lot.representant.nom ?? ""} ${lot.representant.prenom ?? ""}`.trim() : "—";
         const cellsHtml = colonnes.map(col => {
           const d = detailMap[lot.id]?.[col.id];
-          if (!d) return `<td style="padding:4px 6px;text-align:center;color:#e2e8f0;font-size:10px">—</td>`;
+          if (!d) return `<td style="padding:3px 4px;text-align:center;color:#d1d5db;font-size:8px;border:1px solid #e5e7eb">—</td>`;
           const recu = parseFloat(d.montant_recu ?? 0);
           const mont = parseFloat(d.montant ?? 0);
           const r2 = mont > 0 ? recu / mont : 0;
-          const bg = r2 >= 1 ? "#d1fae5" : r2 > 0 ? "#fef3c7" : "#fee2e2";
           const color = r2 >= 1 ? "#059669" : r2 > 0 ? "#d97706" : "#dc2626";
-          return `<td style="padding:3px 4px;text-align:center">
-            <div style="display:inline-flex;flex-direction:column;align-items:center;background:${bg};border-radius:5px;padding:2px 5px">
-              <span style="font-family:monospace;font-weight:600;color:${color};font-size:10px">${fmt(recu)}</span>
-              <span style="font-family:monospace;color:#94a3b8;font-size:9px">${fmt(mont)}</span>
-            </div>
-          </td>`;
+          return `<td style="padding:3px 4px;text-align:center;font-family:monospace;font-size:8px;border:1px solid #e5e7eb;color:${color}">${fmt(recu)}<br/><span style="color:#9ca3af;font-size:7px">${fmt(mont)}</span></td>`;
         }).join("");
-
-        const totalCell = lotM > 0
-          ? (() => {
-              const r2 = lotR / lotM;
-              const bg = r2 >= 1 ? "#d1fae5" : r2 > 0 ? "#fef3c7" : "#fee2e2";
-              const color = r2 >= 1 ? "#059669" : r2 > 0 ? "#d97706" : "#dc2626";
-              return `<td style="padding:3px 6px;text-align:center;background:#f8fafc">
-                <div style="display:inline-flex;flex-direction:column;align-items:center;background:${bg};border-radius:5px;padding:2px 6px">
-                  <span style="font-family:monospace;font-weight:700;color:${color};font-size:10px">${fmt(lotR)}</span>
-                  <span style="font-family:monospace;color:#94a3b8;font-size:9px">${fmt(lotM)}</span>
-                </div>
-              </td>`;
-            })()
-          : `<td style="padding:3px 6px;text-align:center;color:#e2e8f0">—</td>`;
-
-        return `<tr style="background:${rowBg};border-bottom:1px solid #f1f5f9">
-          <td style="padding:5px 8px;font-weight:700;color:${headerColor};font-size:11px;white-space:nowrap">${lot.numero_lot}</td>
-          <td style="padding:5px 8px;font-size:10px;white-space:nowrap">${residentNom}${tel}</td>
+        const totColor = lotM > 0 ? (lotR >= lotM ? "#059669" : lotR > 0 ? "#d97706" : "#dc2626") : "#9ca3af";
+        const totalCell = `<td style="padding:3px 5px;text-align:center;font-family:monospace;font-size:8px;border:1px solid #e5e7eb;font-weight:700;background:#f8fafc;color:${totColor}">${lotM > 0 ? `${fmt(lotR)}<br/><span style="color:#9ca3af;font-weight:400;font-size:7px">${fmt(lotM)}</span>` : "—"}</td>`;
+        return `<tr style="background:${rowBg}">
+          <td style="padding:4px 5px;font-weight:700;color:#374151;font-size:9px;border:1px solid #e5e7eb;white-space:nowrap">${lot.numero_lot}</td>
+          <td style="padding:4px 5px;font-size:8px;border:1px solid #e5e7eb;white-space:nowrap">${residentNom}</td>
           ${cellsHtml}${totalCell}
         </tr>`;
       }).join("");
-
       return headerRow + lotRows;
     }).join("");
 
     const pct = totaux.montant > 0 ? Math.round((totaux.recu / totaux.montant) * 100) : 0;
-
     return `
-      <div style="margin-bottom:24px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-size:12px;font-weight:700;color:${headerColor};border-left:4px solid ${headerColor};padding-left:8px;text-transform:uppercase;letter-spacing:0.06em">${sectionTitle}</div>
-          <div style="display:flex;gap:10px;font-size:10px">
+      <div style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;padding-bottom:4px;border-bottom:2px solid ${headerColor}">
+          <div style="font-size:10px;font-weight:700;color:${headerColor};text-transform:uppercase;letter-spacing:0.06em">${sectionTitle}</div>
+          <div style="display:flex;gap:14px;font-size:8px;color:#374151">
             <span>Appelé : <strong>${fmtDec(totaux.montant)} MAD</strong></span>
             <span style="color:#059669">Encaissé : <strong>${fmtDec(totaux.recu)} MAD</strong></span>
             <span style="color:${totaux.montant - totaux.recu > 0 ? "#ef4444" : "#059669"}">Reste : <strong>${fmtDec(totaux.montant - totaux.recu)} MAD</strong></span>
             <span>Taux : <strong style="color:${pct >= 80 ? "#059669" : pct >= 50 ? "#d97706" : "#ef4444"}">${pct}%</strong></span>
           </div>
         </div>
-        <table style="font-size:10px;border:1px solid #e2e8f0;width:100%">
+        <table style="font-size:8px;width:100%;border-collapse:collapse">
           <thead>
             <tr style="background:#1e293b;color:#fff">
-              <th style="padding:6px 8px;text-align:left;white-space:nowrap;min-width:70px;font-size:10px">Lot</th>
-              <th style="padding:6px 8px;text-align:left;white-space:nowrap;min-width:140px;font-size:10px">Résident</th>
+              <th style="padding:4px 5px;text-align:left;white-space:nowrap;font-size:8px;border:1px solid #334155;min-width:50px">Lot</th>
+              <th style="padding:4px 5px;text-align:left;white-space:nowrap;font-size:8px;border:1px solid #334155;min-width:110px">Résident</th>
               ${colHeaders}
-              <th style="padding:6px 8px;text-align:center;white-space:nowrap;background:#0f172a;font-size:10px">Total</th>
+              <th style="padding:4px 5px;text-align:center;white-space:nowrap;font-size:8px;border:1px solid #334155;background:#0f172a">Total</th>
             </tr>
-            <tr style="background:#f1f5f9;border-bottom:2px solid #cbd5e1">
-              <td colspan="2" style="padding:5px 8px;font-weight:700;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.05em">Totaux</td>
+            <tr style="background:#f1f5f9">
+              <td colspan="2" style="padding:3px 5px;font-weight:700;font-size:8px;color:#475569;border:1px solid #cbd5e1">TOTAUX</td>
               ${totauxRow}
-              <td style="padding:4px 6px;text-align:center;background:#e2e8f0">
-                <div style="display:inline-flex;flex-direction:column;align-items:center">
-                  <span style="font-family:monospace;font-weight:700;color:#059669;font-size:11px">${fmt(totaux.recu)}</span>
-                  <span style="font-family:monospace;color:#475569;font-size:9px">${fmt(totaux.montant)}</span>
-                </div>
-              </td>
+              <td style="padding:3px 4px;text-align:center;font-family:monospace;font-size:8px;border:1px solid #cbd5e1;font-weight:700;color:#059669">${fmt(totaux.recu)}<br/><span style="color:#6b7280;font-weight:400">${fmt(totaux.montant)}</span></td>
             </tr>
           </thead>
           <tbody>${groupRows}</tbody>
@@ -172,81 +131,54 @@ function buildSynthesePdf({ residence, exercice, colonnesCharge, colonnesFond, l
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <title>Synthèse globale — Exercice ${exercice}</title>
+  <title>Synthèse des charges — ${residence?.nom_residence ?? ""}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1e293b; background: #fff; padding: 16px 20px; }
-    @page { size: A4 landscape; margin: 10mm 12mm; }
+    body { font-family: Arial, sans-serif; font-size: 9px; color: #1e293b; background: #fff; padding: 12px 16px; }
+    @page { size: A4 landscape; margin: 8mm 10mm; }
     @media print { body { padding: 0; } }
   </style>
 </head>
 <body>
 
   <!-- Header -->
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #e2e8f0">
-    <div style="display:flex;align-items:center;gap:12px">
-      ${logoUrl
-        ? `<img src="${logoUrl}" style="width:60px;height:60px;object-fit:contain;border-radius:8px" alt="Logo"/>`
-        : `<div style="width:60px;height:60px;background:#e0e7ff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#6366f1">${(residence?.nom_residence ?? "R")[0].toUpperCase()}</div>`
-      }
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #cbd5e1">
+    <div style="display:flex;align-items:center;gap:10px">
+      ${logoUrl ? `<img src="${logoUrl}" style="width:40px;height:40px;object-fit:contain;border-radius:4px" alt="Logo"/>` : ""}
       <div>
-        <div style="font-size:17px;font-weight:900;color:#1e293b">${residence?.nom_residence ?? "Résidence"}</div>
-        ${residence?.adresse_residence ? `<div style="font-size:10px;color:#64748b;margin-top:2px">${residence.adresse_residence}</div>` : ""}
-        ${(residence?.ville_residence || residence?.code_postal_residence)
-          ? `<div style="font-size:10px;color:#64748b">${[residence?.code_postal_residence, residence?.ville_residence].filter(Boolean).join(" ")}</div>`
-          : ""}
+        <div style="font-size:13px;font-weight:800;color:#1e293b">${residence?.nom_residence ?? "Résidence"}</div>
+        ${residence?.ville_residence ? `<div style="font-size:8px;color:#64748b">${[residence.code_postal_residence, residence.ville_residence].filter(Boolean).join(" ")}</div>` : ""}
       </div>
     </div>
     <div style="text-align:right">
-      <div style="font-size:15px;font-weight:800;color:#4f46e5">Synthèse globale des charges et fonds</div>
-      <div style="font-size:13px;font-weight:700;color:#1e293b;margin-top:2px">Exercice ${exercice}</div>
-      <div style="font-size:10px;color:#94a3b8;margin-top:4px">Généré le ${new Date().toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" })}</div>
+      <div style="font-size:12px;font-weight:700;color:#1e293b">Synthèse des charges et fonds</div>
+      <div style="font-size:8px;color:#64748b;margin-top:2px">Généré le ${new Date().toLocaleDateString("fr-FR")}</div>
     </div>
   </div>
 
-  <!-- KPI globaux -->
-  <div style="display:flex;gap:10px;margin-bottom:14px">
-    ${colonnesCharge.length > 0 ? `
-    <div style="flex:1;border:1px solid #c7d2fe;border-radius:8px;padding:8px 12px;background:#f5f3ff">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:#818cf8;margin-bottom:2px">Total charges appelées</div>
-      <div style="font-size:13px;font-weight:800;color:#4f46e5">${fmtDec(totauxCharge.montant)} MAD</div>
-      <div style="font-size:10px;color:#059669;margin-top:1px">Encaissé : ${fmtDec(totauxCharge.recu)} MAD</div>
-    </div>` : ""}
-    ${colonnesFond.length > 0 ? `
-    <div style="flex:1;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;background:#fffbeb">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:#d97706;margin-bottom:2px">Total fonds appelés</div>
-      <div style="font-size:13px;font-weight:800;color:#b45309">${fmtDec(totauxFond.montant)} MAD</div>
-      <div style="font-size:10px;color:#059669;margin-top:1px">Encaissé : ${fmtDec(totauxFond.recu)} MAD</div>
-    </div>` : ""}
-    <div style="flex:1;border:1px solid #d1fae5;border-radius:8px;padding:8px 12px;background:#f0fdf4">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:#059669;margin-bottom:2px">Total encaissé</div>
-      <div style="font-size:13px;font-weight:800;color:#059669">${fmtDec(totalGlobal.recu)} MAD</div>
-    </div>
-    <div style="flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:2px">Reste à recouvrer</div>
-      <div style="font-size:13px;font-weight:800;color:${totalGlobal.montant - totalGlobal.recu > 0 ? "#ef4444" : "#059669"}">${fmtDec(totalGlobal.montant - totalGlobal.recu)} MAD</div>
-      <div style="margin-top:4px;background:#e2e8f0;border-radius:99px;height:4px">
-        <div style="background:${pctGlobal >= 80 ? "#10b981" : pctGlobal >= 50 ? "#f59e0b" : "#ef4444"};height:4px;border-radius:99px;width:${pctGlobal}%"></div>
-      </div>
-      <div style="font-size:9px;color:#64748b;margin-top:2px">Taux : ${pctGlobal}%</div>
-    </div>
+  <!-- KPI ligne -->
+  <div style="display:flex;gap:6px;margin-bottom:10px;font-size:8px">
+    ${colonnesCharge.length > 0 ? `<div style="flex:1;border:1px solid #e2e8f0;border-radius:3px;padding:5px 8px"><div style="color:#64748b;margin-bottom:1px">Charges appelées</div><div style="font-weight:700;font-size:10px">${fmtDec(totauxCharge.montant)} MAD</div><div style="color:#059669">Encaissé : ${fmtDec(totauxCharge.recu)} MAD</div></div>` : ""}
+    ${colonnesFond.length > 0 ? `<div style="flex:1;border:1px solid #e2e8f0;border-radius:3px;padding:5px 8px"><div style="color:#64748b;margin-bottom:1px">Fonds appelés</div><div style="font-weight:700;font-size:10px">${fmtDec(totauxFond.montant)} MAD</div><div style="color:#059669">Encaissé : ${fmtDec(totauxFond.recu)} MAD</div></div>` : ""}
+    <div style="flex:1;border:1px solid #e2e8f0;border-radius:3px;padding:5px 8px"><div style="color:#64748b;margin-bottom:1px">Total encaissé</div><div style="font-weight:700;font-size:10px;color:#059669">${fmtDec(totalGlobal.recu)} MAD</div></div>
+    <div style="flex:1;border:1px solid #e2e8f0;border-radius:3px;padding:5px 8px"><div style="color:#64748b;margin-bottom:1px">Reste à recouvrer</div><div style="font-weight:700;font-size:10px;color:${totalGlobal.montant - totalGlobal.recu > 0 ? "#dc2626" : "#059669"}">${fmtDec(totalGlobal.montant - totalGlobal.recu)} MAD</div><div style="color:#64748b">Taux : <strong style="color:${pctGlobal >= 80 ? "#059669" : pctGlobal >= 50 ? "#d97706" : "#dc2626"}">${pctGlobal}%</strong></div></div>
   </div>
 
   <!-- Légende -->
-  <div style="display:flex;gap:12px;font-size:9px;color:#64748b;margin-bottom:10px;align-items:center">
-    <span style="font-weight:600">Légende :</span>
-    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:4px"></span>Payé</span>
-    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:4px"></span>Partiel</span>
-    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:4px"></span>Non payé</span>
-    <span style="color:#94a3b8;margin-left:8px">Cellules : <strong>reçu</strong> / dû (MAD)</span>
+  <div style="display:flex;gap:10px;font-size:7px;color:#64748b;margin-bottom:8px">
+    <span>Légende :</span>
+    <span style="color:#059669">■ Payé</span>
+    <span style="color:#d97706">■ Partiel</span>
+    <span style="color:#dc2626">■ Non payé</span>
+    <span style="color:#94a3b8">Cellules : reçu / dû (MAD)</span>
   </div>
 
   ${buildTable(colonnesCharge, totauxCharge, "#4f46e5", "Appels de charge")}
   ${buildTable(colonnesFond,   totauxFond,   "#d97706", "Appels de fond")}
 
   <!-- Footer -->
-  <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:9px;color:#94a3b8;display:flex;justify-content:space-between">
-    <span>JORAT · ${residence?.nom_residence ?? ""} · Exercice ${exercice}</span>
+  <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;font-size:7px;color:#94a3b8;display:flex;justify-content:space-between">
+    <span>${residence?.nom_residence ?? ""} · Synthèse des charges</span>
     <span>${new Date().toLocaleDateString("fr-FR")}</span>
   </div>
 
@@ -511,10 +443,10 @@ export default function SynthesePage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
           {[
-            { key: "nonPaye", label: "Non payé",  dot: "bg-red-400",     border: "border-red-100",    header: "bg-red-50"    },
-            { key: "partiel", label: "Partiel",   dot: "bg-amber-400",   border: "border-amber-100",  header: "bg-amber-50"  },
-            { key: "solde",   label: "Soldé",     dot: "bg-emerald-400", border: "border-emerald-100",header: "bg-emerald-50"},
-          ].map(({ key, label, dot, border, header }) => {
+            { key: "nonPaye", label: "Non payé",  dot: "bg-red-400",     border: "border-red-100",    header: "bg-red-50",    cardBg: "bg-red-50/40 border-red-100"       },
+            { key: "partiel", label: "Partiel",   dot: "bg-amber-400",   border: "border-amber-100",  header: "bg-amber-50",  cardBg: "bg-amber-50/40 border-amber-100"   },
+            { key: "solde",   label: "Soldé",     dot: "bg-emerald-400", border: "border-emerald-100",header: "bg-emerald-50",cardBg: "bg-emerald-50/40 border-emerald-100"},
+          ].map(({ key, label, dot, border, header, cardBg }) => {
             const items = lotsBuckets[key];
             return (
               <div key={key} className={`rounded-2xl border ${border} overflow-hidden`}>
@@ -530,7 +462,7 @@ export default function SynthesePage() {
                   {items.map(({ lot, groupe, lotM, lotR }) => {
                     const tc = cellStyle(lotR, lotM);
                     return (
-                      <div key={lot.id} className="bg-white rounded-xl border border-slate-100 p-3 space-y-2 hover:shadow-sm transition">
+                      <div key={lot.id} className={`rounded-xl border p-3 space-y-2 hover:shadow-sm transition ${cardBg}`}>
                         <div className="flex items-center justify-between gap-2">
                           <button
                             onClick={() => navigate(`/fiche-lot?lot=${lot.id}${residenceId ? `&residence=${residenceId}` : ""}`)}

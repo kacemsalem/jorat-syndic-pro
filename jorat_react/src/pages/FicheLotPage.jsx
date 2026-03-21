@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import RecouvrementNav from "../components/RecouvrementNav";
 import { useToast } from "../components/Toast";
 
 const API = "/api";
@@ -613,7 +612,6 @@ export default function FicheLotPage() {
   const lotId       = params.get("lot");
   const residenceId = params.get("residence") || localStorage.getItem("active_residence");
 
-  const [activeTab,      setActiveTab]      = useState("charge");
   const [lot,            setLot]            = useState(null);
   const [residence,      setResidence]      = useState(null);
   const [detailsCharge,  setDetailsCharge]  = useState([]);
@@ -745,18 +743,8 @@ export default function FicheLotPage() {
   const residentName = resident ? `${resident.nom ?? ""} ${resident.prenom ?? ""}`.trim() : null;
   const telephone    = resident?.telephone || null;
 
-  const TABS = [
-    { id: "charge",        label: `Appels de charge (${detailsCharge.length})` },
-    { id: "fond",          label: `Appels de fond (${detailsFond.length})` },
-    { id: "paiements",     label: `Paiements (${paiements.length})` },
-    { id: "grand-livre",   label: "Grand livre" },
-    { id: "notifications", label: `Notifications${notifications.length > 0 ? ` (${notifications.length})` : ""}` },
-  ];
-
   return (
     <div className="space-y-4">
-
-      <RecouvrementNav residenceId={residenceId} />
 
       {/* ── Header card ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
@@ -871,173 +859,128 @@ export default function FicheLotPage() {
 
       {/* ── Financial summary ── */}
       {!loading && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-slate-600 uppercase tracking-widest">Situation financière globale</h2>
-            <StatusBadge statut={summary.statut} />
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-              <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Total appelé</p>
-              <p className="text-xl font-bold text-slate-800 mt-0.5 font-mono">{fmt(summary.totalDu)}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">MAD</p>
-            </div>
-            <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-              <p className="text-[10px] text-emerald-600 uppercase tracking-wide font-medium">Total encaissé</p>
-              <p className="text-xl font-bold text-emerald-700 mt-0.5 font-mono">{fmt(summary.totalRecu)}</p>
-              <p className="text-[10px] text-emerald-500 mt-0.5">MAD</p>
-            </div>
-            <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
-              <p className="text-[10px] text-indigo-600 uppercase tracking-wide font-medium">Total paiements</p>
-              <p className="text-xl font-bold text-indigo-700 mt-0.5 font-mono">{fmt(summary.totalPaiements)}</p>
-              <p className="text-[10px] text-indigo-400 mt-0.5">MAD</p>
-            </div>
-            <div className={`rounded-xl p-3 border ${summary.reste > 0 ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100"}`}>
-              <p className={`text-[10px] uppercase tracking-wide font-medium ${summary.reste > 0 ? "text-red-600" : "text-emerald-600"}`}>Reste dû</p>
-              <p className={`text-xl font-bold mt-0.5 font-mono ${summary.reste > 0 ? "text-red-600" : "text-emerald-600"}`}>
-                {fmt(Math.abs(summary.reste))}
-              </p>
-              <p className={`text-[10px] mt-0.5 ${summary.reste > 0 ? "text-red-400" : "text-emerald-400"}`}>MAD</p>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          {summary.totalDu > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3 flex items-center flex-wrap gap-4 justify-between">
+          <div className="flex items-center gap-6 flex-wrap">
             <div>
-              <div className="flex justify-between text-xs text-slate-400 mb-1">
-                <span>Taux d'encaissement</span>
-                <span className="font-semibold text-slate-600">{summary.pct}%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5">
-                <div
-                  className={`h-2.5 rounded-full transition-all ${summary.pct >= 100 ? "bg-emerald-500" : summary.pct > 50 ? "bg-amber-400" : "bg-red-400"}`}
-                  style={{ width: `${summary.pct}%` }}
-                />
-              </div>
+              <span className="text-[10px] text-slate-400 uppercase tracking-wide block">Appelé</span>
+              <p className="text-base font-bold text-slate-800 font-mono">{fmt(summary.totalDu)} <span className="text-xs text-slate-400 font-normal">MAD</span></p>
             </div>
-          )}
+            <div>
+              <span className="text-[10px] text-emerald-600 uppercase tracking-wide block">Encaissé</span>
+              <p className="text-base font-bold text-emerald-700 font-mono">{fmt(summary.totalRecu)} <span className="text-xs text-emerald-400 font-normal">MAD</span></p>
+            </div>
+            <div>
+              <span className={`text-[10px] uppercase tracking-wide block ${summary.reste > 0 ? "text-red-500" : "text-emerald-600"}`}>Reste</span>
+              <p className={`text-base font-bold font-mono ${summary.reste > 0 ? "text-red-600" : "text-emerald-600"}`}>{fmt(Math.abs(summary.reste))} <span className="text-xs font-normal">MAD</span></p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <StatusBadge statut={summary.statut} />
+            {summary.totalDu > 0 && (
+              <div className="w-24">
+                <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div className={`h-2 rounded-full ${summary.pct >= 100 ? "bg-emerald-500" : summary.pct > 50 ? "bg-amber-400" : "bg-red-400"}`} style={{ width: `${summary.pct}%` }} />
+                </div>
+                <p className="text-[10px] text-slate-400 text-center mt-0.5">{summary.pct}%</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {loading ? (
-        <div className="bg-white rounded-2xl p-12 flex items-center justify-center gap-3">
+        <div className="bg-white rounded-2xl p-12 flex items-center justify-center">
           <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs text-slate-400 uppercase tracking-widest">Chargement…</span>
         </div>
       ) : (
-        <>
-          {/* ── Tabs ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            {/* Tab bar */}
-            <div className="flex border-b border-slate-100 overflow-x-auto">
-              {TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-5 py-3 text-xs font-semibold whitespace-nowrap transition border-b-2 ${
-                    activeTab === tab.id
-                      ? "border-indigo-600 text-indigo-600 bg-indigo-50/50"
-                      : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+        <div className="space-y-3">
+
+          {/* Appels de charge */}
+          <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
+            <div className="bg-indigo-50 px-4 py-2.5 border-b border-indigo-100">
+              <span className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Appels de charge ({detailsCharge.length})</span>
             </div>
-
-            {/* Tab content */}
             <div className="p-4">
-              {activeTab === "charge" && (
-                <ChargesSection details={detailsCharge} typeLabel="charge" />
-              )}
+              <ChargesSection details={detailsCharge} typeLabel="charge" />
+            </div>
+          </div>
 
-              {activeTab === "fond" && (
-                <ChargesSection details={detailsFond} typeLabel="fond" />
-              )}
+          {/* Appels de fond */}
+          <div className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+            <div className="bg-amber-50 px-4 py-2.5 border-b border-amber-100">
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Appels de fond ({detailsFond.length})</span>
+            </div>
+            <div className="p-4">
+              <ChargesSection details={detailsFond} typeLabel="fond" />
+            </div>
+          </div>
 
-              {activeTab === "paiements" && (
-                <>
-                  {paiementsWithBalance.length === 0 ? (
-                    <div className="py-8 text-center text-slate-400 text-sm">
-                      Aucun paiement enregistré.
-                    </div>
-                  ) : (
-                    <div className="overflow-hidden rounded-xl border border-slate-100">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
-                            <th className="px-4 py-2.5 text-left font-semibold">Date</th>
-                            <th className="px-4 py-2.5 text-left font-semibold">Référence</th>
-                            <th className="px-4 py-2.5 text-left font-semibold">Mode</th>
-                            <th className="px-4 py-2.5 text-right font-semibold">Montant (MAD)</th>
-                            <th className="px-4 py-2.5 text-right font-semibold">Solde après (MAD)</th>
-                            <th className="px-4 py-2.5 text-left font-semibold">Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paiementsWithBalance.map((p, i) => (
-                            <tr key={p.id} className={`border-b border-slate-50 hover:bg-slate-50/60 ${i % 2 === 0 ? "" : "bg-slate-50/30"}`}>
-                              <td className="px-4 py-2.5 text-slate-600 font-medium whitespace-nowrap">
-                                {fmtDate(p.date_paiement)}
-                              </td>
-                              <td className="px-4 py-2.5 text-slate-500 font-mono">
-                                {p.reference || <span className="text-slate-300 italic">—</span>}
-                              </td>
-                              <td className="px-4 py-2.5 text-slate-500">
-                                {p.mode_paiement || <span className="text-slate-300 italic">—</span>}
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-mono font-bold text-indigo-700">
-                                {fmt(p.montant)}
-                              </td>
-                              <td className={`px-4 py-2.5 text-right font-mono font-semibold ${p.soldeApres > 0 ? "text-red-500" : p.soldeApres < 0 ? "text-blue-500" : "text-emerald-600"}`}>
-                                {fmt(Math.abs(p.soldeApres))}
-                                {p.soldeApres < 0 && <span className="ml-1 text-[10px] text-blue-400 font-normal">avance</span>}
-                              </td>
-                              <td className="px-4 py-2.5 text-slate-400 max-w-[160px] truncate">
-                                {p.notes || "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="bg-indigo-50 border-t-2 border-indigo-100">
-                            <td colSpan={3} className="px-4 py-2.5 text-xs font-bold text-indigo-600 uppercase tracking-wide">
-                              Total paiements
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-mono font-bold text-indigo-700">
-                              {fmt(paiements.reduce((s, p) => s + parseFloat(p.montant ?? 0), 0))} MAD
-                            </td>
-                            <td colSpan={2} />
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {activeTab === "grand-livre" && (
-                <GrandLivreSection
-                  detailsCharge={detailsCharge}
-                  detailsFond={detailsFond}
-                  paiements={paiements}
-                />
-              )}
-
-              {activeTab === "notifications" && (
-                <NotificationsSection
-                  notifications={notifications}
-                  lot={lot}
-                  summary={summary}
-                  telephone={telephone}
-                  onSend={loadNotifications}
-                />
+          {/* Paiements */}
+          <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden">
+            <div className="bg-emerald-50 px-4 py-2.5 border-b border-emerald-100">
+              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Paiements ({paiements.length})</span>
+            </div>
+            <div className="p-4">
+              {paiementsWithBalance.length === 0 ? (
+                <div className="py-6 text-center text-slate-400 text-sm">Aucun paiement enregistré.</div>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-slate-100">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
+                        <th className="px-4 py-2.5 text-left font-semibold">Date</th>
+                        <th className="px-4 py-2.5 text-left font-semibold">Référence</th>
+                        <th className="px-4 py-2.5 text-left font-semibold">Mode</th>
+                        <th className="px-4 py-2.5 text-right font-semibold">Montant (MAD)</th>
+                        <th className="px-4 py-2.5 text-right font-semibold">Solde après (MAD)</th>
+                        <th className="px-4 py-2.5 text-left font-semibold">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paiementsWithBalance.map((p, i) => (
+                        <tr key={p.id} className={`border-b border-slate-50 hover:bg-slate-50/60 ${i % 2 === 0 ? "" : "bg-slate-50/30"}`}>
+                          <td className="px-4 py-2.5 text-slate-600 font-medium whitespace-nowrap">{fmtDate(p.date_paiement)}</td>
+                          <td className="px-4 py-2.5 text-slate-500 font-mono">{p.reference || <span className="text-slate-300 italic">—</span>}</td>
+                          <td className="px-4 py-2.5 text-slate-500">{p.mode_paiement || <span className="text-slate-300 italic">—</span>}</td>
+                          <td className="px-4 py-2.5 text-right font-mono font-bold text-indigo-700">{fmt(p.montant)}</td>
+                          <td className={`px-4 py-2.5 text-right font-mono font-semibold ${p.soldeApres > 0 ? "text-red-500" : p.soldeApres < 0 ? "text-blue-500" : "text-emerald-600"}`}>
+                            {fmt(Math.abs(p.soldeApres))}
+                            {p.soldeApres < 0 && <span className="ml-1 text-[10px] text-blue-400 font-normal">avance</span>}
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-400 max-w-[160px] truncate">{p.notes || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-emerald-50 border-t-2 border-emerald-100">
+                        <td colSpan={3} className="px-4 py-2.5 text-xs font-bold text-emerald-700 uppercase tracking-wide">Total paiements</td>
+                        <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-700">{fmt(paiements.reduce((s, p) => s + parseFloat(p.montant ?? 0), 0))} MAD</td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               )}
             </div>
           </div>
 
-        </>
+          {/* Notifications */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">Notifications ({notifications.length})</span>
+            </div>
+            <div className="p-4">
+              <NotificationsSection
+                notifications={notifications}
+                lot={lot}
+                summary={summary}
+                telephone={telephone}
+                onSend={loadNotifications}
+              />
+            </div>
+          </div>
+
+        </div>
       )}
     </div>
   );
