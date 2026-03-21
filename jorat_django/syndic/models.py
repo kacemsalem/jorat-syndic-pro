@@ -76,6 +76,7 @@ class Residence(TimeStampedModel):
     description = models.TextField(blank=True, null=True)
 
     logo = models.ImageField(upload_to="residences/logos/", blank=True, null=True)
+    logo_base64 = models.TextField(blank=True, null=True)
 
     email = models.EmailField(blank=True, null=True)
 

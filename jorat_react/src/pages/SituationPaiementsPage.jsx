@@ -174,7 +174,7 @@ export default function SituationPaiementsPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-5xl mx-auto space-y-4">
       <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
 
       {/* ── Header ── */}

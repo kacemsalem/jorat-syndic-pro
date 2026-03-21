@@ -40,10 +40,11 @@ class ResidenceSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # Always return a relative /media/... URL so it works through the Vite proxy
-        # regardless of the host DRF would embed in the absolute URL
-        if instance.logo and instance.logo.name:
-            data["logo"] = instance.logo.url   # e.g. /media/residences/logos/file.png
+        # Prefer base64-stored logo (works everywhere, no file serving needed)
+        if instance.logo_base64:
+            data["logo"] = instance.logo_base64
+        elif instance.logo and instance.logo.name:
+            data["logo"] = instance.logo.url
         else:
             data["logo"] = None
         return data

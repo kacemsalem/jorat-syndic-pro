@@ -67,6 +67,7 @@ export default function Residences() {
         email:                 r.email                 ?? "",
         statut_residence:      r.statut_residence      ?? "ACTIF",
         description:           r.description           ?? "",
+        logo_base64:           null,
       });
     } catch (e) {
       setError(e.message || "Erreur chargement");
@@ -80,13 +81,18 @@ export default function Residences() {
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 1024 * 1024) {
-      setError("Le logo ne doit pas dépasser 1 Mo. Compressez l'image avant de l'envoyer.");
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Le logo ne doit pas dépasser 2 Mo.");
       e.target.value = "";
       return;
     }
     setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setLogoPreview(evt.target.result);
+      setForm(f => ({ ...f, logo_base64: evt.target.result }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -94,16 +100,24 @@ export default function Residences() {
     if (!residence?.id) return;
     setSaving(true); setError(""); setInfo("");
     try {
-      const body = new FormData();
-      Object.entries(form).forEach(([k, v]) => body.append(k, v ?? ""));
-      if (logoFile) body.append("logo", logoFile);
+      const payload = {
+        nom_residence:         form.nom_residence,
+        ville_residence:       form.ville_residence,
+        adresse_residence:     form.adresse_residence,
+        code_postal_residence: form.code_postal_residence,
+        email:                 form.email,
+        statut_residence:      form.statut_residence,
+        description:           form.description,
+      };
+      if (form.logo_base64) payload.logo_base64 = form.logo_base64;
       await fetchJson(`${API_BASE}/residences/${residence.id}/`, {
         method: "PATCH",
-        body,
+        body: JSON.stringify(payload),
       });
       setInfo("Modifications enregistrées ✅");
       setLogoFile(null);
       setLogoPreview(null);
+      setForm(f => ({ ...f, logo_base64: null }));
       await load();
     } catch (e) {
       setError(e.message || "Erreur modification");
