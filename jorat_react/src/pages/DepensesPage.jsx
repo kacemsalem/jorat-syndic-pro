@@ -519,53 +519,53 @@ export default function DepensesPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-slate-400">Aucune dépense</div>
       ) : (
-        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+        <div ref={menuRef} className="space-y-1.5">
           {filtered.map(dep => (
-            <div key={dep.id} className="bg-red-50 rounded-xl border border-red-200 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
-              {/* Ligne 1 : date · famille · menu */}
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1 min-w-0 flex-wrap">
-                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{dep.date_depense}</span>
-                  {dep.mois && <span className="text-[10px] font-semibold px-1 rounded bg-amber-100 text-amber-700">{dep.mois}</span>}
+            <div key={dep.id} className="bg-red-50 rounded-xl border border-red-200 shadow-sm px-3 py-2.5 flex items-center gap-3 relative">
+              {/* Date + badges */}
+              <div className="flex flex-col gap-0.5 w-24 shrink-0">
+                <span className="text-[11px] text-slate-500 font-mono">{dep.date_depense}</span>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {dep.mois && <span className="text-[9px] font-semibold px-1 rounded bg-amber-100 text-amber-700">{dep.mois}</span>}
                   {(dep.modele_famille_nom || dep.categorie_famille) && (
-                    <span className="text-[10px] px-1 rounded bg-slate-100 text-slate-500 truncate">
-                      {dep.modele_famille_nom || dep.categorie_famille}
-                    </span>
-                  )}
-                </div>
-                <div className="relative shrink-0">
-                  <button onClick={() => setOpenMenu(openMenu === dep.id ? null : dep.id)}
-                    className="p-0.5 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                      <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
-                    </svg>
-                  </button>
-                  {openMenu === dep.id && (
-                    <div className="absolute right-0 top-5 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
-                      <button onClick={() => { openEdit(dep); setOpenMenu(null); }}
-                        className="w-full text-left px-3 py-1 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
-                      <button onClick={() => { handleDelete(dep); setOpenMenu(null); }}
-                        className="w-full text-left px-3 py-1 text-xs text-red-600 hover:bg-red-50">Supprimer</button>
-                    </div>
+                    <span className="text-[9px] px-1 rounded bg-slate-100 text-slate-500">{dep.modele_famille_nom || dep.categorie_famille}</span>
                   )}
                 </div>
               </div>
 
-              {/* Ligne 2 : libellé + montant */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-slate-800 text-[13px] leading-tight truncate">{dep.libelle}</span>
-                <span className="font-bold text-amber-700 text-[13px] shrink-0">
-                  {parseFloat(dep.montant).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
-                </span>
+              {/* Libellé + sous-infos */}
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm leading-tight truncate">{dep.libelle}</p>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className={`font-mono text-[10px] px-1 rounded ${dep.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
+                    {dep.compte_code}{dep.compte_code === "000" ? " ⚠" : ""}
+                  </span>
+                  {dep.fournisseur_nom   && <span className="text-[10px] text-slate-400">{dep.fournisseur_nom}</span>}
+                  {dep.facture_reference && <span className="text-[10px] text-slate-300">Réf: {dep.facture_reference}</span>}
+                </div>
               </div>
 
-              {/* Ligne 3 : compte · fournisseur · réf (si présents) */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className={`font-mono text-[10px] px-1 rounded ${dep.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
-                  {dep.compte_code}{dep.compte_code === "000" ? " ⚠" : ""}
-                </span>
-                {dep.fournisseur_nom   && <span className="text-[10px] text-slate-400 truncate">{dep.fournisseur_nom}</span>}
-                {dep.facture_reference && <span className="text-[10px] text-slate-300">Réf: {dep.facture_reference}</span>}
+              {/* Montant */}
+              <span className="font-bold text-amber-700 text-sm shrink-0">
+                {parseFloat(dep.montant).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
+              </span>
+
+              {/* Menu */}
+              <div className="relative shrink-0">
+                <button onClick={() => setOpenMenu(openMenu === dep.id ? null : dep.id)}
+                  className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition">
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
+                  </svg>
+                </button>
+                {openMenu === dep.id && (
+                  <div className="absolute right-0 top-6 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
+                    <button onClick={() => { openEdit(dep); setOpenMenu(null); }}
+                      className="w-full text-left px-3 py-1 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
+                    <button onClick={() => { handleDelete(dep); setOpenMenu(null); }}
+                      className="w-full text-left px-3 py-1 text-xs text-red-600 hover:bg-red-50">Supprimer</button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

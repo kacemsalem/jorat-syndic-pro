@@ -314,71 +314,64 @@ export default function CaissePage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-slate-400">Aucun mouvement</div>
       ) : (
-        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+        <div ref={menuRef} className="space-y-1.5">
           {filtered.map(m => {
             const isEntree = m.sens === "DEBIT";
             const isManual = MANUAL_TYPES.includes(m.type_mouvement);
             return (
               <div key={m.id}
-                className={`rounded-2xl border p-3 flex flex-col gap-1.5 relative ${
-                  isEntree
-                    ? "bg-emerald-50 border-emerald-200"
-                    : "bg-red-50 border-red-200"
+                className={`rounded-xl border px-3 py-2.5 flex items-center gap-3 relative ${
+                  isEntree ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
                 }`}
               >
-                {/* Top: date + badges + menu */}
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <span className="text-[11px] text-slate-500 font-mono shrink-0">{m.date_mouvement}</span>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${TYPE_BADGE[m.type_mouvement] ?? "bg-slate-100 text-slate-600"}`}>
+                {/* Date + badges */}
+                <div className="flex flex-col gap-0.5 w-24 shrink-0">
+                  <span className="text-[11px] text-slate-500 font-mono">{m.date_mouvement}</span>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className={`text-[9px] font-semibold px-1 rounded ${TYPE_BADGE[m.type_mouvement] ?? "bg-slate-100 text-slate-600"}`}>
                       {TYPE_LABELS[m.type_mouvement] ?? m.type_mouvement}
                     </span>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isEntree ? "bg-emerald-200 text-emerald-800" : "bg-red-200 text-red-800"}`}>
+                    <span className={`text-[9px] font-semibold px-1 rounded ${isEntree ? "bg-emerald-200 text-emerald-800" : "bg-red-200 text-red-800"}`}>
                       {isEntree ? "Entrée" : "Sortie"}
                     </span>
                   </div>
-                  {/* 3-dot menu — seulement pour mouvements manuels */}
-                  {isManual && (
-                    <div className="relative shrink-0">
-                      <button
-                        onClick={() => setOpenMenu(openMenu === m.id ? null : m.id)}
-                        className="p-0.5 rounded-lg hover:bg-white/60 text-slate-400 hover:text-slate-700 transition"
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
-                        </svg>
-                      </button>
-                      {openMenu === m.id && (
-                        <div className="absolute right-0 top-6 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-32">
-                          <button onClick={() => { handleDelete(m.id); setOpenMenu(null); }}
-                            className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50">Supprimer</button>
-                        </div>
-                      )}
-                    </div>
+                </div>
+
+                {/* Libellé + sous-infos */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm leading-tight truncate">{m.libelle}</p>
+                  {m.compte_code && (
+                    <p className="text-[10px] font-mono text-indigo-600 truncate mt-0.5">
+                      {m.compte_code}{m.compte_libelle ? ` — ${m.compte_libelle}` : ""}
+                    </p>
+                  )}
+                  {m.commentaire && (
+                    <p className="text-[10px] text-slate-400 truncate">{m.commentaire}</p>
                   )}
                 </div>
 
-                {/* Libellé */}
-                <div className="font-semibold text-slate-800 text-sm leading-snug truncate">{m.libelle}</div>
+                {/* Montant */}
+                <span className={`text-sm font-bold shrink-0 ${isEntree ? "text-emerald-700" : "text-red-700"}`}>
+                  {isEntree ? "+" : "−"} {fmt(m.montant)} MAD
+                </span>
 
-                {/* Compte */}
-                {m.compte_code && (
-                  <div className="text-[11px] font-mono text-indigo-600 truncate">
-                    {m.compte_code}{m.compte_libelle ? ` — ${m.compte_libelle}` : ""}
+                {/* 3-dot menu — mouvements manuels seulement */}
+                {isManual && (
+                  <div className="relative shrink-0">
+                    <button onClick={() => setOpenMenu(openMenu === m.id ? null : m.id)}
+                      className="p-1 rounded hover:bg-white/60 text-slate-400 hover:text-slate-700 transition">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                        <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
+                      </svg>
+                    </button>
+                    {openMenu === m.id && (
+                      <div className="absolute right-0 top-6 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-32">
+                        <button onClick={() => { handleDelete(m.id); setOpenMenu(null); }}
+                          className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50">Supprimer</button>
+                      </div>
+                    )}
                   </div>
                 )}
-
-                {/* Commentaire */}
-                {m.commentaire && (
-                  <div className="text-[11px] text-slate-500 truncate">{m.commentaire}</div>
-                )}
-
-                {/* Montant */}
-                <div className="pt-1 border-t border-white/50">
-                  <span className={`text-sm font-bold ${isEntree ? "text-emerald-700" : "text-red-700"}`}>
-                    {isEntree ? "+" : "−"} {fmt(m.montant)} MAD
-                  </span>
-                </div>
               </div>
             );
           })}

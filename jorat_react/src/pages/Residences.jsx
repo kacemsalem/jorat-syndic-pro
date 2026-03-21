@@ -103,6 +103,7 @@ export default function Residences() {
       });
       setInfo("Modifications enregistrées ✅");
       setLogoFile(null);
+      setLogoPreview(null);
       await load();
     } catch (e) {
       setError(e.message || "Erreur modification");

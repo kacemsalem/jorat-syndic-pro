@@ -176,6 +176,7 @@ export default function PaiementPage() {
   const [resultVentilation, setResultVentilation] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paiementToDelete, setPaiementToDelete]   = useState(null);
+  const [showSaveConfirm, setShowSaveConfirm]     = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────
   const fetchAllDetails = (lotId, type = typeAppel) => {
@@ -483,7 +484,7 @@ export default function PaiementPage() {
                 </Field>
 
                 <button
-                  onClick={editingPaiement ? handleUpdate : handleSave}
+                  onClick={editingPaiement ? handleUpdate : () => setShowSaveConfirm(true)}
                   disabled={saving || !form.montant}
                   className={`w-full py-2 rounded-xl font-semibold text-sm transition disabled:opacity-50 ${
                     editingPaiement ? "bg-amber-500 text-white hover:bg-amber-600" : "bg-indigo-600 text-white hover:bg-indigo-700"
@@ -619,6 +620,45 @@ export default function PaiementPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Modal confirmation enregistrement paiement ── */}
+      {showSaveConfirm && (
+        <Modal>
+          <h2 className="text-base font-bold text-slate-800">Confirmer l'enregistrement</h2>
+          <div className="bg-indigo-50 rounded-xl p-4 text-sm space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Lot</span>
+              <span className="font-semibold text-slate-800">{selectedLot?.numero_lot}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Montant</span>
+              <span className="font-bold text-indigo-700">{fmt(form.montant)} MAD</span>
+            </div>
+            {form.date_paiement && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Date</span>
+                <span className="font-semibold text-slate-700">{form.date_paiement}</span>
+              </div>
+            )}
+            {form.mode_paiement && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Mode</span>
+                <span className="font-semibold text-slate-700">{form.mode_paiement}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setShowSaveConfirm(false)}
+              className="flex-1 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">
+              Annuler
+            </button>
+            <button onClick={() => { setShowSaveConfirm(false); handleSave(); }}
+              className="flex-1 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+              Confirmer
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* ── Modal confirmation ventilation ── */}

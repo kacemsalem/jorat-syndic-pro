@@ -38,6 +38,16 @@ class ResidenceSerializer(serializers.ModelSerializer):
         model = Residence
         fields = "__all__"
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        logo = data.get("logo")
+        if logo:
+            from urllib.parse import urlparse
+            parsed = urlparse(logo)
+            if parsed.scheme:  # absolute URL → keep only path so it goes through Vite proxy
+                data["logo"] = parsed.path
+        return data
+
 
 # -------------------------------------------------
 # Groupe
