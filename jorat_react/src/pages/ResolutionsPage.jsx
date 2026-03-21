@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 function getCsrf() {
@@ -24,15 +24,17 @@ export default function ResolutionsPage() {
   const [searchParams] = useSearchParams();
   const agIdParam = searchParams.get("ag_id") || "";
 
-  const [items,     setItems]     = useState([]);
+  const [items,      setItems]      = useState([]);
   const [assemblees, setAssemblees] = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState("");
-  const [showForm,  setShowForm]  = useState(false);
-  const [editItem,  setEditItem]  = useState(null);
-  const [form,      setForm]      = useState({ ...EMPTY, assemblee_generale: agIdParam });
-  const [saving,    setSaving]    = useState(false);
-  const [filterAg,  setFilterAg]  = useState(agIdParam);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState("");
+  const [showForm,   setShowForm]   = useState(false);
+  const [editItem,   setEditItem]   = useState(null);
+  const [form,       setForm]       = useState({ ...EMPTY, assemblee_generale: agIdParam });
+  const [saving,     setSaving]     = useState(false);
+  const [filterAg,   setFilterAg]   = useState(agIdParam);
+  const [openMenu,   setOpenMenu]   = useState(null);
+  const menuRef = useRef(null);
 
   const fetchItems = (ag = filterAg) => {
     setLoading(true);
@@ -48,6 +50,12 @@ export default function ResolutionsPage() {
     fetch("/api/assemblees/", { credentials: "include" })
       .then(r => r.json())
       .then(d => setAssemblees(Array.isArray(d) ? d : (d.results ?? [])));
+  }, []);
+
+  useEffect(() => {
+    const handler = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenu(null); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const openCreate = () => { setForm({ ...EMPTY, assemblee_generale: filterAg || "" }); setEditItem(null); setError(""); setShowForm(true); };
@@ -95,11 +103,9 @@ export default function ResolutionsPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Résolutions</h1>
-            <p className="text-sm text-slate-500 mt-1">{items.length} résolution{items.length !== 1 ? "s" : ""}</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Résolutions</h1>
+          <p className="text-sm text-slate-500 mt-1">{items.length} résolution{items.length !== 1 ? "s" : ""}</p>
         </div>
         <button onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow">
@@ -107,7 +113,6 @@ export default function ResolutionsPage() {
         </button>
       </div>
 
-      {/* Filter by AG */}
       <div className="mb-4">
         <select className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400 min-w-[260px]"
           value={filterAg} onChange={e => handleFilterChange(e.target.value)}>
@@ -118,47 +123,50 @@ export default function ResolutionsPage() {
 
       {loading ? (
         <div className="text-center py-12 text-slate-400">Chargement…</div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-16 text-slate-400">Aucune résolution</div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">N°</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Titre</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">AG</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Pour</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Contre</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Abst.</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Résultat</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Aucune résolution</td></tr>
-              ) : items.map(item => (
-                <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
-                  <td className="px-4 py-3 font-mono text-slate-500">{item.numero}</td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{item.titre}</td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">{item.ag_type} {item.ag_date}</td>
-                  <td className="px-4 py-3 text-green-700 font-semibold">{item.voix_pour}</td>
-                  <td className="px-4 py-3 text-red-500 font-semibold">{item.voix_contre}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.abstention}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${RESULTAT_COLORS[item.resultat] || "bg-slate-100 text-slate-500"}`}>
-                      {item.resultat_label}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <button onClick={() => openEdit(item)} className="text-xs text-indigo-600 hover:underline mr-3">Modifier</button>
-                    <button onClick={() => handleDelete(item)} className="text-xs text-red-500 hover:underline">Supprimer</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+          {items.map(item => (
+            <div key={item.id} className="bg-indigo-50 rounded-xl border border-indigo-200 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
+              {/* Top: n° + résultat + menu */}
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[10px] font-mono text-slate-500 shrink-0">N°{item.numero}</span>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${RESULTAT_COLORS[item.resultat] ?? "bg-slate-100 text-slate-500"}`}>
+                    {item.resultat_label}
+                  </span>
+                </div>
+                <div className="relative shrink-0">
+                  <button onClick={() => setOpenMenu(openMenu === item.id ? null : item.id)}
+                    className="p-0.5 rounded hover:bg-indigo-100 text-slate-300 hover:text-slate-600 transition">
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                      <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
+                    </svg>
+                  </button>
+                  {openMenu === item.id && (
+                    <div className="absolute right-0 top-5 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
+                      <button onClick={() => { openEdit(item); setOpenMenu(null); }}
+                        className="w-full text-left px-3 py-1 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
+                      <button onClick={() => { handleDelete(item); setOpenMenu(null); }}
+                        className="w-full text-left px-3 py-1 text-xs text-red-600 hover:bg-red-50">Supprimer</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Titre */}
+              <div className="font-semibold text-slate-800 text-[13px] leading-tight line-clamp-2">{item.titre}</div>
+
+              {/* AG + votes */}
+              <div className="text-[10px] text-slate-500 truncate">{item.ag_type} {item.ag_date}</div>
+              <div className="flex items-center gap-2 text-[10px]">
+                <span className="text-green-700 font-semibold">✓ {item.voix_pour}</span>
+                <span className="text-red-500 font-semibold">✗ {item.voix_contre}</span>
+                <span className="text-slate-400">~ {item.abstention}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

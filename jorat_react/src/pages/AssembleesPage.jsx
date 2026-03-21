@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 function getCsrf() {
@@ -26,6 +26,8 @@ export default function AssembleesPage() {
   const [form,     setForm]     = useState(EMPTY);
   const [pvFile,   setPvFile]   = useState(null);
   const [saving,   setSaving]   = useState(false);
+  const [openMenu, setOpenMenu] = useState(null);
+  const menuRef = useRef(null);
 
   const fetchItems = () => {
     setLoading(true);
@@ -36,6 +38,12 @@ export default function AssembleesPage() {
   };
 
   useEffect(() => { fetchItems(); }, []);
+
+  useEffect(() => {
+    const handler = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenu(null); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const openCreate = () => { setForm(EMPTY); setPvFile(null); setEditItem(null); setError(""); setShowForm(true); };
   const openEdit   = item => {
@@ -82,11 +90,9 @@ export default function AssembleesPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Assemblées Générales</h1>
-            <p className="text-sm text-slate-500 mt-1">{items.length} assemblée{items.length !== 1 ? "s" : ""}</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Assemblées Générales</h1>
+          <p className="text-sm text-slate-500 mt-1">{items.length} assemblée{items.length !== 1 ? "s" : ""}</p>
         </div>
         <button onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow">
@@ -96,52 +102,54 @@ export default function AssembleesPage() {
 
       {loading ? (
         <div className="text-center py-12 text-slate-400">Chargement…</div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-16 text-slate-400">Aucune assemblée générale</div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Date</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Statut</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Résolutions</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">PV</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-10 text-slate-400">Aucune assemblée générale</td></tr>
-              ) : items.map(item => (
-                <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
-                  <td className="px-4 py-3 font-medium text-slate-800">{item.date_ag}</td>
-                  <td className="px-4 py-3 text-slate-600">{item.type_ag_label}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUT_COLORS[item.statut] || "bg-slate-100 text-slate-500"}`}>
-                      {item.statut_label}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => navigate(`/gouvernance/resolutions?ag_id=${item.id}`)}
-                      className="text-xs text-indigo-600 hover:underline font-semibold">
-                      {item.nb_resolutions ?? 0} résolution{(item.nb_resolutions ?? 0) !== 1 ? "s" : ""} →
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    {item.pv_document
-                      ? <a href={item.pv_document} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">Voir PV</a>
-                      : <span className="text-xs text-slate-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <button onClick={() => openEdit(item)} className="text-xs text-indigo-600 hover:underline mr-3">Modifier</button>
-                    <button onClick={() => handleDelete(item)} className="text-xs text-red-500 hover:underline">Supprimer</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+          {items.map(item => (
+            <div key={item.id} className="bg-violet-50 rounded-xl border border-violet-200 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
+              {/* Top: date + statut + menu */}
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1 flex-wrap min-w-0">
+                  <span className="text-[10px] font-mono text-slate-500 shrink-0">{item.date_ag}</span>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${STATUT_COLORS[item.statut] ?? "bg-slate-100 text-slate-500"}`}>
+                    {item.statut_label}
+                  </span>
+                </div>
+                <div className="relative shrink-0">
+                  <button onClick={() => setOpenMenu(openMenu === item.id ? null : item.id)}
+                    className="p-0.5 rounded hover:bg-violet-100 text-slate-300 hover:text-slate-600 transition">
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                      <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
+                    </svg>
+                  </button>
+                  {openMenu === item.id && (
+                    <div className="absolute right-0 top-5 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
+                      <button onClick={() => { openEdit(item); setOpenMenu(null); }}
+                        className="w-full text-left px-3 py-1 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
+                      <button onClick={() => { handleDelete(item); setOpenMenu(null); }}
+                        className="w-full text-left px-3 py-1 text-xs text-red-600 hover:bg-red-50">Supprimer</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Type */}
+              <div className="font-semibold text-slate-800 text-[13px] leading-tight truncate">{item.type_ag_label}</div>
+
+              {/* Résolutions + PV */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button onClick={() => navigate(`/gouvernance/resolutions?ag_id=${item.id}`)}
+                  className="text-[10px] text-indigo-600 hover:underline font-semibold">
+                  {item.nb_resolutions ?? 0} résolution{(item.nb_resolutions ?? 0) !== 1 ? "s" : ""} →
+                </button>
+                {item.pv_document && (
+                  <a href={item.pv_document} target="_blank" rel="noreferrer"
+                    className="text-[10px] text-blue-600 hover:underline">PV</a>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

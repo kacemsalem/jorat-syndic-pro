@@ -519,9 +519,9 @@ export default function DepensesPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-slate-400">Aucune dépense</div>
       ) : (
-        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
           {filtered.map(dep => (
-            <div key={dep.id} className="bg-white rounded-xl border border-slate-100 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
+            <div key={dep.id} className="bg-red-50 rounded-xl border border-red-200 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
               {/* Ligne 1 : date · famille · menu */}
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-1 min-w-0 flex-wrap">

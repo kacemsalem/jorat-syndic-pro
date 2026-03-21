@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -20,16 +20,6 @@ const EMPTY_FORM = {
   commentaire:  "",
 };
 
-function statutBadge(statut) {
-  const opt = STATUT_OPTIONS.find(o => o.value === statut);
-  if (!opt) return null;
-  return (
-    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${opt.color}`}>
-      {opt.label}
-    </span>
-  );
-}
-
 export default function TravauxPage() {
   const [travaux,      setTravaux]      = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
@@ -40,6 +30,8 @@ export default function TravauxPage() {
   const [error,        setError]        = useState("");
   const [filterStatut, setFilterStatut] = useState("");
   const [showForm,     setShowForm]     = useState(false);
+  const [openMenu,     setOpenMenu]     = useState(null);
+  const menuRef = useRef(null);
 
   const load = () => {
     setLoading(true);
@@ -53,6 +45,12 @@ export default function TravauxPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const handler = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenu(null); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const filtered = useMemo(() => {
     if (!filterStatut) return travaux;
@@ -148,92 +146,88 @@ export default function TravauxPage() {
         </button>
       </div>
 
-      {/* Formulaire */}
+      {/* Formulaire modal */}
       {showForm && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-4">
-            {editId ? "Modifier l'événement" : "Nouvel événement"}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+            <h2 className="text-lg font-bold text-slate-800 mb-5">
+              {editId ? "Modifier l'événement" : "Nouvel événement"}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
+                  <input type="date" value={form.date_travaux}
+                    onChange={e => setForm(f => ({ ...f, date_travaux: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Nature *</label>
+                  <input type="text" value={form.nature} placeholder="ex: Ravalement façade, plomberie…"
+                    onChange={e => setForm(f => ({ ...f, nature: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  />
+                </div>
+              </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
-                <input type="date" value={form.date_travaux}
-                  onChange={e => setForm(f => ({ ...f, date_travaux: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Description</label>
+                <textarea value={form.description} rows={2} placeholder="Détails complémentaires…"
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
                 />
               </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Nature *</label>
-                <input type="text" value={form.nature} placeholder="ex: Ravalement façade, plomberie…"
-                  onChange={e => setForm(f => ({ ...f, nature: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Statut</label>
+                  <select value={form.statut}
+                    onChange={e => setForm(f => ({ ...f, statut: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  >
+                    {STATUT_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Prestataire</label>
+                  <select value={form.fournisseur}
+                    onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  >
+                    <option value="">— Aucun —</option>
+                    {fournisseurs.map(f => (
+                      <option key={f.id} value={f.id}>
+                        {f.nom_societe || `${f.nom} ${f.prenom}`.trim()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Commentaire</label>
+                <textarea value={form.commentaire} rows={2} placeholder="Observations…"
+                  onChange={e => setForm(f => ({ ...f, commentaire: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Description</label>
-              <textarea value={form.description} rows={2} placeholder="Détails complémentaires…"
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Statut</label>
-                <select value={form.statut}
-                  onChange={e => setForm(f => ({ ...f, statut: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                >
-                  {STATUT_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={handleCancel}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">
+                  Annuler
+                </button>
+                <button type="submit" disabled={saving}
+                  className="px-5 py-2 bg-emerald-500 text-white rounded-xl font-semibold text-sm hover:bg-emerald-600 disabled:opacity-50 transition">
+                  {saving ? "Enregistrement…" : (editId ? "Modifier" : "Enregistrer")}
+                </button>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Prestataire</label>
-                <select value={form.fournisseur}
-                  onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                >
-                  <option value="">— Aucun —</option>
-                  {fournisseurs.map(f => (
-                    <option key={f.id} value={f.id}>
-                      {f.nom_societe || `${f.nom} ${f.prenom}`.trim()}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Commentaire</label>
-              <textarea value={form.commentaire} rows={2} placeholder="Observations…"
-                onChange={e => setForm(f => ({ ...f, commentaire: e.target.value }))}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
-              />
-            </div>
-
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={handleCancel}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">
-                Annuler
-              </button>
-              <button type="submit" disabled={saving}
-                className="px-5 py-2 bg-emerald-500 text-white rounded-xl font-semibold text-sm hover:bg-emerald-600 disabled:opacity-50 transition">
-                {saving ? "Enregistrement…" : (editId ? "Modifier" : "Enregistrer")}
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       )}
 
-      {/* Filtres + stats */}
+      {/* Filtres */}
       <div className="flex flex-wrap items-center gap-3">
         <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)}
           className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -248,53 +242,58 @@ export default function TravauxPage() {
         </span>
       </div>
 
-      {/* Tableau */}
+      {/* Kanban */}
       {loading ? (
         <div className="text-center py-10 text-slate-400 text-sm">Chargement…</div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-10 text-center text-slate-400 text-sm">
-          Aucune réalisation enregistrée.
-        </div>
+        <div className="text-center py-16 text-slate-400">Aucune réalisation enregistrée.</div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Date</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Nature</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Statut</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Prestataire</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(t => (
-                <tr key={t.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
-                  <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{t.date_travaux}</td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-slate-800">{t.nature}</div>
-                    {t.description && (
-                      <div className="text-xs text-slate-400 mt-0.5 line-clamp-1">{t.description}</div>
+        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+          {filtered.map(t => {
+            const opt = STATUT_OPTIONS.find(o => o.value === t.statut);
+            return (
+              <div key={t.id} className="bg-teal-50 rounded-xl border border-teal-200 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
+                {/* Top: date + statut + menu */}
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                    <span className="text-[10px] font-mono text-slate-400 shrink-0">{t.date_travaux}</span>
+                    {opt && (
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${opt.color}`}>
+                        {opt.label}
+                      </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3">{statutBadge(t.statut)}</td>
-                  <td className="px-4 py-3 text-slate-500">{t.fournisseur_nom || <span className="text-slate-300">—</span>}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => handleEdit(t)}
-                        className="px-3 py-1 text-xs rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium transition">
-                        Modifier
-                      </button>
-                      <button onClick={() => handleDelete(t.id)}
-                        className="px-3 py-1 text-xs rounded-lg bg-red-50 hover:bg-red-100 text-red-500 font-medium transition">
-                        Suppr.
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                  <div className="relative shrink-0">
+                    <button onClick={() => setOpenMenu(openMenu === t.id ? null : t.id)}
+                      className="p-0.5 rounded hover:bg-teal-100 text-slate-300 hover:text-slate-600 transition">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                        <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
+                      </svg>
+                    </button>
+                    {openMenu === t.id && (
+                      <div className="absolute right-0 top-5 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
+                        <button onClick={() => { handleEdit(t); setOpenMenu(null); }}
+                          className="w-full text-left px-3 py-1 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
+                        <button onClick={() => { handleDelete(t.id); setOpenMenu(null); }}
+                          className="w-full text-left px-3 py-1 text-xs text-red-600 hover:bg-red-50">Supprimer</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Nature */}
+                <div className="font-semibold text-slate-800 text-[13px] leading-tight truncate">{t.nature}</div>
+
+                {/* Description + prestataire */}
+                {t.description && (
+                  <div className="text-[10px] text-slate-500 line-clamp-1">{t.description}</div>
+                )}
+                {t.fournisseur_nom && (
+                  <div className="text-[10px] text-slate-400 truncate">{t.fournisseur_nom}</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

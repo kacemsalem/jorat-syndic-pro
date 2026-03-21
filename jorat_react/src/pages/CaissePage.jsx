@@ -314,7 +314,7 @@ export default function CaissePage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-slate-400">Aucun mouvement</div>
       ) : (
-        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
           {filtered.map(m => {
             const isEntree = m.sens === "DEBIT";
             const isManual = MANUAL_TYPES.includes(m.type_mouvement);
