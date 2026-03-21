@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -12,6 +13,7 @@ const STATUT_COLORS = {
 const STATUT_LABELS = { NOUVEAU: "Nouveau", EN_COURS: "En cours", RESOLU: "Résolu" };
 
 export default function MessagesResidentPage() {
+  const navigate = useNavigate();
   const [messages,     setMessages]     = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [filterStatut, setFilterStatut] = useState("");
@@ -71,6 +73,7 @@ export default function MessagesResidentPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
+      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
 
       {/* Header */}
       <div>

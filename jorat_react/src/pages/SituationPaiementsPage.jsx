@@ -315,23 +315,30 @@ export default function SituationPaiementsPage() {
                 {items.length === 0 && (
                   <p className="text-xs text-slate-300 text-center py-4">Aucun lot</p>
                 )}
-                {items.map(row => (
-                  <div key={row.lot} className="bg-white rounded-xl border border-slate-100 p-3 space-y-2 hover:shadow-sm transition">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <StatusDot totalDu={row.total_du} paiements={row.paiements} />
-                        <span className="font-bold text-slate-800 text-sm">{row.lot}</span>
+                {items.map(row => {
+                  const paid = row.paiements.reduce((s,p)=>s+p.montant,0);
+                  const isSolde  = row.total_du > 0 && paid >= row.total_du;
+                  const isPartiel= row.total_du > 0 && paid > 0 && paid < row.total_du;
+                  const cardBg   = isSolde ? "bg-emerald-50/60 border-emerald-100" : isPartiel ? "bg-amber-50/60 border-amber-100" : "bg-red-50/60 border-red-100";
+                  const amtColor = isSolde ? "text-emerald-600" : isPartiel ? "text-amber-600" : "text-red-600";
+                  return (
+                    <div key={row.lot} className={`rounded-xl border p-3 space-y-2 hover:shadow-sm transition ${cardBg}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <StatusDot totalDu={row.total_du} paiements={row.paiements} />
+                          <span className="font-bold text-slate-800 text-sm">{row.lot}</span>
+                        </div>
+                        {row.total_du > 0 && (
+                          <span className={`text-xs font-mono font-semibold whitespace-nowrap ${amtColor}`}>
+                            {fmt(row.total_du)} <span className="text-slate-400 font-normal">MAD</span>
+                          </span>
+                        )}
                       </div>
-                      {row.total_du > 0 && (
-                        <span className="text-xs font-mono font-semibold text-slate-600 whitespace-nowrap">
-                          {fmt(row.total_du)} <span className="text-slate-400 font-normal">MAD</span>
-                        </span>
-                      )}
+                      <p className="text-xs text-slate-500 truncate">{row.nom}</p>
+                      <PaymentBar totalDu={row.total_du} paiements={row.paiements} />
                     </div>
-                    <p className="text-xs text-slate-500 truncate">{row.nom}</p>
-                    <PaymentBar totalDu={row.total_du} paiements={row.paiements} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

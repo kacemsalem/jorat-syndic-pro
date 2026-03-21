@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const STATUT_COLORS = {
   PAYE:       "bg-green-100 text-green-700",
@@ -33,6 +34,7 @@ function SectionCard({ title, icon, children }) {
 }
 
 export default function ConsultationPage() {
+  const navigate = useNavigate();
   const residenceId = localStorage.getItem("active_residence");
   const [lots,      setLots]      = useState([]);
   const [lotId,     setLotId]     = useState("");
@@ -77,6 +79,7 @@ export default function ConsultationPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
+      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
 
       {/* Header + lot selector */}
       <div>

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
 const fmtDate    = (s) => s ? new Date(s).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 const fmtMontant = (v) => v ? parseFloat(v).toLocaleString("fr-MA", { minimumFractionDigits: 2 }) + " MAD" : "—";
@@ -20,6 +21,7 @@ const STATUT_LABEL = { ENVOYE: "Envoyé", LU: "Lu", NON_LU: "Non lu" };
 const TYPE_LABEL   = { SMS: "SMS", MESSAGE: "Message", SYSTEM: "Système" };
 
 export default function NotificationsPage() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [filterType,    setFilterType]    = useState("Tous");
@@ -88,6 +90,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-4">
+      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
 
       {/* Header */}
       <div className="flex items-center justify-between">
