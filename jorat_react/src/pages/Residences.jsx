@@ -79,6 +79,11 @@ export default function Residences() {
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 1024 * 1024) {
+      setError("Le logo ne doit pas dépasser 1 Mo. Compressez l'image avant de l'envoyer.");
+      e.target.value = "";
+      return;
+    }
     setLogoFile(file);
     setLogoPreview(URL.createObjectURL(file));
   };
