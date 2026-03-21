@@ -65,10 +65,15 @@ export default function MessagesResidentPage() {
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
         body: JSON.stringify({ statut: r.statut, reponse: r.reponse }),
       });
-      if (!res.ok) { setReply(id, { saving: false, error: "Erreur lors de l'enregistrement." }); return; }
-      setReply(id, { saving: false });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const msg = data?.detail || Object.values(data).flat().join(" ") || `Erreur ${res.status}`;
+        setReply(id, { saving: false, error: msg });
+        return;
+      }
+      setReply(id, { saving: false, error: "" });
       load();
-    } catch { setReply(id, { saving: false, error: "Erreur réseau." }); }
+    } catch (e) { setReply(id, { saving: false, error: e.message || "Erreur réseau." }); }
   };
 
   return (
@@ -113,17 +118,41 @@ export default function MessagesResidentPage() {
               <div key={m.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
                 {/* Header */}
-                <div className="flex items-start gap-3 px-4 py-3 border-b border-slate-50">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${STATUT_COLORS[m.statut]}`}>
-                    {STATUT_LABELS[m.statut]}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800">{m.objet}</p>
-                    <p className="text-xs text-slate-400">
-                      {m.lot_numero || "—"}
-                      {m.expediteur ? ` · ${m.expediteur}` : ""}
-                      {" · "}{m.created_at}
-                    </p>
+                <div className="px-4 py-3 border-b border-slate-50 space-y-2">
+                  <div className="flex items-start gap-3">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${STATUT_COLORS[m.statut]}`}>
+                      {STATUT_LABELS[m.statut]}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{m.objet}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{m.created_at}</p>
+                    </div>
+                  </div>
+
+                  {/* Origine */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 uppercase tracking-wide">
+                      {m.origine || "Portail Résident"}
+                    </span>
+                    {m.lot_numero && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono">
+                        Lot {m.lot_numero}
+                      </span>
+                    )}
+                    {m.expediteur && (
+                      <span className="text-[10px] text-slate-500">
+                        {m.expediteur}
+                        {m.expediteur_username && m.expediteur !== m.expediteur_username
+                          ? ` (${m.expediteur_username})`
+                          : ""}
+                      </span>
+                    )}
+                    {m.expediteur_email && (
+                      <a href={`mailto:${m.expediteur_email}`}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-600 truncate">
+                        {m.expediteur_email}
+                      </a>
+                    )}
                   </div>
                 </div>
 

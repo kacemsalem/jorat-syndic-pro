@@ -298,29 +298,27 @@ export default function SituationPaiementsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
           {[
-            { label: "Soldés",   dotColor: "#10b981", border: "border-emerald-100", header: "bg-emerald-50",
+            { label: "Soldés",   dotColor: "#10b981", border: "border-emerald-300", header: "bg-emerald-500",
+              bodyBg: "rgba(167,243,208,0.45)", cardBg: "bg-white border-emerald-200", amtColor: "text-emerald-600",
               items: rows.filter(r => r.total_du > 0 && r.paiements.reduce((s,p)=>s+p.montant,0) >= r.total_du) },
-            { label: "Partiels", dotColor: "#f59e0b", border: "border-amber-100",   header: "bg-amber-50",
+            { label: "Partiels", dotColor: "#f59e0b", border: "border-amber-300",   header: "bg-amber-400",
+              bodyBg: "rgba(253,230,138,0.45)", cardBg: "bg-white border-amber-200", amtColor: "text-amber-600",
               items: rows.filter(r => { const p=r.paiements.reduce((s,p)=>s+p.montant,0); return r.total_du>0 && p>0 && p<r.total_du; }) },
-            { label: "Impayés",  dotColor: "#ef4444", border: "border-red-100",     header: "bg-red-50",
+            { label: "Impayés",  dotColor: "#ef4444", border: "border-rose-300",    header: "bg-rose-500",
+              bodyBg: "rgba(254,205,211,0.5)",  cardBg: "bg-white border-rose-200",  amtColor: "text-rose-600",
               items: rows.filter(r => r.total_du > 0 && r.paiements.reduce((s,p)=>s+p.montant,0) === 0) },
-          ].map(({ label, dotColor, border, header, items }) => (
+          ].map(({ label, dotColor, border, header, bodyBg, cardBg, amtColor, items }) => (
             <div key={label} className={`rounded-2xl border ${border} overflow-hidden`}>
               <div className={`${header} px-3 py-2 flex items-center gap-2`}>
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{label}</span>
-                <span className="ml-auto text-xs font-semibold text-slate-400">{items.length}</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-white/70 flex-shrink-0" />
+                <span className="text-xs font-bold text-white uppercase tracking-wide">{label}</span>
+                <span className="ml-auto text-xs font-semibold text-white/80">{items.length}</span>
               </div>
-              <div className="p-2 space-y-2" style={{ backgroundColor: label === "Soldés" ? "rgba(209,250,229,0.35)" : label === "Partiels" ? "rgba(254,243,199,0.4)" : "rgba(254,226,226,0.35)" }}>
+              <div className="p-2 space-y-2" style={{ backgroundColor: bodyBg }}>
                 {items.length === 0 && (
                   <p className="text-xs text-slate-300 text-center py-4">Aucun lot</p>
                 )}
                 {items.map(row => {
-                  const paid = row.paiements.reduce((s,p)=>s+p.montant,0);
-                  const isSolde  = row.total_du > 0 && paid >= row.total_du;
-                  const isPartiel= row.total_du > 0 && paid > 0 && paid < row.total_du;
-                  const cardBg   = isSolde ? "bg-emerald-50/60 border-emerald-100" : isPartiel ? "bg-amber-50/60 border-amber-100" : "bg-red-50/60 border-red-100";
-                  const amtColor = isSolde ? "text-emerald-600" : isPartiel ? "text-amber-600" : "text-red-600";
                   return (
                     <div key={row.lot} className={`rounded-xl border p-3 space-y-2 hover:shadow-sm transition ${cardBg}`}>
                       <div className="flex items-center justify-between gap-2">

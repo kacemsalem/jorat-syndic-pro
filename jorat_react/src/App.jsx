@@ -30,6 +30,7 @@ import ExportPage from "./pages/ExportPage";
 import ImportPage from "./pages/ImportPage";
 import ResidentPortalPage from "./pages/ResidentPortalPage";
 import AccueilPage from "./pages/AccueilPage";
+import HomeResidencePage from "./pages/HomeResidencePage";
 import GestionUtilisateursPage from "./pages/GestionUtilisateursPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import InitialisationPage from "./pages/InitialisationPage";
@@ -130,7 +131,8 @@ function AppLayout() {
         <main className="flex-1 overflow-auto p-3 sm:p-6">
           <AdminRoute>
             <Routes>
-              <Route path="/accueil"            element={<AccueilPage />} />
+              <Route path="/accueil"            element={<HomeResidencePage />} />
+              <Route path="/tableau-de-bord"   element={<AccueilPage />} />
               <Route path="/residences"         element={<Residences />} />
               <Route path="/kanban"             element={<LotsKanban />} />
               <Route path="/groupes"            element={<GroupesPage />} />

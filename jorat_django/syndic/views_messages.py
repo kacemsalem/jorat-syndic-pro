@@ -23,18 +23,37 @@ logger = logging.getLogger(__name__)
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 def _msg_dict(m):
+    exp = m.expediteur
     return {
-        "id":          m.id,
-        "created_at":  str(m.created_at)[:16].replace("T", " "),
-        "objet":       m.objet,
-        "message":     m.message,
-        "statut":      m.statut,
-        "statut_label": dict(MessageResident.STATUT_CHOICES).get(m.statut, m.statut),
-        "reponse":     m.reponse,
-        "lot_id":      m.lot_id,
-        "lot_numero":  m.lot.numero_lot if m.lot else None,
-        "expediteur":  (m.expediteur.get_full_name() or m.expediteur.username) if m.expediteur else None,
+        "id":              m.id,
+        "created_at":      str(m.created_at)[:16].replace("T", " "),
+        "objet":           m.objet,
+        "message":         m.message,
+        "statut":          m.statut,
+        "statut_label":    dict(MessageResident.STATUT_CHOICES).get(m.statut, m.statut),
+        "reponse":         m.reponse,
+        "lot_id":          m.lot_id,
+        "lot_numero":      m.lot.numero_lot if m.lot else None,
+        "expediteur":      (exp.get_full_name() or exp.username) if exp else None,
+        "expediteur_username": exp.username if exp else None,
+        "expediteur_email":    exp.email    if exp else None,
+        "origine":         "Portail Résident",
     }
+
+
+# ── Helper : staff (admin + gestionnaire) ─────────────────────────────────
+
+def _require_staff(request):
+    """Allow ADMIN, SUPER_ADMIN and GESTIONNAIRE to manage messages."""
+    from .models import ResidenceMembership
+    membership = ResidenceMembership.objects.filter(
+        user=request.user, actif=True
+    ).select_related("residence").first()
+    if not membership:
+        return None, Response({"detail": "Aucune résidence liée."}, status=403)
+    if membership.role not in ("ADMIN", "SUPER_ADMIN", "GESTIONNAIRE"):
+        return None, Response({"detail": "Accès non autorisé."}, status=403)
+    return membership, None
 
 
 # ── Admin : list ───────────────────────────────────────────────────────────
@@ -42,7 +61,7 @@ def _msg_dict(m):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def messages_list(request):
-    admin_membership, err = _require_admin(request)
+    admin_membership, err = _require_staff(request)
     if err:
         return err
     qs = (
@@ -62,7 +81,7 @@ def messages_list(request):
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def message_update(request, pk):
-    admin_membership, err = _require_admin(request)
+    admin_membership, err = _require_staff(request)
     if err:
         return err
     try:
