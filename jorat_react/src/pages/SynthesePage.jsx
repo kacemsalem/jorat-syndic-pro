@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import RecouvrementNav from "../components/RecouvrementNav";
 import { useToast } from "../components/Toast";
 import { postJson } from "../api";
 
@@ -375,6 +374,26 @@ export default function SynthesePage() {
     return { montant, recu };
   }, [totauxColonne]);
 
+  // ── Kanban buckets ────────────────────────────────────────────
+  const lotsBuckets = useMemo(() => {
+    const solde = [], partiel = [], nonPaye = [];
+    lotsParGroupe.forEach(({ groupe, lots: lotsGrp }) => {
+      lotsGrp.forEach(lot => {
+        let lotM = 0, lotR = 0;
+        colonnes.forEach(col => {
+          const d = detailMap[lot.id]?.[col.id];
+          if (d) { lotM += parseFloat(d.montant ?? 0); lotR += parseFloat(d.montant_recu ?? 0); }
+        });
+        if (lotM === 0) return;
+        const item = { lot, groupe, lotM, lotR };
+        if (lotR >= lotM) solde.push(item);
+        else if (lotR > 0) partiel.push(item);
+        else nonPaye.push(item);
+      });
+    });
+    return { nonPaye, partiel, solde };
+  }, [lotsParGroupe, colonnes, detailMap]);
+
   // ── Pour le PDF : colonnes selon type actif ───────────────────
   const colonnesFond = typeAppel === "FOND" ? colonnes : [];
 
@@ -415,8 +434,8 @@ export default function SynthesePage() {
   );
 
   return (
-    <div className="space-y-2">
-      <RecouvrementNav residenceId={residenceId} />
+    <div className="space-y-3">
+      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
 
       {/* En-tête + PDF */}
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -484,174 +503,106 @@ export default function SynthesePage() {
         <span className="text-slate-400">reçu / dû</span>
       </div>
 
-      {/* Tableau */}
-      {false ? (
-        <div className="bg-white rounded-2xl p-12 flex items-center justify-center gap-3">
-          <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs text-slate-400 uppercase tracking-widest">Chargement détails…</span>
-        </div>
-      ) : colonnes.length === 0 ? (
+      {/* Kanban */}
+      {colonnes.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center text-slate-400">
           Aucun appel de charge disponible.
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-800 text-white">
-                  <th className="sticky left-0 z-20 bg-slate-800 text-left px-3 py-2 font-semibold whitespace-nowrap min-w-[100px]">Lot</th>
-                  <th className="sticky z-20 bg-slate-800 text-left px-3 py-2 font-semibold whitespace-nowrap min-w-[160px]" style={{left:"100px"}}>Résident</th>
-                  {colonnes.map(col => (
-                    <th key={col.id} className="px-2 py-2 text-center font-semibold whitespace-nowrap min-w-[90px]">
-                      <div>{col.code_fond ?? col.periode}</div>
-                      <div className="text-[10px] font-normal text-slate-400">{col.exercice}</div>
-                    </th>
-                  ))}
-                  <th className="px-2 py-2 text-center font-semibold whitespace-nowrap min-w-[100px] bg-slate-700">Total</th>
-                </tr>
-
-                {/* Ligne totaux */}
-                <tr className="bg-slate-100 border-b-2 border-slate-300">
-                  <td className="sticky left-0 z-20 bg-slate-100 px-3 py-1.5 font-bold text-slate-600 text-[11px] uppercase tracking-widest" colSpan={2}>
-                    Totaux
-                  </td>
-                  {colonnes.map(col => {
-                    const t = totauxColonne[col.id] ?? { montant: 0, recu: 0 };
-                    const s = cellStyle(t.recu, t.montant);
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+          {[
+            { key: "nonPaye", label: "Non payé",  dot: "bg-red-400",     border: "border-red-100",    header: "bg-red-50"    },
+            { key: "partiel", label: "Partiel",   dot: "bg-amber-400",   border: "border-amber-100",  header: "bg-amber-50"  },
+            { key: "solde",   label: "Soldé",     dot: "bg-emerald-400", border: "border-emerald-100",header: "bg-emerald-50"},
+          ].map(({ key, label, dot, border, header }) => {
+            const items = lotsBuckets[key];
+            return (
+              <div key={key} className={`rounded-2xl border ${border} overflow-hidden`}>
+                <div className={`${header} px-3 py-2 flex items-center gap-2`}>
+                  <span className={`w-2.5 h-2.5 rounded-full ${dot} flex-shrink-0`} />
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{label}</span>
+                  <span className="ml-auto text-xs font-semibold text-slate-400">{items.length}</span>
+                </div>
+                <div className="p-2 space-y-2">
+                  {items.length === 0 && (
+                    <p className="text-xs text-slate-300 text-center py-4">Aucun lot</p>
+                  )}
+                  {items.map(({ lot, groupe, lotM, lotR }) => {
+                    const tc = cellStyle(lotR, lotM);
                     return (
-                      <td key={col.id} className="px-2 py-1.5 text-center">
-                        <div className={`inline-flex flex-col items-center rounded-lg px-2 py-0.5 ${s.bg}`}>
-                          <span className={`font-mono font-bold ${s.text}`}>{fmt(t.recu)}</span>
-                          <span className="text-slate-400 font-mono text-[10px]">{fmt(t.montant)}</span>
+                      <div key={lot.id} className="bg-white rounded-xl border border-slate-100 p-3 space-y-2 hover:shadow-sm transition">
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            onClick={() => navigate(`/fiche-lot?lot=${lot.id}${residenceId ? `&residence=${residenceId}` : ""}`)}
+                            className="font-bold text-indigo-600 hover:underline text-sm leading-tight"
+                          >
+                            {lot.numero_lot}
+                          </button>
+                          <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[80px]">{groupe}</span>
                         </div>
-                      </td>
-                    );
-                  })}
-                  <td className="px-2 py-1.5 text-center bg-slate-200">
-                    <div className="inline-flex flex-col items-center rounded-lg px-2 py-0.5">
-                      <span className="font-mono font-bold text-emerald-700">{fmt(totalGlobal.recu)}</span>
-                      <span className="text-slate-500 font-mono text-[10px]">{fmt(totalGlobal.montant)}</span>
-                    </div>
-                  </td>
-                </tr>
-              </thead>
-
-              <tbody>
-                {lotsParGroupe.map(({ groupe, lots: lotsGrp }, gi) => (
-                  <>
-                    <tr key={`g-${gi}`} className="bg-indigo-50 border-t border-indigo-100">
-                      <td colSpan={colonnes.length + 3}
-                        className="px-3 py-1 text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
-                        {groupe}
-                      </td>
-                    </tr>
-
-                    {lotsGrp.map((lot, li) => {
-                      let lotM = 0, lotR = 0;
-                      colonnes.forEach(col => {
-                        const d = detailMap[lot.id]?.[col.id];
-                        if (d) {
-                          lotM += parseFloat(d.montant ?? 0);
-                          lotR += parseFloat(d.montant_recu ?? 0);
-                        }
-                      });
-                      const tc = cellStyle(lotR, lotM);
-                      const isEven = li % 2 === 0;
-
-                      return (
-                        <tr key={lot.id}
-                          className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${isEven ? "bg-white" : "bg-slate-50/40"}`}>
-
-                          <td className={`sticky left-0 z-10 px-3 py-1.5 font-bold whitespace-nowrap ${isEven ? "bg-white" : "bg-slate-50"}`}>
-                            <button
-                              onClick={() => navigate(`/fiche-lot?lot=${lot.id}${residenceId ? `&residence=${residenceId}` : ""}`)}
-                              className="text-indigo-600 hover:text-indigo-800 hover:underline transition"
-                            >
-                              {lot.numero_lot}
-                            </button>
-                          </td>
-
-                          <td className={`sticky z-10 px-3 py-1.5 whitespace-nowrap ${isEven ? "bg-white" : "bg-slate-50"}`}
-                            style={{left:"100px"}}>
-                            {lot.representant ? (
-                              <div>
-                                <p className="font-medium text-slate-700 leading-tight">
-                                  {lot.representant.nom} {lot.representant.prenom ?? ""}
-                                </p>
-                                <div className="flex items-center gap-1.5">
-                                  {phoneMap[lot.id] && (
-                                    <span className="text-xs text-slate-400">📞 {phoneMap[lot.id]}</span>
-                                  )}
-                                  {emailMap[lot.id] && (
-                                    <button
-                                      title={`Envoyer email à ${emailMap[lot.id]}`}
-                                      className="text-slate-400 hover:text-blue-600 transition"
-                                      onClick={async e => {
-                                        e.stopPropagation();
-                                        const email = emailMap[lot.id];
-                                        const subject = `Rappel de paiement — Lot ${lot.numero_lot}`;
-                                        const body = `Cher(e) propriétaire du Lot ${lot.numero_lot},\n\nMerci de régulariser votre situation.\n\nCordialement,\nLe Syndic`;
-                                        try {
-                                          const r = await postJson("/api/send-email/", { to: email, subject, body });
-                                          const data = await r.json();
-                                          if (r.ok) {
-                                            toast.success(`Email envoyé à ${email}`);
-                                          } else {
-                                            toast.error(data.error || "Échec envoi email");
-                                          }
-                                        } catch {
-                                          toast.error("Erreur réseau — email non envoyé");
-                                        }
-                                      }}
-                                    >
-                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                        <polyline points="22,6 12,13 2,6"/>
-                                      </svg>
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-slate-300 italic">—</span>
+                        {lot.representant && (
+                          <div className="text-xs text-slate-600 leading-tight">
+                            <span className="font-medium">{lot.representant.nom} {lot.representant.prenom ?? ""}</span>
+                            {phoneMap[lot.id] && <span className="text-slate-400 ml-1.5">📞 {phoneMap[lot.id]}</span>}
+                            {emailMap[lot.id] && (
+                              <button
+                                title={`Email ${emailMap[lot.id]}`}
+                                className="ml-1.5 text-slate-400 hover:text-blue-600 transition align-middle"
+                                onClick={async e => {
+                                  e.stopPropagation();
+                                  const email = emailMap[lot.id];
+                                  try {
+                                    const r = await postJson("/api/send-email/", {
+                                      to: email,
+                                      subject: `Rappel de paiement — Lot ${lot.numero_lot}`,
+                                      body: `Cher(e) propriétaire du Lot ${lot.numero_lot},\n\nMerci de régulariser votre situation.\n\nCordialement,\nLe Syndic`,
+                                    });
+                                    const data = await r.json();
+                                    if (r.ok) toast.success(`Email envoyé à ${email}`);
+                                    else toast.error(data.error || "Échec envoi email");
+                                  } catch { toast.error("Erreur réseau — email non envoyé"); }
+                                }}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                  <polyline points="22,6 12,13 2,6"/>
+                                </svg>
+                              </button>
                             )}
-                          </td>
-
+                          </div>
+                        )}
+                        <div className="space-y-1">
                           {colonnes.map(col => {
                             const d = detailMap[lot.id]?.[col.id];
-                            if (!d) return (
-                              <td key={col.id} className="px-2 py-1.5 text-center text-slate-200">—</td>
-                            );
+                            if (!d) return null;
                             const recu = parseFloat(d.montant_recu ?? 0);
                             const mont = parseFloat(d.montant ?? 0);
+                            if (mont === 0) return null;
                             const s = cellStyle(recu, mont);
                             return (
-                              <td key={col.id} className="px-2 py-1 text-center">
-                                <div className={`inline-flex flex-col items-center rounded-md px-2 py-0.5 ${s.bg}`}>
-                                  <span className={`font-mono font-semibold ${s.text}`}>{fmt(recu)}</span>
-                                  <span className="text-slate-400 font-mono text-[10px]">{fmt(mont)}</span>
+                              <div key={col.id} className="flex items-center justify-between text-xs gap-2">
+                                <span className="text-slate-500 truncate">{col.code_fond ?? col.periode} {col.exercice}</span>
+                                <div className={`flex items-center gap-1 font-mono rounded-md px-1.5 py-0.5 ${s.bg} flex-shrink-0`}>
+                                  <span className={`font-semibold ${s.text}`}>{fmt(recu)}</span>
+                                  <span className="text-slate-400 text-[10px]">/{fmt(mont)}</span>
                                 </div>
-                              </td>
+                              </div>
                             );
                           })}
-
-                          <td className="px-2 py-1 text-center">
-                            {lotM > 0 ? (
-                              <div className={`inline-flex flex-col items-center rounded-md px-2 py-0.5 ${tc.bg}`}>
-                                <span className={`font-mono font-bold ${tc.text}`}>{fmt(lotR)}</span>
-                                <span className="text-slate-400 font-mono text-[10px]">{fmt(lotM)}</span>
-                              </div>
-                            ) : <span className="text-slate-200">—</span>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        </div>
+                        {lotM > 0 && (
+                          <div className={`flex items-center justify-between text-xs font-bold border-t border-slate-100 pt-1.5 ${tc.text}`}>
+                            <span>Total</span>
+                            <span className="font-mono">{fmt(lotR)} / {fmt(lotM)}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

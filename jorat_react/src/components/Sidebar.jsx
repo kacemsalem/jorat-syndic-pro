@@ -62,15 +62,6 @@ const BASE_NAV_GROUPS = [
     ],
   },
   {
-    label: "Gouvernance",
-    collapsible: true,
-    items: [
-      { label: "Assemblées générales", path: "/gouvernance/assemblees",  icon: "ag" },
-      { label: "Documents",            path: "/gouvernance/documents",   icon: "documents" },
-      { label: "Événements",        path: "/gouvernance/travaux",         icon: "travaux" },
-    ],
-  },
-  {
     label: "Espace Résident",
     collapsible: true,
     items: [
@@ -155,7 +146,7 @@ export default function Sidebar({ isOpen, onClose }) {
   const isAdmin = storedUser?.role === "ADMIN" || storedUser?.role === "SUPER_ADMIN";
 
   // Track open/closed state for collapsible sections
-  const [openSections, setOpenSections] = useState({ Finances: true, Configuration: true, Gouvernance: true, "Espace Résident": true, "Comptabilité": true, "Administration": true });
+  const [openSections, setOpenSections] = useState({ Finances: true, "Espace Résident": true, "Administration": true });
 
   const toggleSection = (label) => {
     setOpenSections(prev => ({ ...prev, [label]: !prev[label] }));
