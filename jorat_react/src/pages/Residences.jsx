@@ -128,8 +128,13 @@ export default function Residences() {
   return (
     <div className="max-w-4xl mx-auto space-y-5">
 
+      {/* Retour */}
+      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">
+        ← Tableau de bord
+      </button>
+
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center justify-between flex-wrap gap-4">
+      <div className="bg-emerald-50 rounded-2xl shadow-sm border border-emerald-100 p-5 flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-800">{residence.nom_residence}</h1>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -147,7 +152,7 @@ export default function Residences() {
       </div>
 
       {/* Edit form */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+      <div className="bg-emerald-50 rounded-2xl shadow-sm border border-emerald-100 p-6">
         <h2 className="font-bold text-slate-800 mb-5">Modifier la résidence</h2>
 
         {error && (
