@@ -117,7 +117,7 @@ function BureauModal({ ag, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mt-10 mb-10">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mt-8 mb-8">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-pink-50 to-rose-50 rounded-t-2xl">
           <div>
@@ -127,7 +127,7 @@ function BureauModal({ ag, onClose }) {
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-xl font-bold px-2">×</button>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 min-h-[320px]">
           {loading ? (
             <div className="text-center py-10 text-slate-400">Chargement…</div>
           ) : bureau ? (
@@ -157,7 +157,7 @@ function BureauModal({ ag, onClose }) {
             </div>
           ) : showForm ? (
             /* Formulaire création */
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Date début *</label>
@@ -172,21 +172,24 @@ function BureauModal({ ag, onClose }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-2">Membres</label>
-                <div className="flex gap-2 flex-wrap">
+                <label className="block text-xs font-semibold text-slate-600 mb-2">Ajouter un membre</label>
+                <div className="flex flex-col gap-2">
                   <select value={newP} onChange={e => setNewP(e.target.value)}
-                    className="flex-1 min-w-0 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pink-400">
-                    <option value="">— Sélectionner —</option>
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pink-400">
+                    <option value="">— Sélectionner une personne —</option>
                     {personnes.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
                   </select>
-                  <select value={newF} onChange={e => setNewF(e.target.value)}
-                    className="w-36 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pink-400">
-                    {FONCTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                  </select>
-                  <button onClick={addMembre}
-                    className="px-4 py-2 bg-slate-700 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition">
-                    + Ajouter
-                  </button>
+                  <div className="flex gap-2">
+                    <select value={newF} onChange={e => setNewF(e.target.value)}
+                      className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pink-400">
+                      {FONCTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                    </select>
+                    <button onClick={addMembre}
+                      className="px-4 py-2 bg-slate-700 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition whitespace-nowrap">
+                      + Ajouter
+                    </button>
+                  </div>
+                </div>
                 </div>
                 {membres.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -204,9 +207,9 @@ function BureauModal({ ag, onClose }) {
 
               {error && <p className="text-red-500 text-sm">{error}</p>}
 
-              <div className="flex justify-end gap-3 pt-2">
-                <button onClick={() => { setShowForm(false); setError(""); }}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">
+              <div className="flex items-center justify-between pt-2">
+                <button onClick={() => { setShowForm(false); setError(""); setMembres([]); }}
+                  className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">
                   ← Retour
                 </button>
                 <button onClick={handleSave} disabled={saving}
