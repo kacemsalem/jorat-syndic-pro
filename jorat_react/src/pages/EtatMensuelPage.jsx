@@ -40,18 +40,18 @@ export default function EtatMensuelPage() {
   const entrees = data?.mouvements?.filter(m => parseFloat(m.credit) > 0) || [];
   const sorties = data?.mouvements?.filter(m => parseFloat(m.debit) > 0) || [];
 
-  // Build cross table: lot → 12 booleans (payé ce mois?)
+  // Build cross table: carry-over logic (same as PaymentBar)
+  // totalPaid / totalDu * 12 = months covered starting from Jan
   const crossRows = useMemo(() => {
     if (!crossData?.lots) return [];
     return crossData.lots.map(lot => {
-      const paid = Array(12).fill(false);
-      lot.paiements.forEach(p => {
-        const d = new Date(p.date);
-        if (d.getFullYear() === year) {
-          paid[d.getMonth()] = true;
-        }
-      });
-      return { lot: lot.lot_numero, nom: lot.proprietaire_nom, paid };
+      const totalDu   = parseFloat(lot.total_du  || 0);
+      const totalPaid = lot.paiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+      // How many full months covered (carry-over from Jan)
+      const monthsCovered = totalDu > 0 ? (totalPaid / totalDu) * 12 : 0;
+      const paid = Array(12).fill(false).map((_, i) => i < monthsCovered);
+      const pct = totalDu > 0 ? Math.min((totalPaid / totalDu) * 100, 100) : 0;
+      return { lot: lot.lot_numero, nom: lot.proprietaire_nom, paid, pct, monthsCovered, totalDu, totalPaid };
     });
   }, [crossData, year]);
 
@@ -154,41 +154,65 @@ export default function EtatMensuelPage() {
       {/* ── Tableau croisé paiements ── */}
       {crossRows.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+          <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">État global paiements {year}</span>
+            <span className="text-[10px] text-slate-400">Couverture par carry-over · colonne <span className="font-semibold text-emerald-600">{MOIS[month]}</span> = mois sélectionné</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left px-3 py-2 text-slate-500 font-semibold min-w-[80px] sticky left-0 bg-white">Lot</th>
-                  <th className="text-left px-2 py-2 text-slate-400 font-medium min-w-[100px]">Propriétaire</th>
+                <tr className="border-b border-slate-100 bg-slate-50/60">
+                  {/* Lot number — sticky left */}
+                  <th className="text-left px-3 py-2 text-slate-600 font-bold w-16 sticky left-0 bg-slate-50/90 z-10">Lot</th>
+                  <th className="text-left px-2 py-2 text-slate-400 font-medium min-w-[90px] max-w-[130px]">Propriétaire</th>
                   {MOIS.map((m, i) => (
-                    <th key={i} className={`px-1 py-2 text-center font-semibold w-9 ${i === month ? "text-emerald-700 bg-emerald-50" : "text-slate-400"}`}>{m}</th>
+                    <th key={i} className={`px-0.5 py-2 text-center font-bold w-8 ${i === month ? "text-emerald-700 bg-emerald-100/70" : "text-slate-400"}`}>{m}</th>
                   ))}
-                  <th className="px-2 py-2 text-right text-slate-400 font-medium">Payés</th>
+                  <th className="px-2 py-2 text-center text-slate-400 font-medium w-16">%</th>
                 </tr>
               </thead>
               <tbody>
                 {crossRows.map((row, ri) => {
                   const nbPaid = row.paid.filter(Boolean).length;
+                  const pct = Math.round(row.pct);
+                  const allPaid = nbPaid === 12;
                   return (
-                    <tr key={ri} className={`border-b border-slate-50 ${ri % 2 === 1 ? "bg-slate-50/40" : ""}`}>
-                      <td className="px-3 py-1.5 font-bold text-slate-700 sticky left-0 bg-inherit">{row.lot}</td>
-                      <td className="px-2 py-1.5 text-slate-500 truncate max-w-[120px]">{row.nom || "—"}</td>
-                      {row.paid.map((p, mi) => (
-                        <td key={mi} className={`px-1 py-1.5 text-center ${mi === month ? "bg-emerald-50/60" : ""}`}>
-                          {p ? (
-                            <span className="inline-block w-5 h-5 rounded-full bg-emerald-500 text-white text-[9px] flex items-center justify-center font-bold leading-5">✓</span>
-                          ) : (
-                            <span className="inline-block w-5 h-5 rounded-full bg-slate-100 text-slate-300 text-[9px] flex items-center justify-center leading-5">·</span>
-                          )}
-                        </td>
-                      ))}
-                      <td className="px-2 py-1.5 text-right">
-                        <span className={`font-bold ${nbPaid === 12 ? "text-emerald-600" : nbPaid > 6 ? "text-amber-600" : "text-red-500"}`}>
-                          {nbPaid}/12
-                        </span>
+                    <tr key={ri} className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors`}>
+                      {/* Lot — sticky */}
+                      <td className="px-3 py-2 sticky left-0 bg-white z-10">
+                        <span className="font-bold text-indigo-700 text-xs">{row.lot}</span>
+                      </td>
+                      <td className="px-2 py-2 text-slate-500 text-[11px] truncate max-w-[130px]">{row.nom || "—"}</td>
+                      {row.paid.map((p, mi) => {
+                        const isCurrent = mi === month;
+                        return (
+                          <td key={mi} className={`px-0.5 py-2 text-center ${isCurrent ? "bg-emerald-50" : ""}`}>
+                            {p ? (
+                              <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-bold ${
+                                allPaid ? "bg-emerald-500 text-white" :
+                                isCurrent ? "bg-emerald-400 text-white" :
+                                "bg-emerald-100 text-emerald-700"
+                              }`}>✓</span>
+                            ) : (
+                              <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] ${
+                                isCurrent ? "bg-amber-100 text-amber-400" : "bg-slate-100 text-slate-300"
+                              }`}>—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 py-2 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className={`text-[10px] font-bold ${allPaid ? "text-emerald-600" : pct > 50 ? "text-amber-600" : "text-red-500"}`}>
+                            {pct}%
+                          </span>
+                          <div className="w-8 h-1 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{
+                              width: `${pct}%`,
+                              background: allPaid ? "#10b981" : pct > 50 ? "#f59e0b" : "#ef4444"
+                            }} />
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   );
