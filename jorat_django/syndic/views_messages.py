@@ -269,10 +269,22 @@ def admin_resident_lot(request, lot_id):
         .order_by("-date")[:20]
     )
 
+    logo_val = None
+    if residence.logo_base64:
+        logo_val = residence.logo_base64
+    elif residence.logo and residence.logo.name:
+        logo_val = residence.logo.url
+
+    residence_data = {
+        "nom": residence.nom_residence,
+        "logo": logo_val,
+    }
+
     return Response({
         "lot":         lot_data,
         "rapport":     rapport,
         "bureau":      bureau,
         "derniere_ag": derniere_ag,
         "documents":   documents,
+        "residence":   residence_data,
     })

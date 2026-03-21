@@ -13,11 +13,11 @@ function KPICard({ label, value, color, bg, sub }) {
   return (
     <div style={{
       background: bg || "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 14,
-      padding: "18px 22px", display: "flex", flexDirection: "column", gap: 4,
+      padding: "12px 16px", display: "flex", flexDirection: "column", gap: 3,
     }}>
-      <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>{label}</span>
-      <span style={{ fontSize: 22, fontWeight: 700, color: color || "#0f172a", lineHeight: 1.1 }}>{value}</span>
-      {sub && <span style={{ fontSize: 11, color: "#64748b" }}>{sub}</span>}
+      <span style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>{label}</span>
+      <span style={{ fontSize: 16, fontWeight: 700, color: color || "#0f172a", lineHeight: 1.1, wordBreak: "break-word" }}>{value}</span>
+      {sub && <span style={{ fontSize: 10, color: "#64748b" }}>{sub}</span>}
     </div>
   );
 }

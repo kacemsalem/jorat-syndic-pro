@@ -334,7 +334,7 @@ export default function BureauSyndicalPage() {
             <p className="text-sm text-slate-500 mt-1">Mandats élus en Assemblée Générale</p>
           </div>
         </div>
-        {!showForm && (
+        {!showForm && !activeMandat && (
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow">
             + Créer un nouveau mandat

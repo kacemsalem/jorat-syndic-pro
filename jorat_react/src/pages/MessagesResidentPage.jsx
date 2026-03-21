@@ -71,7 +71,7 @@ export default function MessagesResidentPage() {
         setReply(id, { saving: false, error: msg });
         return;
       }
-      setReply(id, { saving: false, error: "" });
+      setReply(id, { saving: false, error: "", saved: true });
       load();
     } catch (e) { setReply(id, { saving: false, error: e.message || "Erreur réseau." }); }
   };
@@ -115,7 +115,11 @@ export default function MessagesResidentPage() {
             const r = replyState[m.id] || { statut: m.statut, reponse: m.reponse || "", saving: false, error: "" };
 
             return (
-              <div key={m.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div key={m.id} className={`rounded-2xl border shadow-sm overflow-hidden ${
+  m.statut === "RESOLU"   ? "bg-emerald-50/60 border-emerald-100" :
+  m.statut === "EN_COURS" ? "bg-amber-50/60 border-amber-100" :
+                            "bg-red-50/40 border-red-100"
+}`}>
 
                 {/* Header */}
                 <div className="px-4 py-3 border-b border-slate-50 space-y-2">
@@ -191,6 +195,8 @@ export default function MessagesResidentPage() {
                       placeholder="Rédigez votre réponse au résident…"
                       value={r.reponse}
                       onChange={e => setReply(m.id, { reponse: e.target.value })}
+                      disabled={r.saved || r.saving}
+                      readOnly={r.saved}
                     />
 
                     {r.error && <p className="text-xs text-red-500 mt-1">{r.error}</p>}
@@ -198,10 +204,10 @@ export default function MessagesResidentPage() {
                     <div className="flex justify-end mt-2">
                       <button
                         onClick={() => handleSave(m.id)}
-                        disabled={r.saving}
+                        disabled={r.saving || r.saved}
                         className="px-4 py-1.5 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-60 font-semibold"
                       >
-                        {r.saving ? "Enregistrement…" : "Enregistrer"}
+                        {r.saving ? "Enregistrement…" : r.saved ? "✓ Enregistré" : "Enregistrer"}
                       </button>
                     </div>
                   </div>

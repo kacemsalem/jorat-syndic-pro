@@ -161,6 +161,8 @@ export default function LotsPage() {
   return (
     <div className="max-w-3xl mx-auto">
 
+      <button onClick={() => navigate("/kanban")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition mb-4">← Retour Lots</button>
+
       {/* En-tête */}
       <div className="flex items-center justify-between mb-5">
         <div>

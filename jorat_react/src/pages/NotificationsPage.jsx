@@ -158,81 +158,55 @@ export default function NotificationsPage() {
             {notifications.length === 0 ? "Aucune notification enregistrée." : "Aucun résultat pour ces filtres."}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-left">
-                  <th className="px-4 py-3 font-semibold">Date</th>
-                  <th className="px-4 py-3 font-semibold">Lot</th>
-                  <th className="px-4 py-3 font-semibold">Propriétaire</th>
-                  <th className="px-4 py-3 font-semibold">Type</th>
-                  <th className="px-4 py-3 font-semibold">Titre</th>
-                  <th className="px-4 py-3 font-semibold max-w-xs">Message</th>
-                  <th className="px-4 py-3 font-semibold text-right">Montant dû</th>
-                  <th className="px-4 py-3 font-semibold">Statut</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((n, i) => (
-                  <tr
-                    key={n.id}
-                    className={`border-b border-slate-50 ${i % 2 === 0 ? "" : "bg-slate-50/40"} ${n.statut === "NON_LU" ? "bg-amber-50/60" : ""}`}
-                  >
-                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap font-mono text-[11px]">
-                      {fmtDate(n.date_notification)}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">
-                      {n.lot_numero || <span className="text-slate-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
-                      {n.personne_nom || <span className="text-slate-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full font-semibold ${TYPE_BADGE[n.type_notification] ?? "bg-slate-100 text-slate-600"}`}>
-                        {n.type_label ?? TYPE_LABEL[n.type_notification] ?? n.type_notification}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-700 font-medium max-w-[140px] truncate" title={n.titre}>
-                      {n.titre}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 max-w-xs">
-                      <span className="line-clamp-2 leading-relaxed" title={n.message}>{n.message}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold text-red-500 whitespace-nowrap">
-                      {fmtMontant(n.montant_du)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full font-semibold ${STATUT_BADGE[n.statut] ?? "bg-slate-100 text-slate-600"}`}>
-                        {n.statut_label ?? STATUT_LABEL[n.statut] ?? n.statut}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <button
-                        onClick={() => handleDelete(n.id)}
-                        disabled={deleting === n.id}
-                        title="Supprimer"
-                        className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-40"
-                      >
-                        {deleting === n.id ? (
-                          <div className="w-3.5 h-3.5 border border-red-400 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 011-1h4a1 1 0 011 1m-7 0H5m14 0h-2" />
-                          </svg>
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="px-4 py-2 border-t border-slate-100 text-[11px] text-slate-400 flex justify-between">
-              <span>{filtered.length} notification{filtered.length !== 1 ? "s" : ""} affichée{filtered.length !== 1 ? "s" : ""}</span>
-              <span>{notifications.length} au total</span>
-            </div>
+          <>
+          <div className="p-3 space-y-1.5">
+            {filtered.map((n) => (
+              <div key={n.id} className={`rounded-xl border px-3 py-2.5 flex items-start gap-3 hover:shadow-sm transition ${
+                n.statut === "NON_LU" ? "bg-amber-50 border-amber-100" : "bg-white border-slate-100"
+              }`}>
+                {/* Date + badges */}
+                <div className="flex flex-col gap-1 flex-shrink-0 w-24">
+                  <span className="text-[10px] font-mono text-slate-400 leading-tight">{fmtDate(n.date_notification)}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold text-center ${TYPE_BADGE[n.type_notification] ?? "bg-slate-100 text-slate-600"}`}>
+                    {n.type_label ?? TYPE_LABEL[n.type_notification] ?? n.type_notification}
+                  </span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold text-center ${STATUT_BADGE[n.statut] ?? "bg-slate-100 text-slate-600"}`}>
+                    {n.statut_label ?? STATUT_LABEL[n.statut] ?? n.statut}
+                  </span>
+                </div>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    {n.lot_numero && <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full font-mono">Lot {n.lot_numero}</span>}
+                    {n.personne_nom && <span className="text-[10px] text-slate-500">{n.personne_nom}</span>}
+                    {n.montant_du && <span className="text-[10px] font-mono font-semibold text-red-500 ml-auto">{fmtMontant(n.montant_du)}</span>}
+                  </div>
+                  <p className="text-xs font-semibold text-slate-800 truncate">{n.titre}</p>
+                  <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{n.message}</p>
+                </div>
+                {/* Delete */}
+                <button
+                  onClick={() => handleDelete(n.id)}
+                  disabled={deleting === n.id}
+                  title="Supprimer"
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-40 flex-shrink-0"
+                >
+                  {deleting === n.id ? (
+                    <div className="w-3.5 h-3.5 border border-red-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 011-1h4a1 1 0 011 1m-7 0H5m14 0h-2" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            ))}
           </div>
+          <div className="px-4 py-2 border-t border-slate-100 text-[11px] text-slate-400 flex justify-between">
+            <span>{filtered.length} notification{filtered.length !== 1 ? "s" : ""} affichée{filtered.length !== 1 ? "s" : ""}</span>
+            <span>{notifications.length} au total</span>
+          </div>
+          </>
         )}
       </div>
     </div>

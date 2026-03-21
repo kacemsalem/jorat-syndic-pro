@@ -141,37 +141,23 @@ export default function ConsultationPage() {
               </div>
 
               {lot.charges.length > 0 ? (
-                <div className="overflow-x-auto rounded-xl border border-slate-100">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-100">
-                        <th className="text-left px-3 py-2 font-semibold text-slate-600">Période</th>
-                        <th className="text-left px-3 py-2 font-semibold text-slate-600">Type</th>
-                        <th className="text-right px-3 py-2 font-semibold text-slate-600">Appelé</th>
-                        <th className="text-right px-3 py-2 font-semibold text-slate-600">Payé</th>
-                        <th className="text-right px-3 py-2 font-semibold text-slate-600">Solde</th>
-                        <th className="text-center px-3 py-2 font-semibold text-slate-600">Statut</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lot.charges.map(c => (
-                        <tr key={c.id} className="border-b border-slate-50 hover:bg-slate-50">
-                          <td className="px-3 py-2 text-slate-700 font-medium">{c.exercice} / {c.periode}</td>
-                          <td className="px-3 py-2 text-slate-500 text-xs">{c.type_charge}</td>
-                          <td className="px-3 py-2 text-right font-mono text-slate-700">{fmt(c.montant_appel)}</td>
-                          <td className="px-3 py-2 text-right font-mono text-green-600">{fmt(c.montant_paye)}</td>
-                          <td className="px-3 py-2 text-right font-mono font-semibold">
-                            <span className={Number(c.solde) > 0 ? "text-red-600" : "text-green-600"}>{fmt(c.solde)}</span>
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUT_COLORS[c.statut] || "bg-slate-100 text-slate-500"}`}>
-                              {c.statut_label}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="space-y-1.5">
+                  {lot.charges.map(c => (
+                    <div key={c.id} className="rounded-xl border border-slate-100 bg-white px-3 py-2.5 hover:shadow-sm transition">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-semibold text-slate-700">{c.exercice} / {c.periode}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-semibold">{c.type_charge}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${STATUT_COLORS[c.statut] || "bg-slate-100 text-slate-500"}`}>{c.statut_label}</span>
+                        </div>
+                        <span className={`text-xs font-bold font-mono ${Number(c.solde) > 0 ? "text-red-600" : "text-green-600"}`}>{fmt(c.solde)}</span>
+                      </div>
+                      <div className="flex items-center gap-4 mt-1.5 text-[11px] text-slate-500">
+                        <span>Appelé <span className="font-semibold text-slate-700">{fmt(c.montant_appel)}</span></span>
+                        <span>Payé <span className="font-semibold text-green-600">{fmt(c.montant_paye)}</span></span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-slate-400 text-sm text-center py-4">Aucun appel de charge enregistré.</p>
