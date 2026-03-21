@@ -62,16 +62,6 @@ const BASE_NAV_GROUPS = [
     ],
   },
   {
-    label: "Configuration",
-    collapsible: true,
-    items: [
-      { label: "Résidence",        path: "/residences",                    icon: "residence" },
-      { label: "Lots",             path: "/kanban",                        icon: "lots" },
-      { label: "Appel de charge",  path: "/appels-charge?filtre=CHARGE",   icon: "appel_charge" },
-      { label: "Appel de fond",    path: "/appels-charge?filtre=FOND",     icon: "appel_fond" },
-    ],
-  },
-  {
     label: "Gouvernance",
     collapsible: true,
     items: [
