@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import RecouvrementNav from "../components/RecouvrementNav";
 
 const API = "/api";
 
@@ -205,8 +204,6 @@ export default function AppelsChargePage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
-
-      <RecouvrementNav residenceId={residenceId} />
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -22,6 +23,7 @@ const EMPTY_FORM = {
 };
 
 export default function TravauxPage() {
+  const navigate = useNavigate();
   const [travaux,      setTravaux]      = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -132,6 +134,7 @@ export default function TravauxPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
 
       {/* Header */}
       <div className="flex items-center justify-between">

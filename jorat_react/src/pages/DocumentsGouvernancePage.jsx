@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -24,6 +25,7 @@ const today = new Date().toISOString().slice(0, 10);
 const EMPTY = { type_document: "AUTRE", titre: "", date: today, visible_resident: false };
 
 export default function DocumentsGouvernancePage() {
+  const navigate = useNavigate();
   const [items,    setItems]    = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState("");
@@ -100,6 +102,7 @@ export default function DocumentsGouvernancePage() {
 
   return (
     <div className="max-w-5xl mx-auto">
+      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-4 transition">← Tableau de bord</button>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Documents</h1>

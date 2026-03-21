@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "react-router-dom";
-import RecouvrementNav from "../components/RecouvrementNav";
 import API, { fetchJson } from "../api";
 
 // ── Constants ─────────────────────────────────────────────────
@@ -364,8 +363,6 @@ export default function PaiementPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
-      <RecouvrementNav residenceId={residenceId} />
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
