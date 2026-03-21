@@ -249,17 +249,21 @@ export default function RapportFinancierPage() {
               {data.mouvements.length === 0 ? (
                 <div className="text-center py-6 text-slate-400 text-xs bg-slate-50 rounded-xl border border-slate-100">Aucun mouvement</div>
               ) : data.mouvements.map((m, i) => (
-                <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5 flex items-center gap-3 hover:shadow-sm transition">
-                  <span className="text-xs font-mono text-slate-400 whitespace-nowrap w-20 flex-shrink-0">{m.date}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
-                    m.type_mouvement === "PAIEMENT" ? "bg-emerald-100 text-emerald-700" :
-                    m.type_mouvement === "DEPENSE"  ? "bg-red-100 text-red-700" :
-                    m.type_mouvement === "RECETTE"  ? "bg-blue-100 text-blue-700" :
-                    "bg-slate-100 text-slate-600"
-                  }`}>{TYPE_LABELS[m.type_mouvement] || m.type_mouvement}</span>
-                  <span className="text-xs text-slate-700 flex-1 truncate">{m.libelle}</span>
-                  {parseFloat(m.debit) > 0 && <span className="text-xs font-mono font-semibold text-red-600 whitespace-nowrap flex-shrink-0">{fmt(m.debit)} MAD</span>}
-                  {parseFloat(m.credit) > 0 && <span className="text-xs font-mono font-semibold text-emerald-600 whitespace-nowrap flex-shrink-0">{fmt(m.credit)} MAD</span>}
+                <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 hover:shadow-sm transition min-h-[3rem]">
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs font-mono text-slate-400 whitespace-nowrap w-20">{m.date}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${
+                      m.type_mouvement === "PAIEMENT" ? "bg-emerald-100 text-emerald-700" :
+                      m.type_mouvement === "DEPENSE"  ? "bg-red-100 text-red-700" :
+                      m.type_mouvement === "RECETTE"  ? "bg-blue-100 text-blue-700" :
+                      "bg-slate-100 text-slate-600"
+                    }`}>{TYPE_LABELS[m.type_mouvement] || m.type_mouvement}</span>
+                  </div>
+                  <span className="text-xs text-slate-700 flex-1 leading-snug">{m.libelle}</span>
+                  <div className="flex gap-2 flex-shrink-0">
+                    {parseFloat(m.debit) > 0 && <span className="text-xs font-mono font-semibold text-red-600 whitespace-nowrap">{fmt(m.debit)} MAD</span>}
+                    {parseFloat(m.credit) > 0 && <span className="text-xs font-mono font-semibold text-emerald-600 whitespace-nowrap">{fmt(m.credit)} MAD</span>}
+                  </div>
                 </div>
               ))}
             </div>

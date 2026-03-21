@@ -95,21 +95,21 @@ export default function AccueilPage() {
             <span className="text-xs font-semibold">Résidence</span>
           </button>
           <button onClick={() => navigate("/kanban")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-slate-600 text-white hover:bg-slate-700 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
             </svg>
             <span className="text-xs font-semibold">Lots</span>
           </button>
           <button onClick={() => navigate("/appels-charge?filtre=CHARGE")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
             </svg>
             <span className="text-xs font-semibold">Appel de charge</span>
           </button>
           <button onClick={() => navigate("/appels-charge?filtre=FOND")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
             </svg>
@@ -130,7 +130,7 @@ export default function AccueilPage() {
             <span className="text-xs font-semibold">Suivi paiements</span>
           </button>
           <button onClick={() => navigate("/rapport-financier")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
             </svg>
@@ -138,7 +138,7 @@ export default function AccueilPage() {
           </button>
         </div>
         <button onClick={() => navigate("/situation-paiements")}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-teal-600 text-white hover:bg-teal-700 transition">
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/>
           </svg>
@@ -151,21 +151,21 @@ export default function AccueilPage() {
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Gouvernance</p>
         <div className="grid grid-cols-3 gap-2">
           <button onClick={() => navigate("/gouvernance/assemblees")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
             <span className="text-xs font-semibold">Assemblée Générale</span>
           </button>
           <button onClick={() => navigate("/gouvernance/documents")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-amber-600 text-white hover:bg-amber-700 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
             </svg>
             <span className="text-xs font-semibold">Documents</span>
           </button>
           <button onClick={() => navigate("/gouvernance/travaux")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-teal-600 text-white hover:bg-teal-700 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
@@ -179,14 +179,14 @@ export default function AccueilPage() {
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Comptabilité</p>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: "Journal",     path: "/comptabilite/journal",     color: "bg-cyan-600 hover:bg-cyan-700" },
-            { label: "Grand Livre", path: "/comptabilite/grand-livre", color: "bg-cyan-700 hover:bg-cyan-800" },
-            { label: "Balance",     path: "/comptabilite/balance",     color: "bg-sky-600 hover:bg-sky-700" },
-            { label: "CPC",         path: "/comptabilite/cpc",         color: "bg-sky-700 hover:bg-sky-800" },
-            { label: "Bilan",       path: "/comptabilite/bilan",       color: "bg-blue-700 hover:bg-blue-800" },
-          ].map(({ label, path, color }) => (
+            { label: "Journal",     path: "/comptabilite/journal"     },
+            { label: "Grand Livre", path: "/comptabilite/grand-livre" },
+            { label: "Balance",     path: "/comptabilite/balance"     },
+            { label: "CPC",         path: "/comptabilite/cpc"         },
+            { label: "Bilan",       path: "/comptabilite/bilan"       },
+          ].map(({ label, path }) => (
             <button key={path} onClick={() => navigate(path)}
-              className={`flex items-center justify-center py-2.5 rounded-xl text-white text-xs font-semibold transition ${color}`}>
+              className="flex items-center justify-center py-2.5 rounded-xl text-white text-xs font-semibold transition bg-sky-600 hover:bg-sky-700">
               {label}
             </button>
           ))}
@@ -198,21 +198,21 @@ export default function AccueilPage() {
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Espace Résident</p>
         <div className="grid grid-cols-3 gap-2">
           <button onClick={() => navigate("/gouvernance/notifications")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
             <span className="text-xs font-semibold">Notifications</span>
           </button>
           <button onClick={() => navigate("/espace-resident/messages")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
             <span className="text-xs font-semibold">Messages</span>
           </button>
           <button onClick={() => navigate("/espace-resident/consultation")}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-slate-500 text-white hover:bg-slate-600 transition">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>

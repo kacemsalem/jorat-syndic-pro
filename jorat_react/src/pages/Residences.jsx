@@ -64,6 +64,7 @@ export default function Residences() {
         ville_residence:       r.ville_residence       ?? "",
         adresse_residence:     r.adresse_residence     ?? "",
         code_postal_residence: r.code_postal_residence ?? "",
+        email:                 r.email                 ?? "",
         statut_residence:      r.statut_residence      ?? "ACTIF",
         description:           r.description           ?? "",
       });
@@ -190,6 +191,10 @@ export default function Residences() {
             <Field label="Code postal">
               <input className={inputCls} value={form.code_postal_residence}
                 onChange={set("code_postal_residence")} placeholder="20000" />
+            </Field>
+            <Field label="Email">
+              <input type="email" className={inputCls} value={form.email}
+                onChange={set("email")} placeholder="contact@residence.ma" />
             </Field>
           </div>
 

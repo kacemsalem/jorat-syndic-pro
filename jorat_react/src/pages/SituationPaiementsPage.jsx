@@ -311,7 +311,7 @@ export default function SituationPaiementsPage() {
                 <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{label}</span>
                 <span className="ml-auto text-xs font-semibold text-slate-400">{items.length}</span>
               </div>
-              <div className="p-2 space-y-2 bg-slate-50/30">
+              <div className="p-2 space-y-2" style={{ backgroundColor: label === "Soldés" ? "rgba(209,250,229,0.35)" : label === "Partiels" ? "rgba(254,243,199,0.4)" : "rgba(254,226,226,0.35)" }}>
                 {items.length === 0 && (
                   <p className="text-xs text-slate-300 text-center py-4">Aucun lot</p>
                 )}

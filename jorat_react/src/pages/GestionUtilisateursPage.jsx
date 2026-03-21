@@ -214,51 +214,45 @@ export default function GestionUtilisateursPage() {
         />
       </div>
 
-      {/* Table */}
+      {/* Kanban by role */}
       {loading ? (
         <div className="text-center py-16 text-slate-400">Chargement…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-slate-400">Aucun utilisateur trouvé</div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Lot</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Utilisateur</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Rôle</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Statut</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-12 text-slate-400">Aucun utilisateur trouvé</td></tr>
-                ) : filtered.map(u => (
-                  <tr key={u.membership_id} className="border-b border-slate-100 hover:bg-slate-50 transition">
-                    <td className="px-4 py-3">
-                      {u.lot_numero
-                        ? <span className="font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg">{u.lot_numero}</span>
-                        : <span className="text-slate-400">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-slate-800">{u.username}</div>
-                      {u.email && <div className="text-xs text-slate-400">{u.email}</div>}
-                      {u.must_change_password && (
-                        <span className="text-xs text-amber-600 font-semibold">⚠ doit changer son mot de passe</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ROLE_COLORS[u.role] || "bg-slate-100 text-slate-600"}`}>
-                        {ROLE_LABELS[u.role] || u.role}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${u.actif ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
-                        {u.actif ? "Actif" : "Inactif"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1.5 justify-end">
+        <div className="space-y-4">
+          {Object.entries(ROLE_LABELS).map(([role, roleLabel]) => {
+            const group = filtered.filter(u => u.role === role);
+            if (group.length === 0) return null;
+            return (
+              <div key={role} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${ROLE_COLORS[role] || "bg-slate-100 text-slate-600"}`}>
+                    {roleLabel}
+                  </span>
+                  <span className="text-xs text-slate-400 font-semibold">{group.length}</span>
+                </div>
+                <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {group.map(u => (
+                    <div key={u.membership_id} className="border border-slate-100 rounded-xl px-3 py-2.5 space-y-2 hover:shadow-sm transition">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-800 text-sm truncate">{u.username}</div>
+                          {u.email && <div className="text-xs text-slate-400 truncate">{u.email}</div>}
+                          {u.must_change_password && (
+                            <div className="text-xs text-amber-600 font-semibold mt-0.5">⚠ doit changer mot de passe</div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          {u.lot_numero && (
+                            <span className="font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg text-xs">{u.lot_numero}</span>
+                          )}
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${u.actif ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
+                            {u.actif ? "Actif" : "Inactif"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
                         <button onClick={() => openEdit(u)}
                           className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition">
                           Modifier
@@ -274,12 +268,12 @@ export default function GestionUtilisateursPage() {
                           </button>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

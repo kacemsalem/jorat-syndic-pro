@@ -77,6 +77,8 @@ class Residence(TimeStampedModel):
 
     logo = models.ImageField(upload_to="residences/logos/", blank=True, null=True)
 
+    email = models.EmailField(blank=True, null=True)
+
     partage_rapport_resident = models.BooleanField(
         default=False,
         help_text="Partager le rapport financier avec les résidents"
