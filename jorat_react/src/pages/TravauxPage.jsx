@@ -5,10 +5,11 @@ function getCsrf() {
 }
 
 const STATUT_OPTIONS = [
-  { value: "PLANIFIE", label: "Planifié",  color: "bg-blue-100 text-blue-700" },
-  { value: "EN_COURS", label: "En cours",  color: "bg-amber-100 text-amber-700" },
-  { value: "TERMINE",  label: "Terminé",   color: "bg-green-100 text-green-700" },
-  { value: "ANNULE",   label: "Annulé",    color: "bg-red-100 text-red-700" },
+  { value: "PLANIFIE",    label: "Planifié",     color: "bg-blue-100 text-blue-700" },
+  { value: "EN_COURS",    label: "En cours",     color: "bg-amber-100 text-amber-700" },
+  { value: "TERMINE",     label: "Terminé",      color: "bg-green-100 text-green-700" },
+  { value: "ANNULE",      label: "Annulé",       color: "bg-red-100 text-red-700" },
+  { value: "INFORMATION", label: "Information",  color: "bg-sky-100 text-sky-700" },
 ];
 
 const EMPTY_FORM = {

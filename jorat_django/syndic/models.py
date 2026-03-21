@@ -1293,10 +1293,11 @@ class ArchiveRecette(models.Model):
 class Travaux(models.Model):
 
     STATUT_CHOICES = [
-        ("PLANIFIE",  "Planifié"),
-        ("EN_COURS",  "En cours"),
-        ("TERMINE",   "Terminé"),
-        ("ANNULE",    "Annulé"),
+        ("PLANIFIE",    "Planifié"),
+        ("EN_COURS",    "En cours"),
+        ("TERMINE",     "Terminé"),
+        ("ANNULE",      "Annulé"),
+        ("INFORMATION", "Information"),
     ]
 
     residence    = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="travaux")
@@ -1314,7 +1315,7 @@ class Travaux(models.Model):
         null=True, blank=True, related_name="travaux",
         verbose_name="Prestataire",
     )
-    statut       = models.CharField(max_length=10, choices=STATUT_CHOICES, default="PLANIFIE")
+    statut       = models.CharField(max_length=15, choices=STATUT_CHOICES, default="PLANIFIE")
     commentaire  = models.TextField(blank=True)
 
     class Meta:
