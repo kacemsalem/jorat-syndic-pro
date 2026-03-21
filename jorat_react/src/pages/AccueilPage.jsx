@@ -1,17 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-
-function InfoRow({ label, value }) {
-  if (!value) return null;
-  return (
-    <div className="flex justify-between items-start py-2.5 border-b border-slate-100 last:border-0">
-      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</span>
-      <span className="text-sm text-slate-700 text-right">{value}</span>
-    </div>
-  );
-}
-
 export default function AccueilPage() {
   const navigate = useNavigate();
   const [residence, setResidence] = useState(null);
@@ -45,42 +34,89 @@ export default function AccueilPage() {
   return (
     <div className="max-w-xl mx-auto space-y-4">
 
-      {/* ── Fiche résidence ── */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-100">
-          {residence.logo ? (
-            <img
-              src={residence.logo}
-              alt="logo"
-              className="h-14 w-14 rounded-xl object-contain border border-slate-200 bg-slate-50 p-1.5 flex-shrink-0"
-            />
-          ) : (
-            <div className="h-14 w-14 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
-              </svg>
+      {/* ── Présentation résidence ── */}
+      <div className="rounded-2xl overflow-hidden shadow-sm border border-indigo-100">
+
+        {/* Hero gradient */}
+        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 px-5 pt-6 pb-7">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+
+            {/* Logo */}
+            <div className="shrink-0">
+              {residence.logo ? (
+                <img
+                  src={residence.logo}
+                  alt="Logo résidence"
+                  className="w-24 h-24 rounded-2xl object-contain bg-white/15 border-2 border-white/30 p-2 shadow-lg"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-2xl bg-white/10 border-2 border-white/25 flex items-center justify-center shadow-lg">
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                </div>
+              )}
             </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-slate-800 truncate">{residence.nom_residence}</h1>
-            {adresse && <p className="text-xs text-slate-500 mt-0.5 truncate">{adresse}</p>}
+
+            {/* Info texte */}
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2 mb-2">
+                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                  residence.statut_residence === "ACTIF"
+                    ? "bg-emerald-400/25 text-emerald-100 border border-emerald-400/35"
+                    : "bg-red-400/25 text-red-100 border border-red-400/35"
+                }`}>
+                  {residence.statut_residence}
+                </span>
+              </div>
+              <h1 className="text-2xl font-extrabold text-white leading-tight tracking-tight">
+                {residence.nom_residence}
+              </h1>
+              {adresse && (
+                <p className="text-indigo-200 text-sm mt-1.5 font-medium">{adresse}</p>
+              )}
+              {residence.email && (
+                <a href={`mailto:${residence.email}`}
+                  className="text-indigo-300 text-xs mt-1 hover:text-white transition inline-flex items-center gap-1">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  {residence.email}
+                </a>
+              )}
+            </div>
           </div>
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold flex-shrink-0 ${
-            residence.statut_residence === "ACTIF" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
-          }`}>
-            {residence.statut_residence}
-          </span>
         </div>
-        <div className="px-5 py-1">
-          <InfoRow label="Nombre de lots" value={residence.nombre_lots != null ? `${residence.nombre_lots} lot${residence.nombre_lots > 1 ? "s" : ""}` : null} />
-          {residence.description && (
-            <div className="py-2.5">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Description</span>
-              <p className="text-sm text-slate-700 mt-1 whitespace-pre-line">{residence.description}</p>
+
+        {/* Stats strip */}
+        <div className="bg-indigo-900 px-5 py-2.5 flex flex-wrap gap-x-6 gap-y-1">
+          {residence.nombre_lots != null && (
+            <div className="flex items-center gap-2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+              </svg>
+              <span className="text-indigo-200 text-xs">
+                <span className="font-bold text-white">{residence.nombre_lots}</span>
+                {" "}lot{residence.nombre_lots > 1 ? "s" : ""}
+              </span>
             </div>
           )}
+          <div className="flex items-center gap-2">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span className="text-indigo-200 text-xs">Syndic Pro · {new Date().getFullYear()}</span>
+          </div>
         </div>
+
+        {/* Description */}
+        {residence.description && (
+          <div className="bg-white px-5 py-3 border-t border-slate-100">
+            <p className="text-xs text-slate-500 whitespace-pre-line leading-relaxed">{residence.description}</p>
+          </div>
+        )}
       </div>
 
       {/* ── Configuration ── */}

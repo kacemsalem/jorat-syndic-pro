@@ -39,14 +39,14 @@ function PaymentBar({ totalDu, paiements }) {
   const monthsCovered = (totalPaid / totalDu) * 12;
 
   return (
-    <div className="w-full min-w-[340px]">
+    <div className="w-full overflow-hidden">
       {/* Month labels */}
       <div className="flex mb-0.5">
         {MONTHS.map((m, i) => (
           <div
             key={i}
-            className="flex-1 text-center leading-none pb-0.5 border-l border-slate-200 first:border-l-0"
-            style={{ fontSize: "9px", color: "#94a3b8", fontWeight: 500 }}
+            className="flex-1 text-center leading-none pb-0.5 border-l border-slate-200 first:border-l-0 overflow-hidden"
+            style={{ fontSize: "8px", color: "#94a3b8", fontWeight: 500, minWidth: 0 }}
           >
             {m}
           </div>
@@ -55,7 +55,7 @@ function PaymentBar({ totalDu, paiements }) {
 
       {/* Track */}
       <div
-        className="relative h-5 rounded overflow-hidden"
+        className="relative h-4 rounded overflow-hidden"
         style={{ background: "#f1f5f9" }}
         title={`${fmt(totalPaid)} / ${fmt(totalDu)} MAD — ${monthsCovered.toFixed(1)} mois couverts`}
       >
@@ -78,30 +78,18 @@ function PaymentBar({ totalDu, paiements }) {
               borderRight:     seg.idx < segments.length - 1 ? "1.5px solid rgba(255,255,255,0.75)" : "none",
             }}
           >
-            {seg.widthPct > 6 && (
-              <span style={{ fontSize: "9px", color: "white", fontWeight: 600, padding: "0 2px", lineHeight: 1 }} className="truncate">
+            {seg.widthPct > 12 && (
+              <span style={{ fontSize: "8px", color: "white", fontWeight: 600, padding: "0 2px", lineHeight: 1, overflow: "hidden", maxWidth: "100%" }}>
                 {fmt(seg.montant)}
               </span>
             )}
           </div>
         ))}
-
-        {/* Remaining amount hint */}
-        {totalBarPct < 98 && totalPaid > 0 && (
-          <div
-            className="absolute inset-y-0 flex items-center justify-end pr-1 pointer-events-none"
-            style={{ left: `${totalBarPct}%`, right: 0 }}
-          >
-            <span style={{ fontSize: "9px", color: "#94a3b8" }} className="truncate">
-              {fmt(totalDu - totalPaid)}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Progress bar + summary */}
-      <div className="flex items-center gap-2 mt-0.5">
-        <div className="flex-1 h-0.5 bg-slate-100 rounded-full overflow-hidden">
+      <div className="flex items-center gap-1.5 mt-0.5">
+        <div className="flex-1 h-0.5 bg-slate-100 rounded-full overflow-hidden min-w-0">
           <div
             className="h-full rounded-full transition-all"
             style={{
@@ -110,8 +98,8 @@ function PaymentBar({ totalDu, paiements }) {
             }}
           />
         </div>
-        <span style={{ fontSize: "9px", color: "#94a3b8", whiteSpace: "nowrap" }}>
-          {fmt(totalPaid)} / {fmt(totalDu)} MAD
+        <span style={{ fontSize: "8px", color: "#94a3b8", whiteSpace: "nowrap", flexShrink: 0 }}>
+          {fmt(totalPaid)}/{fmt(totalDu)}
         </span>
       </div>
     </div>

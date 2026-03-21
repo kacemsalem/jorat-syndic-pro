@@ -135,6 +135,18 @@ class ResidenceViewSet(ModelViewSet):
             return Residence.objects.none()
         return Residence.objects.filter(pk=residence.pk).annotate(nombre_lots=Count("lots"))
 
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # When a new base64 logo is set, delete the old file-based logo to free disk space
+        if "logo_base64" in request.data and request.data["logo_base64"]:
+            if instance.logo and instance.logo.name:
+                import os
+                old_path = instance.logo.path
+                instance.logo.delete(save=False)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+        return super().partial_update(request, *args, **kwargs)
+
 
 # ============================================================
 # Groupe

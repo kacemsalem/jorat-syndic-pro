@@ -49,8 +49,7 @@ const BASE_NAV_GROUPS = [
     label: null,
     collapsible: false,
     items: [
-      { label: "Accueil",         path: "/accueil",          exact: true, icon: "residence" },
-      { label: "Tableau de bord", path: "/tableau-de-bord",  exact: true, icon: "dashboard" },
+      { label: "Tableau de bord", path: "/accueil", exact: true, icon: "dashboard" },
     ],
   },
   {
