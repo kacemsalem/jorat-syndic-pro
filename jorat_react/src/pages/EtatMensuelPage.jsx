@@ -51,7 +51,7 @@ export default function EtatMensuelPage() {
       const monthsCovered = totalDu > 0 ? (totalPaid / totalDu) * 12 : 0;
       const paid = Array(12).fill(false).map((_, i) => i < monthsCovered);
       const pct = totalDu > 0 ? Math.min((totalPaid / totalDu) * 100, 100) : 0;
-      return { lot: lot.lot_numero, nom: lot.proprietaire_nom, paid, pct, monthsCovered, totalDu, totalPaid };
+      return { lot: lot.lot, nom: lot.nom, paid, pct, monthsCovered, totalDu, totalPaid };
     });
   }, [crossData, year]);
 
