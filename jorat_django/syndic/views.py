@@ -869,6 +869,9 @@ class MandatBureauSyndicalViewSet(ModelViewSet):
         actif = self.request.query_params.get("actif")
         if actif == "true":
             qs = qs.filter(actif=True)
+        ag_id = self.request.query_params.get("ag_id")
+        if ag_id:
+            qs = qs.filter(assemblee_generale_id=ag_id)
         return qs.order_by("-date_debut")
 
     def perform_create(self, serializer):

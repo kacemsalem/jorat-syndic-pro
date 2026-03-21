@@ -14,7 +14,222 @@ const STATUT_COLORS = {
   ANNULEE:   "bg-red-100 text-red-700",
 };
 
+const FONCTIONS = [
+  { value: "PRESIDENT",      label: "Président" },
+  { value: "VICE_PRESIDENT", label: "Vice-Président" },
+  { value: "TRESORIER",      label: "Trésorier" },
+  { value: "SECRETAIRE",     label: "Secrétaire" },
+  { value: "MEMBRE",         label: "Membre" },
+];
+const FONCTION_STYLE = {
+  PRESIDENT:      "bg-amber-100 text-amber-800",
+  VICE_PRESIDENT: "bg-orange-100 text-orange-700",
+  TRESORIER:      "bg-blue-100 text-blue-700",
+  SECRETAIRE:     "bg-violet-100 text-violet-700",
+  MEMBRE:         "bg-slate-100 text-slate-600",
+};
+const FONCTION_LABEL = Object.fromEntries(FONCTIONS.map(f => [f.value, f.label]));
+const FONCTION_ORDER = ["PRESIDENT", "VICE_PRESIDENT", "TRESORIER", "SECRETAIRE", "MEMBRE"];
+
 const EMPTY = { date_ag: "", type_ag: "ORDINAIRE", statut: "PLANIFIEE", ordre_du_jour: "" };
+
+// ── Bureau Syndical modal ─────────────────────────────────────
+function BureauModal({ ag, onClose }) {
+  const [bureau,    setBureau]    = useState(null);   // mandat existant ou null
+  const [personnes, setPersonnes] = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [showForm,  setShowForm]  = useState(false);
+
+  // form nouveau mandat
+  const [dateDebut, setDateDebut] = useState(ag.date_ag || "");
+  const [dateFin,   setDateFin]   = useState("");
+  const [membres,   setMembres]   = useState([]);
+  const [newP,      setNewP]      = useState("");
+  const [newF,      setNewF]      = useState("MEMBRE");
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState("");
+
+  const fetchBureau = () => {
+    setLoading(true);
+    fetch(`/api/mandats-bureau/?ag_id=${ag.id}`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        const list = Array.isArray(d) ? d : (d.results ?? []);
+        setBureau(list[0] || null);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchBureau();
+    fetch("/api/personnes/", { credentials: "include" })
+      .then(r => r.json()).then(d => setPersonnes(Array.isArray(d) ? d : (d.results ?? [])));
+  }, []);
+
+  const personneLabel = id => {
+    const p = personnes.find(p => String(p.id) === String(id));
+    return p ? `${p.nom} ${p.prenom}` : id;
+  };
+
+  const addMembre = () => {
+    if (!newP) return;
+    if (membres.find(m => m.personne_id === newP)) { setError("Déjà dans le mandat."); return; }
+    setMembres(prev => [...prev, { personne_id: newP, fonction: newF }]);
+    setNewP(""); setNewF("MEMBRE"); setError("");
+  };
+
+  const handleSave = async () => {
+    if (!dateDebut) { setError("La date de début est obligatoire."); return; }
+    if (membres.length === 0) { setError("Ajoutez au moins un membre."); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await fetch("/api/mandats-bureau/", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ date_debut: dateDebut, date_fin: dateFin || null, assemblee_generale: ag.id }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(Object.values(d).flat().join(" ") || "Erreur."); return;
+      }
+      const mandat = await res.json();
+      for (const m of membres) {
+        await fetch("/api/membres-bureau/", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+          body: JSON.stringify({ mandat: mandat.id, personne: m.personne_id, fonction: m.fonction }),
+        });
+      }
+      setShowForm(false);
+      fetchBureau();
+    } catch { setError("Erreur réseau."); }
+    finally { setSaving(false); }
+  };
+
+  const dateFormatted = ag.date_ag
+    ? new Date(ag.date_ag).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })
+    : ag.date_ag;
+
+  const sorted = bureau ? [...(bureau.membres || [])].sort(
+    (a, b) => FONCTION_ORDER.indexOf(a.fonction) - FONCTION_ORDER.indexOf(b.fonction)
+  ) : [];
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mt-10 mb-10">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-pink-50 to-rose-50 rounded-t-2xl">
+          <div>
+            <h2 className="font-bold text-slate-800 text-base">Bureau Syndical</h2>
+            <p className="text-xs text-pink-600 font-medium mt-0.5">AG du {dateFormatted} — {ag.type_ag_label}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-xl font-bold px-2">×</button>
+        </div>
+
+        <div className="p-6">
+          {loading ? (
+            <div className="text-center py-10 text-slate-400">Chargement…</div>
+          ) : bureau ? (
+            /* Bureau existant */
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span>Mandat du <strong>{bureau.date_debut}</strong>{bureau.date_fin ? ` au ${bureau.date_fin}` : ""}</span>
+                {bureau.actif && <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">Actif</span>}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {sorted.map(m => (
+                  <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-rose-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                      {(m.personne_nom || "?")[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-800 truncate">{m.personne_nom} {m.personne_prenom}</div>
+                      <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 ${FONCTION_STYLE[m.fonction] || FONCTION_STYLE.MEMBRE}`}>
+                        {FONCTION_LABEL[m.fonction] || m.fonction}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {sorted.length === 0 && <p className="text-sm text-slate-400 text-center py-4">Aucun membre enregistré.</p>}
+            </div>
+          ) : showForm ? (
+            /* Formulaire création */
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Date début *</label>
+                  <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pink-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Date fin</label>
+                  <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pink-400" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-2">Membres</label>
+                <div className="flex gap-2 flex-wrap">
+                  <select value={newP} onChange={e => setNewP(e.target.value)}
+                    className="flex-1 min-w-0 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pink-400">
+                    <option value="">— Sélectionner —</option>
+                    {personnes.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
+                  </select>
+                  <select value={newF} onChange={e => setNewF(e.target.value)}
+                    className="w-36 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pink-400">
+                    {FONCTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                  </select>
+                  <button onClick={addMembre}
+                    className="px-4 py-2 bg-slate-700 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition">
+                    + Ajouter
+                  </button>
+                </div>
+                {membres.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {membres.map((m, i) => (
+                      <div key={i} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-transparent ${FONCTION_STYLE[m.fonction] || "bg-slate-100 text-slate-600"}`}>
+                        <span className="font-semibold">{FONCTION_LABEL[m.fonction]}</span>
+                        <span>—</span>
+                        <span>{personneLabel(m.personne_id)}</span>
+                        <button onClick={() => setMembres(prev => prev.filter((_, j) => j !== i))} className="ml-1 font-bold text-slate-400 hover:text-red-500">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button onClick={() => { setShowForm(false); setError(""); }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">
+                  ← Retour
+                </button>
+                <button onClick={handleSave} disabled={saving}
+                  className="px-5 py-2 rounded-xl bg-pink-500 text-white text-sm font-semibold hover:bg-pink-600 disabled:opacity-60 transition">
+                  {saving ? "Enregistrement…" : "Créer le bureau"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Aucun bureau — bouton création */
+            <div className="text-center py-10 space-y-4">
+              <p className="text-slate-400 text-sm">Aucun bureau syndical pour cette assemblée.</p>
+              <button onClick={() => setShowForm(true)}
+                className="px-5 py-2 rounded-xl bg-pink-500 text-white text-sm font-semibold hover:bg-pink-600 transition shadow">
+                + Créer le Bureau Syndical
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AssembleesPage() {
   const navigate = useNavigate();
@@ -27,6 +242,7 @@ export default function AssembleesPage() {
   const [pvFile,   setPvFile]   = useState(null);
   const [saving,   setSaving]   = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
+  const [bureauAg, setBureauAg] = useState(null); // AG sélectionnée pour le modal bureau
   const menuRef = useRef(null);
 
   const fetchItems = () => {
@@ -153,13 +369,13 @@ export default function AssembleesPage() {
                 </div>
               )}
 
-              {/* Ligne 4 : actions + PV */}
+              {/* Ligne 4 : actions */}
               <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-violet-100">
                 <button onClick={() => navigate(`/gouvernance/resolutions?ag_id=${item.id}`)}
                   className="flex items-center gap-1 px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200 transition">
                   Résolutions ({item.nb_resolutions ?? 0})
                 </button>
-                <button onClick={() => navigate(`/gouvernance/bureau?ag_id=${item.id}`)}
+                <button onClick={() => setBureauAg(item)}
                   className="flex items-center gap-1 px-3 py-1 rounded-lg bg-pink-100 text-pink-700 text-xs font-semibold hover:bg-pink-200 transition">
                   Bureau Syndical
                 </button>
@@ -176,6 +392,12 @@ export default function AssembleesPage() {
         </div>
       )}
 
+      {/* Modal Bureau Syndical */}
+      {bureauAg && (
+        <BureauModal ag={bureauAg} onClose={() => setBureauAg(null)} />
+      )}
+
+      {/* Modal form AG */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
