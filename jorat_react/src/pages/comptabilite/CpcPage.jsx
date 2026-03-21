@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 const FMT = new Intl.NumberFormat("fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -33,6 +34,7 @@ function Section({ title, rows, total, color, textColor }) {
 }
 
 export default function CpcPage() {
+  const navigate = useNavigate();
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [dateDebut, setDateDebut] = useState("");
@@ -61,6 +63,7 @@ export default function CpcPage() {
     <div className="max-w-4xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <div>
+          <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-2 transition">← Tableau de bord</button>
           <h1 className="text-2xl font-bold text-slate-800">Compte de Produits et Charges</h1>
           <p className="text-sm text-slate-500 mt-1">CPC — Résultat de l'exercice</p>
         </div>

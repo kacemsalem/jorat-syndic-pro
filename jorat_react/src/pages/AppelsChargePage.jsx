@@ -211,6 +211,7 @@ export default function AppelsChargePage() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
+          <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-2 transition">← Tableau de bord</button>
           <h1 className="text-xl font-bold text-slate-800">
             {filtre === "FOND" ? "Appels de fond" : "Appels de charge"}
           </h1>

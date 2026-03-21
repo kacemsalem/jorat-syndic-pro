@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
 const FMT = new Intl.NumberFormat("fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmt = (v) => FMT.format(parseFloat(v) || 0);
@@ -38,6 +39,7 @@ function FilterBar({ dateDebut, setDateDebut, dateFin, setDateFin, search, setSe
 }
 
 export default function JournalPage() {
+  const navigate = useNavigate();
   const [entries, setEntries]           = useState([]);
   const [loading, setLoading]           = useState(true);
   const [dateDebut, setDateDebut]       = useState("");
@@ -92,6 +94,7 @@ export default function JournalPage() {
     <div className="max-w-7xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <div>
+          <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-2 transition">← Tableau de bord</button>
           <h1 className="text-2xl font-bold text-slate-800">Journal comptable</h1>
           <p className="text-sm text-slate-500 mt-1">Écritures en partie double</p>
         </div>

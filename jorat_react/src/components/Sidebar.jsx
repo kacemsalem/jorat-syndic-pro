@@ -80,17 +80,6 @@ const BASE_NAV_GROUPS = [
     ],
   },
   {
-    label: "Comptabilité",
-    collapsible: true,
-    items: [
-      { label: "Journal",        path: "/comptabilite/journal",     icon: "journal" },
-      { label: "Grand Livre",    path: "/comptabilite/grand-livre", icon: "grandlivre" },
-      { label: "Balance",        path: "/comptabilite/balance",     icon: "balance" },
-      { label: "CPC",            path: "/comptabilite/cpc",         icon: "cpc" },
-      { label: "Bilan",          path: "/comptabilite/bilan",       icon: "bilan" },
-    ],
-  },
-  {
     label: "Administration",
     collapsible: true,
     items: [

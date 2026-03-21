@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 const FMT = new Intl.NumberFormat("fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -31,6 +32,7 @@ function BilanColumn({ title, rows, total, color, borderColor, textColor }) {
 }
 
 export default function BilanPage() {
+  const navigate = useNavigate();
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [dateDebut, setDateDebut] = useState("");
@@ -71,6 +73,7 @@ export default function BilanPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <div>
+          <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-2 transition">← Tableau de bord</button>
           <h1 className="text-2xl font-bold text-slate-800">Bilan simplifié</h1>
           <p className="text-sm text-slate-500 mt-1">Situation patrimoniale de la résidence</p>
         </div>
