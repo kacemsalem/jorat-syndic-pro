@@ -248,11 +248,11 @@ export default function TravauxPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-slate-400">Aucune réalisation enregistrée.</div>
       ) : (
-        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+        <div ref={menuRef} className="flex flex-col gap-3">
           {filtered.map(t => {
             const opt = STATUT_OPTIONS.find(o => o.value === t.statut);
             return (
-              <div key={t.id} className="bg-teal-50 rounded-xl border border-teal-200 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
+              <div key={t.id} className="bg-teal-50 rounded-xl border border-teal-200 shadow-sm px-4 py-3 flex flex-col gap-2 relative">
                 {/* Top: date + statut + menu */}
                 <div className="flex items-center justify-between gap-1">
                   <div className="flex items-center gap-1.5 min-w-0 flex-wrap">

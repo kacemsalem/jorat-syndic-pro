@@ -153,15 +153,21 @@ export default function AssembleesPage() {
                 </div>
               )}
 
-              {/* Ligne 4 : résolutions + PV */}
-              <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-violet-100">
+              {/* Ligne 4 : actions + PV */}
+              <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-violet-100">
                 <button onClick={() => navigate(`/gouvernance/resolutions?ag_id=${item.id}`)}
-                  className="text-xs text-indigo-600 hover:underline font-semibold">
-                  {item.nb_resolutions ?? 0} résolution{(item.nb_resolutions ?? 0) !== 1 ? "s" : ""} →
+                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200 transition">
+                  Résolutions ({item.nb_resolutions ?? 0})
+                </button>
+                <button onClick={() => navigate(`/gouvernance/bureau?ag_id=${item.id}`)}
+                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-pink-100 text-pink-700 text-xs font-semibold hover:bg-pink-200 transition">
+                  Bureau Syndical
                 </button>
                 {item.pv_document && (
                   <a href={item.pv_document} target="_blank" rel="noreferrer"
-                    className="text-xs text-blue-600 hover:underline">📄 PV</a>
+                    className="px-3 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-semibold hover:bg-blue-200 transition">
+                    📄 PV
+                  </a>
                 )}
               </div>
             </div>

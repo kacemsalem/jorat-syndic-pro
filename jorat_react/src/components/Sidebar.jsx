@@ -76,8 +76,6 @@ const BASE_NAV_GROUPS = [
     collapsible: true,
     items: [
       { label: "Assemblées générales", path: "/gouvernance/assemblees",  icon: "ag" },
-      { label: "Bureau syndical",      path: "/gouvernance/bureau",      icon: "bureau" },
-      { label: "Résolutions",          path: "/gouvernance/resolutions", icon: "resolutions" },
       { label: "Documents",            path: "/gouvernance/documents",   icon: "documents" },
       { label: "Événements",        path: "/gouvernance/travaux",         icon: "travaux" },
     ],

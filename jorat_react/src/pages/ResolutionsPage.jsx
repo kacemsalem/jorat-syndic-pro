@@ -126,9 +126,9 @@ export default function ResolutionsPage() {
       ) : items.length === 0 ? (
         <div className="text-center py-16 text-slate-400">Aucune résolution</div>
       ) : (
-        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+        <div ref={menuRef} className="flex flex-col gap-3">
           {items.map(item => (
-            <div key={item.id} className="bg-indigo-50 rounded-xl border border-indigo-200 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
+            <div key={item.id} className="bg-indigo-50 rounded-xl border border-indigo-200 shadow-sm px-4 py-3 flex flex-col gap-2 relative">
               {/* Top: n° + résultat + menu */}
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-1.5 min-w-0">
