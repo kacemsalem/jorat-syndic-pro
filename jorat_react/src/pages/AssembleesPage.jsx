@@ -190,7 +190,6 @@ function BureauModal({ ag, onClose }) {
                     </button>
                   </div>
                 </div>
-                </div>
                 {membres.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {membres.map((m, i) => (
