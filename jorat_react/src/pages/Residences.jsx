@@ -138,12 +138,6 @@ export default function Residences() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate("/kanban")}
-            className="text-sm px-3 py-1.5 bg-slate-800 text-white rounded-xl font-semibold hover:bg-slate-700 transition"
-          >
-            Gérer les lots →
-          </button>
 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
             residence.statut_residence === "ACTIF" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
           }`}>
