@@ -105,26 +105,32 @@ export default function AssembleesPage() {
       ) : items.length === 0 ? (
         <div className="text-center py-16 text-slate-400">Aucune assemblée générale</div>
       ) : (
-        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-          {items.map(item => (
-            <div key={item.id} className="bg-violet-50 rounded-xl border border-violet-200 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
-              {/* Top: date + statut + menu */}
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1 flex-wrap min-w-0">
-                  <span className="text-[10px] font-mono text-slate-500 shrink-0">{item.date_ag}</span>
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${STATUT_COLORS[item.statut] ?? "bg-slate-100 text-slate-500"}`}>
+        <div ref={menuRef} className="flex flex-col gap-3">
+          {items.map(item => {
+            const dateFormatted = item.date_ag
+              ? new Date(item.date_ag).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })
+              : item.date_ag;
+            return (
+            <div key={item.id} className="bg-violet-50 rounded-xl border border-violet-200 shadow-sm px-4 py-3 flex flex-col gap-2 relative">
+              {/* Ligne 1 : titre + statut + menu */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <span className="font-bold text-slate-800 text-sm">
+                    Assemblée Générale du {dateFormatted}
+                  </span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUT_COLORS[item.statut] ?? "bg-slate-100 text-slate-500"}`}>
                     {item.statut_label}
                   </span>
                 </div>
                 <div className="relative shrink-0">
                   <button onClick={() => setOpenMenu(openMenu === item.id ? null : item.id)}
                     className="p-0.5 rounded hover:bg-violet-100 text-slate-300 hover:text-slate-600 transition">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
                     </svg>
                   </button>
                   {openMenu === item.id && (
-                    <div className="absolute right-0 top-5 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
+                    <div className="absolute right-0 top-6 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
                       <button onClick={() => { openEdit(item); setOpenMenu(null); }}
                         className="w-full text-left px-3 py-1 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
                       <button onClick={() => { handleDelete(item); setOpenMenu(null); }}
@@ -134,22 +140,33 @@ export default function AssembleesPage() {
                 </div>
               </div>
 
-              {/* Type */}
-              <div className="font-semibold text-slate-800 text-[13px] leading-tight truncate">{item.type_ag_label}</div>
+              {/* Ligne 2 : session */}
+              <div className="text-xs text-slate-600">
+                <span className="font-semibold text-slate-500">Session :</span> {item.type_ag_label}
+              </div>
 
-              {/* Résolutions + PV */}
-              <div className="flex items-center gap-2 flex-wrap">
+              {/* Ligne 3 : ordre du jour */}
+              {item.ordre_du_jour && (
+                <div className="text-xs text-slate-600">
+                  <span className="font-semibold text-slate-500">Ordre du jour :</span>{" "}
+                  <span className="line-clamp-2">{item.ordre_du_jour}</span>
+                </div>
+              )}
+
+              {/* Ligne 4 : résolutions + PV */}
+              <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-violet-100">
                 <button onClick={() => navigate(`/gouvernance/resolutions?ag_id=${item.id}`)}
-                  className="text-[10px] text-indigo-600 hover:underline font-semibold">
+                  className="text-xs text-indigo-600 hover:underline font-semibold">
                   {item.nb_resolutions ?? 0} résolution{(item.nb_resolutions ?? 0) !== 1 ? "s" : ""} →
                 </button>
                 {item.pv_document && (
                   <a href={item.pv_document} target="_blank" rel="noreferrer"
-                    className="text-[10px] text-blue-600 hover:underline">PV</a>
+                    className="text-xs text-blue-600 hover:underline">📄 PV</a>
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
