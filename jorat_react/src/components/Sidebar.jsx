@@ -105,15 +105,15 @@ function NavItem({ item, isActive, onClose }) {
       onClick={() => { navigate(item.path); onClose(); }}
       className={`${base} ${
         isActive
-          ? "bg-indigo-500/20 text-white"
-          : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.06]"
+          ? "bg-indigo-600 text-white shadow-sm"
+          : "text-slate-300 hover:text-white hover:bg-white/[0.08]"
       }`}
     >
       {/* Left accent bar for active item */}
       {isActive && (
-        <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-indigo-400 rounded-r" />
+        <span className="absolute left-0 top-1 bottom-1 w-1 bg-indigo-300 rounded-r" />
       )}
-      <span className={`shrink-0 transition-colors ${isActive ? "text-indigo-300" : "text-slate-500 group-hover:text-slate-300"}`}>
+      <span className={`shrink-0 transition-colors ${isActive ? "text-indigo-200" : "text-slate-400 group-hover:text-slate-200"}`}>
         {ICONS[item.icon]}
       </span>
       <span className="truncate">{item.label}</span>
@@ -215,13 +215,13 @@ export default function Sidebar({ isOpen, onClose }) {
                 isCollapsible ? (
                   <button
                     onClick={() => toggleSection(group.label)}
-                    className="w-full flex items-center justify-between px-3.5 pt-2 pb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600 hover:text-slate-400 transition-colors"
+                    className="w-full flex items-center justify-between px-3.5 pt-2 pb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400 hover:text-slate-300 transition-colors"
                   >
                     <span>{group.label}</span>
                     <Chevron open={isOpen} />
                   </button>
                 ) : (
-                  <div className="px-3.5 pt-2 pb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">
+                  <div className="px-3.5 pt-2 pb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">
                     {group.label}
                   </div>
                 )
@@ -242,7 +242,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
       {/* ── Footer ── */}
       <div className="border-t border-white/[0.06] px-3.5 py-2.5 flex-shrink-0">
-        <div className="text-[10px] text-slate-700 text-center">© {new Date().getFullYear()} Syndic Pro</div>
+        <div className="text-[10px] text-slate-500 text-center">© {new Date().getFullYear()} Syndic Pro</div>
       </div>
 
       </div>

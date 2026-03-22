@@ -26,14 +26,9 @@ services:
   react:
     build:
       context: ./jorat_react
-      dockerfile: Dockerfile.local
-    volumes:
-      - ./jorat_react:/app
-      - /app/node_modules
+      dockerfile: Dockerfile
     ports:
-      - "5173:5173"
-    environment:
-      - DJANGO_HOST=http://django:8000
+      - "5173:80"
     depends_on:
       - django
 

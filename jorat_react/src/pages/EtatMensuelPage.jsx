@@ -37,23 +37,28 @@ export default function EtatMensuelPage() {
       .catch(() => {});
   }, [year]);
 
-  const entrees = data?.mouvements?.filter(m => parseFloat(m.credit) > 0) || [];
-  const sorties = data?.mouvements?.filter(m => parseFloat(m.debit) > 0) || [];
+  const paiements = data?.mouvements?.filter(m => parseFloat(m.debit)  > 0) || [];
+  const depenses  = data?.mouvements?.filter(m => parseFloat(m.credit) > 0) || [];
 
-  // Build cross table: carry-over logic (same as PaymentBar)
-  // totalPaid / totalDu * 12 = months covered starting from Jan
+  // Build cross table: carry-over logic filtrée <= fin du mois sélectionné
   const crossRows = useMemo(() => {
     if (!crossData?.lots) return [];
+    const cutoff = new Date(year, month + 1, 0); // dernier jour du mois sélectionné
+    cutoff.setHours(23, 59, 59, 999);
     return crossData.lots.map(lot => {
-      const totalDu   = parseFloat(lot.total_du  || 0);
-      const totalPaid = lot.paiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-      // How many full months covered (carry-over from Jan)
+      const totalDu = parseFloat(lot.total_du || 0);
+      // Seulement les paiements dont la date <= cutoff
+      const paiementsFiltres = (lot.paiements || []).filter(p => {
+        if (!p.date) return true; // si pas de date, on inclut
+        return new Date(p.date) <= cutoff;
+      });
+      const totalPaid = paiementsFiltres.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
       const monthsCovered = totalDu > 0 ? (totalPaid / totalDu) * 12 : 0;
       const paid = Array(12).fill(false).map((_, i) => i < monthsCovered);
       const pct = totalDu > 0 ? Math.min((totalPaid / totalDu) * 100, 100) : 0;
       return { lot: lot.lot, nom: lot.nom, paid, pct, monthsCovered, totalDu, totalPaid };
     });
-  }, [crossData, year]);
+  }, [crossData, year, month]);
 
   const yearOptions = [];
   for (let y = now.getFullYear() - 3; y <= now.getFullYear() + 1; y++) yearOptions.push(y);
@@ -66,7 +71,7 @@ export default function EtatMensuelPage() {
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-800">État mensuel</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Entrées / Sorties du mois · Suivi paiements annuel</p>
+          <p className="text-xs text-slate-400 mt-0.5">Paiements reçus / Dépenses du mois · Suivi avancement annuel</p>
         </div>
         <div className="flex items-center gap-2 ml-auto flex-wrap">
           <select value={year} onChange={e => setYear(Number(e.target.value))}
@@ -91,10 +96,10 @@ export default function EtatMensuelPage() {
           {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: "Entrées",  value: fmt(data.entrees),         color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100" },
-              { label: "Sorties",  value: fmt(data.sorties),         color: "text-red-600",     bg: "bg-red-50 border-red-100"         },
-              { label: "Balance",  value: fmt(data.balance),         color: parseFloat(data.balance) >= 0 ? "text-emerald-600" : "text-red-600", bg: "bg-slate-50 border-slate-100" },
-              { label: "Paiements", value: fmt(data.total_paiements), color: "text-sky-600",    bg: "bg-sky-50 border-sky-100"          },
+              { label: "Paiements reçus", value: fmt(data.entrees),         color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100" },
+              { label: "Dépenses",       value: fmt(data.sorties),         color: "text-red-600",     bg: "bg-red-50 border-red-100"         },
+              { label: "Balance",        value: fmt(data.balance),         color: parseFloat(data.balance) >= 0 ? "text-emerald-600" : "text-red-600", bg: "bg-slate-50 border-slate-100" },
+              { label: "Total paiements",value: fmt(data.total_paiements), color: "text-sky-600",    bg: "bg-sky-50 border-sky-100"          },
             ].map(k => (
               <div key={k.label} className={`rounded-xl border p-3 ${k.bg}`}>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{k.label}</p>
@@ -104,44 +109,44 @@ export default function EtatMensuelPage() {
             ))}
           </div>
 
-          {/* Entrées / Sorties colonnes */}
+          {/* Paiements / Dépenses colonnes */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Entrées */}
+            {/* Paiements reçus */}
             <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm overflow-hidden">
               <div className="px-4 py-2.5 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Entrées — {MOIS_FULL[month]}</span>
-                <span className="text-xs font-bold text-emerald-600">{entrees.length}</span>
+                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Paiements reçus — {MOIS_FULL[month]}</span>
+                <span className="text-xs font-bold text-emerald-600">{paiements.length}</span>
               </div>
-              {entrees.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">Aucune entrée ce mois</p>
+              {paiements.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">Aucun paiement ce mois</p>
               ) : (
                 <div className="p-2 space-y-1">
-                  {entrees.map((m, i) => (
+                  {paiements.map((m, i) => (
                     <div key={i} className="flex items-center gap-2 rounded-lg bg-emerald-50/50 px-2.5 py-2 hover:bg-emerald-50 transition">
                       <span className="text-[10px] font-mono text-slate-400 w-16 shrink-0">{m.date}</span>
                       <span className="text-xs text-slate-700 flex-1 truncate">{m.libelle}</span>
-                      <span className="text-xs font-bold font-mono text-emerald-600 shrink-0">{fmt(m.credit)}</span>
+                      <span className="text-xs font-bold font-mono text-emerald-600 shrink-0">{fmt(m.debit)}</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Sorties */}
+            {/* Dépenses */}
             <div className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
               <div className="px-4 py-2.5 bg-red-50 border-b border-red-100 flex items-center justify-between">
-                <span className="text-xs font-bold text-red-700 uppercase tracking-wider">Sorties — {MOIS_FULL[month]}</span>
-                <span className="text-xs font-bold text-red-600">{sorties.length}</span>
+                <span className="text-xs font-bold text-red-700 uppercase tracking-wider">Dépenses — {MOIS_FULL[month]}</span>
+                <span className="text-xs font-bold text-red-600">{depenses.length}</span>
               </div>
-              {sorties.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">Aucune sortie ce mois</p>
+              {depenses.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">Aucune dépense ce mois</p>
               ) : (
                 <div className="p-2 space-y-1">
-                  {sorties.map((m, i) => (
+                  {depenses.map((m, i) => (
                     <div key={i} className="flex items-center gap-2 rounded-lg bg-red-50/50 px-2.5 py-2 hover:bg-red-50 transition">
                       <span className="text-[10px] font-mono text-slate-400 w-16 shrink-0">{m.date}</span>
                       <span className="text-xs text-slate-700 flex-1 truncate">{m.libelle}</span>
-                      <span className="text-xs font-bold font-mono text-red-600 shrink-0">{fmt(m.debit)}</span>
+                      <span className="text-xs font-bold font-mono text-red-600 shrink-0">{fmt(m.credit)}</span>
                     </div>
                   ))}
                 </div>
@@ -155,8 +160,8 @@ export default function EtatMensuelPage() {
       {crossRows.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">État global paiements {year}</span>
-            <span className="text-[10px] text-slate-400">Couverture par carry-over · colonne <span className="font-semibold text-emerald-600">{MOIS[month]}</span> = mois sélectionné</span>
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Avancement paiements au {MOIS_FULL[month]} {year}</span>
+            <span className="text-[10px] text-slate-400">Paiements reçus ≤ fin <span className="font-semibold text-emerald-600">{MOIS[month]}</span> · carry-over</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -188,11 +193,7 @@ export default function EtatMensuelPage() {
                         return (
                           <td key={mi} className={`px-0.5 py-2 text-center ${isCurrent ? "bg-emerald-50" : ""}`}>
                             {p ? (
-                              <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-bold ${
-                                allPaid ? "bg-emerald-500 text-white" :
-                                isCurrent ? "bg-emerald-400 text-white" :
-                                "bg-emerald-100 text-emerald-700"
-                              }`}>✓</span>
+                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-bold bg-emerald-500 text-white">✓</span>
                             ) : (
                               <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] ${
                                 isCurrent ? "bg-amber-100 text-amber-400" : "bg-slate-100 text-slate-300"

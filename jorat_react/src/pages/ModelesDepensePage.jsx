@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -6,7 +7,11 @@ function getCsrf() {
 
 const EMPTY = { nom: "", famille_depense: "", compte_comptable: "", fournisseur: "", actif: true };
 
+const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400";
+
 export default function ModelesDepensePage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [modeles,      setModeles]      = useState([]);
   const [familles,     setFamilles]     = useState([]);
   const [comptes,      setComptes]      = useState([]);
@@ -18,6 +23,7 @@ export default function ModelesDepensePage() {
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState("");
   const [filterFamille, setFilterFamille] = useState("");
+
 
   const load = () => {
     setLoading(true);
@@ -35,6 +41,13 @@ export default function ModelesDepensePage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (location.state?.openForm) {
+      openCreate();
+      window.history.replaceState({}, "");
+    }
+  }, []);
 
   const openCreate = () => { setForm(EMPTY); setEditItem(null); setError(""); setShowForm(true); };
   const openEdit   = (m) => {
@@ -87,6 +100,7 @@ export default function ModelesDepensePage() {
     load();
   };
 
+
   const filtered = useMemo(() => {
     if (!filterFamille) return modeles;
     return modeles.filter(m => String(m.famille_depense) === filterFamille);
@@ -137,64 +151,68 @@ export default function ModelesDepensePage() {
       {/* Form */}
       {showForm && (
         <div className="bg-white rounded-2xl border border-amber-100 shadow-sm p-5">
+          {/* Bouton retour uniquement en création */}
+          {!editItem && (
+            <button onClick={closeForm} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 transition-colors mb-3">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Retour
+            </button>
+          )}
           <h2 className="text-sm font-bold text-slate-700 mb-4">{editItem ? "Modifier le modèle" : "Nouveau modèle"}</h2>
           <div className="space-y-3">
+            {/* Nom */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">Nom *</label>
-              <input autoFocus
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
-                placeholder="Ex : Facture électricité"
-                value={form.nom}
-                onChange={e => setForm(f => ({ ...f, nom: e.target.value }))}
-              />
+              <input autoFocus className={INPUT} placeholder="Ex : Facture électricité"
+                value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Famille *</label>
-                <select
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
-                  value={form.famille_depense}
-                  onChange={e => setForm(f => ({ ...f, famille_depense: e.target.value }))}
-                >
-                  <option value="">— Choisir —</option>
-                  {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Compte comptable</label>
-                <select
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
-                  value={form.compte_comptable}
-                  onChange={e => setForm(f => ({ ...f, compte_comptable: e.target.value }))}
-                >
+            {/* Famille */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Famille *</label>
+              <select className={INPUT} value={form.famille_depense}
+                onChange={e => setForm(f => ({ ...f, famille_depense: e.target.value }))}>
+                <option value="">— Choisir —</option>
+                {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+              </select>
+            </div>
+            {/* Compte comptable */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Compte comptable</label>
+              <div className="flex gap-2">
+                <select className={`flex-1 ${INPUT}`} value={form.compte_comptable}
+                  onChange={e => setForm(f => ({ ...f, compte_comptable: e.target.value }))}>
                   <option value="">— Aucun —</option>
                   {comptes.filter(c => c.code !== "000").map(c => (
                     <option key={c.id} value={c.id}>{c.code} — {c.libelle}</option>
                   ))}
                 </select>
+                <button type="button" onClick={() => navigate("/comptes-comptables", { state: { openForm: true } })}
+                  title="Gérer le plan comptable"
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">↗</button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Fournisseur par défaut</label>
-                <select
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
-                  value={form.fournisseur}
-                  onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}
-                >
+            {/* Fournisseur */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Fournisseur par défaut</label>
+              <div className="flex gap-2">
+                <select className={`flex-1 ${INPUT}`} value={form.fournisseur}
+                  onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}>
                   <option value="">— Aucun —</option>
                   {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
                 </select>
+                <button type="button" onClick={() => navigate("/fournisseurs", { state: { openForm: true } })}
+                  title="Gérer les fournisseurs"
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">↗</button>
               </div>
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={form.actif}
-                    onChange={e => setForm(f => ({ ...f, actif: e.target.checked }))}
-                    className="w-4 h-4 accent-amber-500"
-                  />
-                  <span className="text-sm text-slate-700">Actif</span>
-                </label>
-              </div>
+            </div>
+            {/* Actif */}
+            <div className="flex items-center gap-2 pt-1">
+              <input type="checkbox" id="actif-chk" checked={form.actif}
+                onChange={e => setForm(f => ({ ...f, actif: e.target.checked }))}
+                className="w-4 h-4 accent-amber-500" />
+              <label htmlFor="actif-chk" className="text-sm text-slate-700 cursor-pointer">Actif</label>
             </div>
           </div>
           {error && <p className="text-red-500 text-xs mt-2">{error}</p>}

@@ -120,6 +120,15 @@ export default function PersonnesPage() {
       {/* En-tête */}
       <div className="flex items-center justify-between mb-5">
         <div>
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 transition-colors mb-2"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Retour Lot
+          </button>
           <h1 className="text-xl font-bold text-slate-800">Contacts</h1>
           <p className="text-xs text-slate-400 mt-0.5">
             {personnes.length} contact{personnes.length > 1 ? "s" : ""} dans cette résidence

@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -75,14 +76,27 @@ function SubFormFamille({ onBack, onCreated }) {
   );
 }
 
-function SubFormModele({ familles: initialFamilles, comptes, fournisseurs, onBack, onCreated, onFamilleAdded }) {
+function SubFormModele({ familles: initialFamilles, comptes: initialComptes, fournisseurs: initialFournisseurs, onBack, onCreated, onFamilleAdded, onCompteAdded, onFournisseurAdded }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ nom: "", famille: "", compte_comptable: "", fournisseur: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [localFamilles, setLocalFamilles] = useState(initialFamilles);
-  const [showNewCat, setShowNewCat] = useState(false);
-  const [newCatNom, setNewCatNom] = useState("");
-  const [savingCat, setSavingCat] = useState(false);
+  const [localFamilles,     setLocalFamilles]     = useState(initialFamilles);
+  const [localComptes,      setLocalComptes]      = useState(initialComptes);
+  const [localFournisseurs, setLocalFournisseurs] = useState(initialFournisseurs);
+
+  const [showNewCat,  setShowNewCat]  = useState(false);
+  const [newCatNom,   setNewCatNom]   = useState("");
+  const [savingCat,   setSavingCat]   = useState(false);
+
+  const [showNewCpt,  setShowNewCpt]  = useState(false);
+  const [newCptCode,  setNewCptCode]  = useState("");
+  const [newCptLib,   setNewCptLib]   = useState("");
+  const [savingCpt,   setSavingCpt]   = useState(false);
+
+  const [showNewFou,  setShowNewFou]  = useState(false);
+  const [newFouNom,   setNewFouNom]   = useState("");
+  const [savingFou,   setSavingFou]   = useState(false);
 
   const handleCreateCat = async () => {
     if (!newCatNom.trim()) return;
@@ -97,9 +111,45 @@ function SubFormModele({ familles: initialFamilles, comptes, fournisseurs, onBac
       const created = await res.json();
       setLocalFamilles(prev => [...prev, created]);
       setForm(f => ({ ...f, famille: String(created.id) }));
-      onFamilleAdded(created);
+      onFamilleAdded?.(created);
       setNewCatNom(""); setShowNewCat(false);
     } finally { setSavingCat(false); }
+  };
+
+  const handleCreateCpt = async () => {
+    if (!newCptCode.trim() || !newCptLib.trim()) return;
+    setSavingCpt(true);
+    try {
+      const res = await fetch("/api/comptes-comptables/", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ code: newCptCode.trim(), libelle: newCptLib.trim(), actif: true }),
+      });
+      if (!res.ok) return;
+      const created = await res.json();
+      setLocalComptes(prev => [...prev, created]);
+      setForm(f => ({ ...f, compte_comptable: String(created.id) }));
+      onCompteAdded?.(created);
+      setNewCptCode(""); setNewCptLib(""); setShowNewCpt(false);
+    } finally { setSavingCpt(false); }
+  };
+
+  const handleCreateFou = async () => {
+    if (!newFouNom.trim()) return;
+    setSavingFou(true);
+    try {
+      const res = await fetch("/api/fournisseurs/", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ nom: newFouNom.trim(), actif: true }),
+      });
+      if (!res.ok) return;
+      const created = await res.json();
+      setLocalFournisseurs(prev => [...prev, created]);
+      setForm(f => ({ ...f, fournisseur: String(created.id) }));
+      onFournisseurAdded?.(created);
+      setNewFouNom(""); setShowNewFou(false);
+    } finally { setSavingFou(false); }
   };
 
   const handleSave = async () => {
@@ -108,9 +158,9 @@ function SubFormModele({ familles: initialFamilles, comptes, fournisseurs, onBac
     try {
       const payload = {
         nom: form.nom.trim(),
-        famille_depense: form.famille || null,
+        famille_depense:  form.famille          || null,
         compte_comptable: form.compte_comptable || null,
-        fournisseur: form.fournisseur || null,
+        fournisseur:      form.fournisseur      || null,
         actif: true,
       };
       const res = await fetch("/api/modeles-depense/", {
@@ -125,17 +175,43 @@ function SubFormModele({ familles: initialFamilles, comptes, fournisseurs, onBac
     finally { setSaving(false); }
   };
 
+  const BtnPlus = ({ onClick }) => (
+    <button type="button" onClick={onClick}
+      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
+      +
+    </button>
+  );
+  const BtnLink = ({ url, title }) => (
+    <button type="button" onClick={() => navigate(url)} title={title}
+      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">
+      ↗
+    </button>
+  );
+  const InlineActions = ({ onSave, saving, onCancel }) => (
+    <>
+      <button onClick={onSave} disabled={saving}
+        className="shrink-0 px-3 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+        {saving ? "…" : "Créer"}
+      </button>
+      <button onClick={onCancel}
+        className="shrink-0 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50">✕</button>
+    </>
+  );
+
   return (
     <div className="space-y-4">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">
         ← Retour à la dépense
       </button>
       <h3 className="text-base font-bold text-slate-800">Nouveau modèle de dépense</h3>
+
+      {/* Nom */}
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
         <input className={INPUT_NORMAL} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Ex : Nettoyage mensuel" />
       </div>
-      {/* Catégorie avec + inline */}
+
+      {/* Catégorie */}
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Catégorie</label>
         <div className="flex gap-2">
@@ -143,41 +219,55 @@ function SubFormModele({ familles: initialFamilles, comptes, fournisseurs, onBac
             <option value="">— Aucune —</option>
             {localFamilles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
           </select>
-          <button type="button" onClick={() => setShowNewCat(v => !v)}
-            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
-            +
-          </button>
+          <BtnPlus onClick={() => { setShowNewCat(v => !v); setShowNewCpt(false); setShowNewFou(false); }} />
         </div>
         {showNewCat && (
           <div className="mt-2 flex gap-2 items-center">
-            <input className={`flex-1 ${INPUT_NORMAL}`} value={newCatNom}
-              onChange={e => setNewCatNom(e.target.value)}
-              placeholder="Nom de la catégorie…" />
-            <button onClick={handleCreateCat} disabled={savingCat}
-              className="shrink-0 px-3 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
-              {savingCat ? "…" : "Créer"}
-            </button>
-            <button onClick={() => { setShowNewCat(false); setNewCatNom(""); }}
-              className="shrink-0 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50">✕</button>
+            <input className={`flex-1 ${INPUT_NORMAL}`} value={newCatNom} onChange={e => setNewCatNom(e.target.value)} placeholder="Nom de la catégorie…" />
+            <InlineActions onSave={handleCreateCat} saving={savingCat} onCancel={() => { setShowNewCat(false); setNewCatNom(""); }} />
           </div>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Compte comptable</label>
-          <select className={INPUT_NORMAL} value={form.compte_comptable} onChange={e => setForm(f => ({ ...f, compte_comptable: e.target.value }))}>
+
+      {/* Compte comptable */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Compte comptable</label>
+        <div className="flex gap-2">
+          <select className={`flex-1 ${INPUT_NORMAL}`} value={form.compte_comptable} onChange={e => setForm(f => ({ ...f, compte_comptable: e.target.value }))}>
             <option value="">— Aucun —</option>
-            {comptes.filter(c => c.code !== "000").map(c => <option key={c.id} value={c.id}>{c.code} — {c.libelle}</option>)}
+            {localComptes.filter(c => c.code !== "000").map(c => <option key={c.id} value={c.id}>{c.code} — {c.libelle}</option>)}
           </select>
+          <BtnPlus onClick={() => { setShowNewCpt(v => !v); setShowNewCat(false); setShowNewFou(false); }} />
+          <BtnLink url="/comptes-comptables" title="Gérer le plan comptable" />
         </div>
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Fournisseur</label>
-          <select className={INPUT_NORMAL} value={form.fournisseur} onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}>
-            <option value="">— Aucun —</option>
-            {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
-          </select>
-        </div>
+        {showNewCpt && (
+          <div className="mt-2 flex gap-2 items-center">
+            <input className={`w-16 ${INPUT_NORMAL}`} value={newCptCode} onChange={e => setNewCptCode(e.target.value)} placeholder="Code…" />
+            <input className={`flex-1 ${INPUT_NORMAL}`} value={newCptLib}  onChange={e => setNewCptLib(e.target.value)}  placeholder="Libellé…" />
+            <InlineActions onSave={handleCreateCpt} saving={savingCpt} onCancel={() => { setShowNewCpt(false); setNewCptCode(""); setNewCptLib(""); }} />
+          </div>
+        )}
       </div>
+
+      {/* Fournisseur */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Fournisseur</label>
+        <div className="flex gap-2">
+          <select className={`flex-1 ${INPUT_NORMAL}`} value={form.fournisseur} onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}>
+            <option value="">— Aucun —</option>
+            {localFournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
+          </select>
+          <BtnPlus onClick={() => { setShowNewFou(v => !v); setShowNewCat(false); setShowNewCpt(false); }} />
+          <BtnLink url="/fournisseurs" title="Gérer les fournisseurs" />
+        </div>
+        {showNewFou && (
+          <div className="mt-2 flex gap-2 items-center">
+            <input className={`flex-1 ${INPUT_NORMAL}`} value={newFouNom} onChange={e => setNewFouNom(e.target.value)} placeholder="Nom du fournisseur…" />
+            <InlineActions onSave={handleCreateFou} saving={savingFou} onCancel={() => { setShowNewFou(false); setNewFouNom(""); }} />
+          </div>
+        )}
+      </div>
+
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <div className="flex justify-end gap-2">
         <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
@@ -291,6 +381,8 @@ function SubFormFournisseur({ onBack, onCreated }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 export default function DepensesPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [depenses,     setDepenses]     = useState([]);
   const [modeles,      setModeles]      = useState([]);
   const [familles,     setFamilles]     = useState([]);
@@ -304,8 +396,6 @@ export default function DepensesPage() {
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState("");
   const [subForm,      setSubForm]      = useState(null); // "famille"|"modele"|"compte"|"fournisseur"
-  const [openMenu,     setOpenMenu]     = useState(null);
-  const menuRef = useRef(null);
 
   // Filters
   const [filterAnnee,       setFilterAnnee]       = useState("");
@@ -333,32 +423,39 @@ export default function DepensesPage() {
 
   useEffect(() => { fetchAll(); }, []);
 
-  // Close menu on outside click
   useEffect(() => {
-    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenu(null); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    if (location.state?.openForm) {
+      openCreate();
+      window.history.replaceState({}, "");
+    }
   }, []);
+
+
 
   // ── Auto-fill from modele ─────────────────────────────────────────────────
   const handleModeleChange = (modeleId) => {
     const m = modeles.find(m => String(m.id) === String(modeleId));
-    setForm(f => {
-      const updates = { ...f, modele_depense: modeleId };
-      const newAuto = { ...autoFilled };
-      if (m) {
-        if (autoFilled.libelle || !f.libelle) { updates.libelle = m.nom; newAuto.libelle = !!m.nom; }
-        if (autoFilled.compte || !f.compte)   { updates.compte = m.compte_comptable ? String(m.compte_comptable) : ""; newAuto.compte = !!m.compte_comptable; }
-        if (autoFilled.fournisseur || !f.fournisseur) { updates.fournisseur = m.fournisseur ? String(m.fournisseur) : ""; newAuto.fournisseur = !!m.fournisseur; }
-        setAutoFilled(newAuto);
-      } else { setAutoFilled(EMPTY_AUTO); }
-      return updates;
-    });
+    if (m) {
+      setForm(f => ({
+        ...f,
+        modele_depense: modeleId,
+        libelle:    m.nom || f.libelle,
+        compte:     (autoFilled.compte     || !f.compte)     ? (m.compte_comptable ? String(m.compte_comptable) : "") : f.compte,
+        fournisseur:(autoFilled.fournisseur|| !f.fournisseur) ? (m.fournisseur      ? String(m.fournisseur)      : "") : f.fournisseur,
+      }));
+      setAutoFilled({ libelle: !!m.nom, compte: !!m.compte_comptable, fournisseur: !!m.fournisseur });
+    } else {
+      setForm(f => ({ ...f, modele_depense: modeleId }));
+      setAutoFilled(EMPTY_AUTO);
+    }
   };
 
   const clearAuto = (field) => setAutoFilled(a => ({ ...a, [field]: false }));
 
-  const openCreate = () => { setForm(EMPTY_FORM); setAutoFilled(EMPTY_AUTO); setEditItem(null); setError(""); setSubForm(null); setShowForm(true); };
+  const openCreate = () => {
+    setForm({ ...EMPTY_FORM, mois: MOIS_OPTIONS[new Date().getMonth()].value });
+    setAutoFilled(EMPTY_AUTO); setEditItem(null); setError(""); setSubForm(null); setShowForm(true);
+  };
   const openEdit   = (d)  => {
     setForm({
       modele_depense:    String(d.modele_depense   || ""),
@@ -519,7 +616,7 @@ export default function DepensesPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-slate-400">Aucune dépense</div>
       ) : (
-        <div ref={menuRef} className="space-y-1.5">
+        <div className="space-y-1.5">
           {filtered.map(dep => (
             <div key={dep.id} className="bg-red-50 rounded-xl border border-red-200 shadow-sm px-3 py-2.5 flex items-center gap-3 relative">
               {/* Date + badges */}
@@ -550,22 +647,16 @@ export default function DepensesPage() {
                 {parseFloat(dep.montant).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
               </span>
 
-              {/* Menu */}
-              <div className="relative shrink-0">
-                <button onClick={() => setOpenMenu(openMenu === dep.id ? null : dep.id)}
-                  className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition">
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                    <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
-                  </svg>
+              {/* Actions */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => openEdit(dep)}
+                  className="p-1.5 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition" title="Modifier">
+                  ✏️
                 </button>
-                {openMenu === dep.id && (
-                  <div className="absolute right-0 top-6 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
-                    <button onClick={() => { openEdit(dep); setOpenMenu(null); }}
-                      className="w-full text-left px-3 py-1 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
-                    <button onClick={() => { handleDelete(dep); setOpenMenu(null); }}
-                      className="w-full text-left px-3 py-1 text-xs text-red-600 hover:bg-red-50">Supprimer</button>
-                  </div>
-                )}
+                <button onClick={() => handleDelete(dep)}
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition" title="Supprimer">
+                  🗑️
+                </button>
               </div>
             </div>
           ))}
@@ -593,7 +684,9 @@ export default function DepensesPage() {
             {subForm === "modele" && (
               <SubFormModele familles={familles} comptes={comptes} fournisseurs={fournisseurs}
                 onBack={() => setSubForm(null)} onCreated={onModeleCreated}
-                onFamilleAdded={created => setFamilles(prev => [...prev, created])} />
+                onFamilleAdded={created => setFamilles(prev => [...prev, created])}
+                onCompteAdded={created => setComptes(prev => [...prev, created])}
+                onFournisseurAdded={created => setFournisseurs(prev => [...prev, created])} />
             )}
             {subForm === "compte" && (
               <SubFormCompte onBack={() => setSubForm(null)} onCreated={onCompteCreated} />
@@ -641,6 +734,11 @@ export default function DepensesPage() {
                         className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
                         +
                       </button>
+                      <button type="button" onClick={() => navigate("/modeles-depense", { state: { openForm: true } })}
+                        title="Gérer les modèles de dépense"
+                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">
+                        ↗
+                      </button>
                     </div>
                   </div>
 
@@ -664,7 +762,11 @@ export default function DepensesPage() {
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Date <span className="text-red-500">*</span></label>
                       <input type="date" className={INPUT_NORMAL}
                         value={form.date_depense}
-                        onChange={e => setForm(f => ({ ...f, date_depense: e.target.value }))}
+                        onChange={e => {
+                          const d = e.target.value;
+                          const moisAuto = d ? MOIS_OPTIONS[new Date(d + "T00:00:00").getMonth()].value : "";
+                          setForm(f => ({ ...f, date_depense: d, mois: moisAuto }));
+                        }}
                       />
                     </div>
                     <div>
@@ -715,10 +817,10 @@ export default function DepensesPage() {
                           <option key={c.id} value={c.id}>{c.code} — {c.libelle}</option>
                         ))}
                       </select>
-                      <button type="button" onClick={() => setSubForm("compte")}
-                        title="Nouveau compte"
-                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
-                        +
+                      <button type="button" onClick={() => navigate("/comptes-comptables")}
+                        title="Gérer le plan comptable"
+                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">
+                        ↗
                       </button>
                     </div>
                   </div>
@@ -738,10 +840,10 @@ export default function DepensesPage() {
                         <option value="">— Aucun —</option>
                         {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
                       </select>
-                      <button type="button" onClick={() => setSubForm("fournisseur")}
-                        title="Nouveau fournisseur"
-                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
-                        +
+                      <button type="button" onClick={() => navigate("/fournisseurs")}
+                        title="Gérer les fournisseurs"
+                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">
+                        ↗
                       </button>
                     </div>
                   </div>
