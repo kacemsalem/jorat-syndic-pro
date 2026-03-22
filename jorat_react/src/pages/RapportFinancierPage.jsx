@@ -112,29 +112,6 @@ export default function RapportFinancierPage() {
     ]);
   }, [data]);
 
-  const depCompteRows = useMemo(() => {
-    if (!data) return [];
-    return Object.entries(data.dep_par_compte)
-      .sort((a, b) => parseFloat(b[1]) - parseFloat(a[1]))
-      .map(([k, v]) => [k, `${fmt(v)} MAD`]);
-  }, [data]);
-
-  const depCatRows = useMemo(() => {
-    if (!data) return [];
-    return Object.entries(data.dep_par_categorie)
-      .sort((a, b) => parseFloat(b[1]) - parseFloat(a[1]))
-      .map(([k, v]) => [k, `${fmt(v)} MAD`]);
-  }, [data]);
-
-  const recRows = useMemo(() => {
-    if (!data) return [];
-    const rows = [["Paiements copropriétaires", `${fmt(data.total_paiements)} MAD`]];
-    Object.entries(data.rec_par_compte)
-      .sort((a, b) => parseFloat(b[1]) - parseFloat(a[1]))
-      .forEach(([k, v]) => rows.push([k, `${fmt(v)} MAD`]));
-    return rows;
-  }, [data]);
-
   const situationLotsRows = useMemo(() => {
     if (!data?.situation_lots) return [];
     return data.situation_lots.map(lot => {
@@ -269,81 +246,26 @@ export default function RapportFinancierPage() {
             </div>
           </Section>
 
-          <Section title="Analyse des dépenses">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Par compte comptable</p>
-                <div className="space-y-1.5">
-                  {depCompteRows.length === 0 ? <div className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-slate-100">Aucune donnée</div>
-                  : depCompteRows.map(([k, v], i) => (
-                    <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2 flex items-center justify-between gap-3 hover:shadow-sm transition">
-                      <span className="text-xs text-slate-700 truncate">{k}</span>
-                      <span className="text-xs font-mono font-semibold text-red-600 whitespace-nowrap flex-shrink-0">{v}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Par catégorie</p>
-                <div className="space-y-1.5">
-                  {depCatRows.length === 0 ? <div className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-slate-100">Aucune donnée</div>
-                  : depCatRows.map(([k, v], i) => (
-                    <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2 flex items-center justify-between gap-3 hover:shadow-sm transition">
-                      <span className="text-xs text-slate-700 truncate">{k}</span>
-                      <span className="text-xs font-mono font-semibold text-red-600 whitespace-nowrap flex-shrink-0">{v}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Section>
-
-          <Section title="Recettes & paiements">
-            <div className="space-y-1.5">
-              {recRows.length === 0 ? <div className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-slate-100">Aucune donnée</div>
-              : recRows.map(([k, v], i) => (
-                <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2 flex items-center justify-between gap-3 hover:shadow-sm transition">
-                  <span className="text-xs text-slate-700 truncate">{k}</span>
-                  <span className="text-xs font-mono font-semibold text-emerald-600 whitespace-nowrap flex-shrink-0">{v}</span>
-                </div>
-              ))}
-            </div>
-          </Section>
-
           <Section title={`Situation des lots (${data.situation_lots?.length ?? 0})`} defaultOpen={false}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-              {[
-                { label: "À jour",    color: "border-emerald-100", header: "bg-emerald-50", textColor: "text-emerald-700",
-                  items: (data.situation_lots ?? []).filter(l => l.statut === "A_JOUR") },
-                { label: "En retard", color: "border-red-100",     header: "bg-red-50",     textColor: "text-red-700",
-                  items: (data.situation_lots ?? []).filter(l => l.statut !== "A_JOUR") },
-              ].map(({ label, color, header, textColor, items }) => (
-                <div key={label} className={`rounded-2xl border ${color} overflow-hidden`}>
-                  <div className={`${header} px-3 py-2 flex items-center justify-between`}>
-                    <span className={`text-xs font-bold ${textColor} uppercase tracking-wide`}>{label}</span>
-                    <span className="text-xs text-slate-400">{items.length}</span>
+            <div className="space-y-1.5">
+              {(data.situation_lots ?? []).length === 0 && (
+                <div className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-slate-100">Aucun lot</div>
+              )}
+              {(data.situation_lots ?? []).map((lot, i) => {
+                const reste = parseFloat(lot.reste);
+                return (
+                  <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5 flex items-center gap-3 hover:shadow-sm transition">
+                    <span className="text-sm font-bold text-slate-800 w-16 shrink-0">{lot.lot}</span>
+                    <span className="text-xs text-slate-500 flex-1 truncate">{lot.proprietaire}</span>
+                    <span className="text-[11px] font-mono text-slate-400 shrink-0">Dû : {fmt(lot.total_du)}</span>
+                    <span className="text-[11px] font-mono text-emerald-600 shrink-0">Payé : {fmt(lot.total_paye)}</span>
+                    <span className={`text-xs font-mono font-bold shrink-0 ${reste > 0 ? "text-red-600" : "text-emerald-600"}`}>{fmt(reste)} MAD</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${lot.statut === "A_JOUR" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                      {lot.statut === "A_JOUR" ? "À jour" : "En retard"}
+                    </span>
                   </div>
-                  <div className="p-2 space-y-1.5">
-                    {items.length === 0 && <p className="text-xs text-slate-300 text-center py-3">Aucun lot</p>}
-                    {items.map((lot, i) => {
-                      const reste = parseFloat(lot.reste);
-                      return (
-                        <div key={i} className="bg-white rounded-xl border border-slate-100 px-3 py-2 space-y-1 hover:shadow-sm transition">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-bold text-slate-800">{lot.lot}</span>
-                            <span className={`text-xs font-mono font-bold ${reste > 0 ? "text-red-600" : "text-emerald-600"}`}>{fmt(lot.reste)} MAD</span>
-                          </div>
-                          <p className="text-xs text-slate-500 truncate">{lot.proprietaire}</p>
-                          <div className="flex items-center justify-between text-[10px] text-slate-400">
-                            <span>Dû : {fmt(lot.total_du)} MAD</span>
-                            <span>Payé : {fmt(lot.total_paye)} MAD</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Section>
         </>

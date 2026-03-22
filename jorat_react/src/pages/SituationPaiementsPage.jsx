@@ -284,50 +284,30 @@ export default function SituationPaiementsPage() {
           Aucun lot trouvé pour {year}.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
-          {[
-            { label: "Soldés",   dotColor: "#10b981", border: "border-emerald-300", header: "bg-emerald-500",
-              bodyBg: "rgba(167,243,208,0.45)", cardBg: "bg-white border-emerald-200", amtColor: "text-emerald-600",
-              items: rows.filter(r => r.total_du > 0 && r.paiements.reduce((s,p)=>s+p.montant,0) >= r.total_du) },
-            { label: "Partiels", dotColor: "#f59e0b", border: "border-amber-300",   header: "bg-amber-400",
-              bodyBg: "rgba(253,230,138,0.45)", cardBg: "bg-white border-amber-200", amtColor: "text-amber-600",
-              items: rows.filter(r => { const p=r.paiements.reduce((s,p)=>s+p.montant,0); return r.total_du>0 && p>0 && p<r.total_du; }) },
-            { label: "Impayés",  dotColor: "#ef4444", border: "border-rose-300",    header: "bg-rose-500",
-              bodyBg: "rgba(254,205,211,0.5)",  cardBg: "bg-white border-rose-200",  amtColor: "text-rose-600",
-              items: rows.filter(r => r.total_du > 0 && r.paiements.reduce((s,p)=>s+p.montant,0) === 0) },
-          ].map(({ label, dotColor, border, header, bodyBg, cardBg, amtColor, items }) => (
-            <div key={label} className={`rounded-2xl border ${border} overflow-hidden`}>
-              <div className={`${header} px-3 py-2 flex items-center gap-2`}>
-                <span className="w-2.5 h-2.5 rounded-full bg-white/70 flex-shrink-0" />
-                <span className="text-xs font-bold text-white uppercase tracking-wide">{label}</span>
-                <span className="ml-auto text-xs font-semibold text-white/80">{items.length}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {rows.map(row => {
+            const paid = row.paiements.reduce((s, p) => s + p.montant, 0);
+            const amtColor = row.total_du > 0 && paid >= row.total_du
+              ? "text-emerald-600"
+              : paid > 0 ? "text-amber-600" : "text-rose-600";
+            return (
+              <div key={row.lot} className="bg-white rounded-xl border border-slate-200 p-3 space-y-2 hover:shadow-sm transition">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <StatusDot totalDu={row.total_du} paiements={row.paiements} />
+                    <span className="font-bold text-slate-800 text-sm">{row.lot}</span>
+                  </div>
+                  {row.total_du > 0 && (
+                    <span className={`text-xs font-mono font-semibold whitespace-nowrap ${amtColor}`}>
+                      {fmt(row.total_du)} <span className="text-slate-400 font-normal">MAD</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 truncate">{row.nom}</p>
+                <PaymentBar totalDu={row.total_du} paiements={row.paiements} />
               </div>
-              <div className="p-2 space-y-2" style={{ backgroundColor: bodyBg }}>
-                {items.length === 0 && (
-                  <p className="text-xs text-slate-300 text-center py-4">Aucun lot</p>
-                )}
-                {items.map(row => {
-                  return (
-                    <div key={row.lot} className={`rounded-xl border p-3 space-y-2 hover:shadow-sm transition ${cardBg}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <StatusDot totalDu={row.total_du} paiements={row.paiements} />
-                          <span className="font-bold text-slate-800 text-sm">{row.lot}</span>
-                        </div>
-                        {row.total_du > 0 && (
-                          <span className={`text-xs font-mono font-semibold whitespace-nowrap ${amtColor}`}>
-                            {fmt(row.total_du)} <span className="text-slate-400 font-normal">MAD</span>
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-500 truncate">{row.nom}</p>
-                      <PaymentBar totalDu={row.total_du} paiements={row.paiements} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

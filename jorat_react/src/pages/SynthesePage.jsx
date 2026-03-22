@@ -306,25 +306,41 @@ export default function SynthesePage() {
     return { montant, recu };
   }, [totauxColonne]);
 
-  // ── Kanban buckets ────────────────────────────────────────────
-  const lotsBuckets = useMemo(() => {
-    const solde = [], partiel = [], nonPaye = [];
-    lotsParGroupe.forEach(({ groupe, lots: lotsGrp }) => {
-      lotsGrp.forEach(lot => {
-        let lotM = 0, lotR = 0;
-        colonnes.forEach(col => {
-          const d = detailMap[lot.id]?.[col.id];
-          if (d) { lotM += parseFloat(d.montant ?? 0); lotR += parseFloat(d.montant_recu ?? 0); }
-        });
-        if (lotM === 0) return;
-        const item = { lot, groupe, lotM, lotR };
-        if (lotR >= lotM) solde.push(item);
-        else if (lotR > 0) partiel.push(item);
-        else nonPaye.push(item);
+  // ── Liste plate lots avec statut ──────────────────────────────
+  const [filtreSt, setFiltreSt] = useState("TOUS");
+  const [notifLoading, setNotifLoading] = useState({});
+
+  const lotsFlat = useMemo(() => {
+    const list = [];
+    lotsTriés.forEach(lot => {
+      let lotM = 0, lotR = 0;
+      colonnes.forEach(col => {
+        const d = detailMap[lot.id]?.[col.id];
+        if (d) { lotM += parseFloat(d.montant ?? 0); lotR += parseFloat(d.montant_recu ?? 0); }
       });
+      if (lotM === 0) return;
+      const statut = lotR >= lotM ? "SOLDE" : lotR > 0 ? "PARTIEL" : "NON_PAYE";
+      const groupe = lot.groupe ? (groupeMap[lot.groupe] ?? "Sans groupe") : "Sans groupe";
+      list.push({ lot, groupe, lotM, lotR, statut });
     });
-    return { nonPaye, partiel, solde };
-  }, [lotsParGroupe, colonnes, detailMap]);
+    return list;
+  }, [lotsTriés, colonnes, detailMap, groupeMap]);
+
+  const lotsFlatFiltered = useMemo(() =>
+    filtreSt === "TOUS" ? lotsFlat : lotsFlat.filter(i => i.statut === filtreSt),
+  [lotsFlat, filtreSt]);
+
+  const handleNotif = async (lotId, lotNum) => {
+    setNotifLoading(p => ({ ...p, [lotId]: true }));
+    try {
+      const r = await postJson("/api/notification-send/", {
+        lot_id: lotId, type_notification: "SMS", titre: "Rappel de paiement",
+      });
+      if (r.ok) toast.success(`Notification enregistrée — Lot ${lotNum}`);
+      else toast.error("Erreur notification");
+    } catch { toast.error("Erreur réseau"); }
+    finally { setNotifLoading(p => ({ ...p, [lotId]: false })); }
+  };
 
   // ── Pour le PDF : colonnes selon type actif ───────────────────
   const colonnesFond = typeAppel === "FOND" ? colonnes : [];
@@ -411,123 +427,168 @@ export default function SynthesePage() {
 
       {/* Cartes résumé */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-white rounded-xl border border-slate-100 px-3 py-2 flex items-center justify-between">
-          <p className="text-xs text-slate-400 font-medium">Appelé</p>
-          <p className="text-sm font-bold text-slate-800">{fmt(totalGlobal.montant)} <span className="text-xs font-normal text-slate-400">MAD</span></p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-100 px-3 py-2 flex items-center justify-between">
-          <p className="text-xs text-slate-400 font-medium">Encaissé</p>
-          <p className="text-sm font-bold text-emerald-600">{fmt(totalGlobal.recu)} <span className="text-xs font-normal text-slate-400">MAD</span></p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-100 px-3 py-2 flex items-center justify-between">
-          <p className="text-xs text-slate-400 font-medium">Reste</p>
-          <p className="text-sm font-bold text-red-500">{fmt(totalGlobal.montant - totalGlobal.recu)} <span className="text-xs font-normal text-slate-400">MAD</span></p>
-        </div>
-      </div>
-
-      {/* Légende */}
-      <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
-        {[["bg-emerald-400","Payé"],["bg-amber-400","Partiel"],["bg-red-400","Non payé"],["bg-slate-200","Non appelé"]].map(([c,l]) => (
-          <span key={l} className="flex items-center gap-1">
-            <span className={`w-2 h-2 rounded-full ${c} inline-block`} /> {l}
-          </span>
+        {[
+          { label: "Appelé",   value: fmt(totalGlobal.montant),               cls: "text-slate-800"   },
+          { label: "Encaissé", value: fmt(totalGlobal.recu),                  cls: "text-emerald-600" },
+          { label: "Reste",    value: fmt(totalGlobal.montant - totalGlobal.recu), cls: "text-red-500" },
+        ].map(k => (
+          <div key={k.label} className="bg-white rounded-xl border border-slate-100 px-3 py-2.5">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{k.label}</p>
+            <p className={`text-sm font-bold leading-tight ${k.cls}`}>{k.value}</p>
+            <p className="text-[10px] text-slate-300">MAD</p>
+          </div>
         ))}
-        <span className="text-slate-400">reçu / dû</span>
       </div>
 
-      {/* Kanban */}
-      {colonnes.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center text-slate-400">
-          Aucun appel de charge disponible.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+      {/* Filtres statut + légende */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {[
-            { key: "nonPaye", label: "Non payé",  dot: "bg-red-400",     border: "border-red-100",    header: "bg-red-50",    cardBg: "bg-red-50/40 border-red-100"       },
-            { key: "partiel", label: "Partiel",   dot: "bg-amber-400",   border: "border-amber-100",  header: "bg-amber-50",  cardBg: "bg-amber-50/40 border-amber-100"   },
-            { key: "solde",   label: "Soldé",     dot: "bg-emerald-400", border: "border-emerald-100",header: "bg-emerald-50",cardBg: "bg-emerald-50/40 border-emerald-100"},
-          ].map(({ key, label, dot, border, header, cardBg }) => {
-            const items = lotsBuckets[key];
+            { key: "TOUS",     label: "Tous",      count: lotsFlat.length,                              cls: "bg-slate-600 text-white",   inactive: "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50" },
+            { key: "NON_PAYE", label: "Non payé",  count: lotsFlat.filter(i=>i.statut==="NON_PAYE").length, cls: "bg-red-500 text-white",     inactive: "bg-white border border-slate-200 text-slate-500 hover:bg-red-50"   },
+            { key: "PARTIEL",  label: "Partiel",   count: lotsFlat.filter(i=>i.statut==="PARTIEL").length,  cls: "bg-amber-500 text-white",   inactive: "bg-white border border-slate-200 text-slate-500 hover:bg-amber-50" },
+            { key: "SOLDE",    label: "Soldé",     count: lotsFlat.filter(i=>i.statut==="SOLDE").length,    cls: "bg-emerald-500 text-white", inactive: "bg-white border border-slate-200 text-slate-500 hover:bg-emerald-50"},
+          ].map(f => (
+            <button key={f.key} onClick={() => setFiltreSt(f.key)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition ${filtreSt === f.key ? f.cls : f.inactive}`}>
+              {f.label}
+              <span className={`text-[10px] px-1 rounded-full ${filtreSt === f.key ? "bg-white/30 text-white" : "bg-slate-100 text-slate-500"}`}>{f.count}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-slate-400">
+          {[["bg-emerald-400","Soldé"],["bg-amber-400","Partiel"],["bg-red-400","Non payé"]].map(([c,l]) => (
+            <span key={l} className="flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${c}`} />{l}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Liste plate triée par lot */}
+      {colonnes.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center text-slate-400">Aucun appel disponible.</div>
+      ) : lotsFlatFiltered.length === 0 ? (
+        <div className="bg-white rounded-2xl p-8 text-center text-slate-400 text-sm">Aucun lot pour ce filtre.</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {lotsFlatFiltered.map(({ lot, groupe, lotM, lotR, statut }) => {
+            const pct   = lotM > 0 ? Math.min(100, Math.round((lotR / lotM) * 100)) : 0;
+            const reste = lotM - lotR;
+            const phone = lot.representant?.telephone || null;
+            const email = lot.representant?.email || null;
+            const waMsg = `Bonjour,\nNous vous rappelons que votre situation de paiement pour le Lot ${lot.numero_lot} nécessite votre attention.\nMontant appelé : ${fmt(lotM)} MAD\nReçu : ${fmt(lotR)} MAD\nReste : ${fmt(lotM - lotR)} MAD\nMerci de régulariser.\n${residence?.nom_residence ?? "Le Syndic"}`;
+            const waUrl = phone ? `https://wa.me/${phone.replace(/^0/, "212").replace(/\s/g, "")}?text=${encodeURIComponent(waMsg)}` : null;
+            const borderCls = statut === "SOLDE" ? "border-emerald-200" : statut === "PARTIEL" ? "border-amber-200" : "border-red-200";
+            const barCls    = statut === "SOLDE" ? "bg-emerald-500"     : statut === "PARTIEL" ? "bg-amber-400"     : "bg-red-400";
+            const statBg    = statut === "SOLDE" ? "bg-emerald-100 text-emerald-700" : statut === "PARTIEL" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-600";
             return (
-              <div key={key} className={`rounded-2xl border ${border} overflow-hidden`}>
-                <div className={`${header} px-3 py-2 flex items-center gap-2`}>
-                  <span className={`w-2.5 h-2.5 rounded-full ${dot} flex-shrink-0`} />
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">{label}</span>
-                  <span className="ml-auto text-xs font-semibold text-slate-400">{items.length}</span>
+              <div key={lot.id} className={`bg-white rounded-xl border-2 ${borderCls} p-3 space-y-2.5 hover:shadow-sm transition`}>
+
+                {/* Ligne 1 : lot + groupe + badge + boutons */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={() => navigate(`/fiche-lot?lot=${lot.id}${residenceId ? `&residence=${residenceId}` : ""}`)}
+                    className="font-bold text-indigo-600 hover:underline text-sm shrink-0">
+                    {lot.numero_lot}
+                  </button>
+                  <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[70px] shrink-0">{groupe}</span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${statBg}`}>
+                    {statut === "SOLDE" ? "Soldé" : statut === "PARTIEL" ? "Partiel" : "Non payé"}
+                  </span>
+                  <div className="ml-auto flex items-center gap-1 shrink-0">
+                    {/* Notification SMS */}
+                    <button
+                      onClick={() => handleNotif(lot.id, lot.numero_lot)}
+                      disabled={notifLoading[lot.id]}
+                      title="Notification SMS"
+                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-500 transition disabled:opacity-50">
+                      {notifLoading[lot.id]
+                        ? <span className="w-3 h-3 border border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                        : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                          </svg>}
+                    </button>
+                    {/* WhatsApp */}
+                    <button
+                      onClick={() => { if (waUrl) window.open(waUrl, "whatsapp_jorat", "width=800,height=600"); }}
+                      title={phone ? `WhatsApp ${phone}` : "Pas de téléphone"}
+                      className={`w-7 h-7 flex items-center justify-center rounded-lg transition ${waUrl ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-600" : "bg-slate-50 text-slate-300 cursor-not-allowed"}`}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+                      </svg>
+                    </button>
+                    {/* Email */}
+                    <button
+                      onClick={async () => {
+                        if (!email) { toast.error("Pas d'email pour ce lot"); return; }
+                        try {
+                          const r = await postJson("/api/send-email/", {
+                            to: email,
+                            from: residence?.email || undefined,
+                            subject: `Rappel de paiement — Lot ${lot.numero_lot}`,
+                            body: `Cher(e) propriétaire du Lot ${lot.numero_lot},\n\nNous vous rappelons que votre situation de paiement nécessite votre attention.\n\nMontant appelé : ${fmt(lotM)} MAD\nMontant reçu : ${fmt(lotR)} MAD\nReste à payer : ${fmt(reste)} MAD\n\nMerci de régulariser votre situation dans les meilleurs délais.\n\nCordialement,\nLe Syndic — ${residence?.nom_residence ?? ""}`,
+                          });
+                          if (r.ok) toast.success(`Email envoyé à ${email}`);
+                          else { const d = await r.json(); toast.error(d.error || "Échec envoi email"); }
+                        } catch { toast.error("Erreur réseau — email non envoyé"); }
+                      }}
+                      title={email ? `Email ${email}` : "Pas d'email"}
+                      className={`w-7 h-7 flex items-center justify-center rounded-lg transition ${email ? "bg-sky-50 hover:bg-sky-100 text-sky-600" : "bg-slate-50 text-slate-300 cursor-not-allowed"}`}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <div className="p-2 space-y-2">
-                  {items.length === 0 && (
-                    <p className="text-xs text-slate-300 text-center py-4">Aucun lot</p>
-                  )}
-                  {items.map(({ lot, groupe, lotM, lotR }) => {
-                    const tc = cellStyle(lotR, lotM);
+
+                {/* Ligne 2 : propriétaire + contact */}
+                {lot.representant && (
+                  <p className="text-xs text-slate-600 font-medium truncate">
+                    {lot.representant.nom} {lot.representant.prenom ?? ""}
+                    {phone && <span className="text-slate-400 font-normal ml-1.5">{phone}</span>}
+                    {email && <span className="text-slate-400 font-normal ml-1.5">{email}</span>}
+                  </p>
+                )}
+
+                {/* Ligne 3 : montants */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  <div className="bg-slate-50 rounded-lg px-2 py-1.5 text-center">
+                    <p className="text-[9px] text-slate-400 uppercase tracking-wider">Appelé</p>
+                    <p className="text-xs font-bold font-mono text-slate-700 mt-0.5">{fmt(lotM)}</p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-lg px-2 py-1.5 text-center">
+                    <p className="text-[9px] text-emerald-500 uppercase tracking-wider">Reçu</p>
+                    <p className="text-xs font-bold font-mono text-emerald-700 mt-0.5">{fmt(lotR)}</p>
+                  </div>
+                  <div className={`rounded-lg px-2 py-1.5 text-center ${reste > 0 ? "bg-red-50" : "bg-emerald-50"}`}>
+                    <p className={`text-[9px] uppercase tracking-wider ${reste > 0 ? "text-red-400" : "text-emerald-500"}`}>Reste</p>
+                    <p className={`text-xs font-bold font-mono mt-0.5 ${reste > 0 ? "text-red-600" : "text-emerald-600"}`}>{fmt(reste)}</p>
+                  </div>
+                </div>
+
+                {/* Barre progression */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${barCls}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-[10px] text-slate-400 shrink-0 w-8 text-right">{pct}%</span>
+                </div>
+
+                {/* Détail périodes */}
+                <div className="space-y-1 border-t border-slate-100 pt-2">
+                  {colonnes.map(col => {
+                    const d = detailMap[lot.id]?.[col.id];
+                    if (!d) return null;
+                    const recu = parseFloat(d.montant_recu ?? 0);
+                    const mont = parseFloat(d.montant ?? 0);
+                    if (mont === 0) return null;
+                    const s = cellStyle(recu, mont);
                     return (
-                      <div key={lot.id} className={`rounded-xl border p-3 space-y-2 hover:shadow-sm transition ${cardBg}`}>
-                        <div className="flex items-center justify-between gap-2">
-                          <button
-                            onClick={() => navigate(`/fiche-lot?lot=${lot.id}${residenceId ? `&residence=${residenceId}` : ""}`)}
-                            className="font-bold text-indigo-600 hover:underline text-sm leading-tight"
-                          >
-                            {lot.numero_lot}
-                          </button>
-                          <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[80px]">{groupe}</span>
+                      <div key={col.id} className="flex items-center justify-between text-xs gap-2">
+                        <span className="text-slate-500 truncate">{col.code_fond ?? col.periode} {col.exercice}</span>
+                        <div className={`flex items-center gap-1 font-mono rounded-md px-1.5 py-0.5 ${s.bg} shrink-0`}>
+                          <span className={`font-semibold ${s.text}`}>{fmt(recu)}</span>
+                          <span className="text-slate-400 text-[10px]">/{fmt(mont)}</span>
                         </div>
-                        {lot.representant && (
-                          <div className="text-xs text-slate-600 leading-tight">
-                            <span className="font-medium">{lot.representant.nom} {lot.representant.prenom ?? ""}</span>
-                            {phoneMap[lot.id] && <span className="text-slate-400 ml-1.5">📞 {phoneMap[lot.id]}</span>}
-                            {emailMap[lot.id] && (
-                              <button
-                                title={`Email ${emailMap[lot.id]}`}
-                                className="ml-1.5 text-slate-400 hover:text-blue-600 transition align-middle"
-                                onClick={async e => {
-                                  e.stopPropagation();
-                                  const email = emailMap[lot.id];
-                                  try {
-                                    const r = await postJson("/api/send-email/", {
-                                      to: email,
-                                      subject: `Rappel de paiement — Lot ${lot.numero_lot}`,
-                                      body: `Cher(e) propriétaire du Lot ${lot.numero_lot},\n\nMerci de régulariser votre situation.\n\nCordialement,\nLe Syndic`,
-                                    });
-                                    const data = await r.json();
-                                    if (r.ok) toast.success(`Email envoyé à ${email}`);
-                                    else toast.error(data.error || "Échec envoi email");
-                                  } catch { toast.error("Erreur réseau — email non envoyé"); }
-                                }}
-                              >
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                  <polyline points="22,6 12,13 2,6"/>
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        <div className="space-y-1">
-                          {colonnes.map(col => {
-                            const d = detailMap[lot.id]?.[col.id];
-                            if (!d) return null;
-                            const recu = parseFloat(d.montant_recu ?? 0);
-                            const mont = parseFloat(d.montant ?? 0);
-                            if (mont === 0) return null;
-                            const s = cellStyle(recu, mont);
-                            return (
-                              <div key={col.id} className="flex items-center justify-between text-xs gap-2">
-                                <span className="text-slate-500 truncate">{col.code_fond ?? col.periode} {col.exercice}</span>
-                                <div className={`flex items-center gap-1 font-mono rounded-md px-1.5 py-0.5 ${s.bg} flex-shrink-0`}>
-                                  <span className={`font-semibold ${s.text}`}>{fmt(recu)}</span>
-                                  <span className="text-slate-400 text-[10px]">/{fmt(mont)}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {lotM > 0 && (
-                          <div className={`flex items-center justify-between text-xs font-bold border-t border-slate-100 pt-1.5 ${tc.text}`}>
-                            <span>Total</span>
-                            <span className="font-mono">{fmt(lotR)} / {fmt(lotM)}</span>
-                          </div>
-                        )}
                       </div>
                     );
                   })}

@@ -263,7 +263,7 @@ function buildPdfHtml({ lot, residence, detailsCharge, detailsFond, paiements })
 }
 
 // ── Charges section ───────────────────────────────────────────────────────────
-function ChargesSection({ details, typeLabel }) {
+function ChargesSection({ details, typeLabel, accent = "indigo" }) {
   const detailsParExercice = useMemo(() => {
     const map = {};
     details.forEach(d => {
@@ -277,85 +277,56 @@ function ChargesSection({ details, typeLabel }) {
   }, [details]);
 
   if (details.length === 0) return (
-    <div className="bg-white rounded-2xl p-8 text-center text-slate-400 text-sm">
-      Aucun appel de {typeLabel} enregistré.
-    </div>
+    <p className="text-xs text-slate-400 text-center py-4">Aucun appel de {typeLabel} enregistré.</p>
   );
 
+  const trackCls = accent === "amber" ? "bg-amber-100" : "bg-indigo-100";
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {detailsParExercice.map(({ exo, items }) => {
         const exoM = items.reduce((s, d) => s + parseFloat(d.montant ?? 0), 0);
         const exoR = items.reduce((s, d) => s + parseFloat(d.montant_recu ?? 0), 0);
         const pct  = exoM > 0 ? Math.round((exoR / exoM) * 100) : 0;
-
         return (
-          <div key={exo} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 bg-slate-800 text-white">
-              <span className="font-bold text-sm">Exercice {exo}</span>
-              <div className="flex items-center gap-4 text-xs">
-                <span className="text-slate-300">Appelé: <span className="font-mono text-white">{fmt(exoM)}</span></span>
-                <span className="text-emerald-300">Reçu: <span className="font-mono text-emerald-200">{fmt(exoR)}</span></span>
-                <span className={`font-semibold ${exoM - exoR > 0 ? "text-red-300" : "text-emerald-300"}`}>
-                  Solde: {fmt(exoM - exoR)}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-20 bg-slate-600 rounded-full h-1.5">
-                    <div className="bg-emerald-400 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="text-slate-300">{pct}%</span>
-                </div>
+          <div key={exo}>
+            {/* Exercice header */}
+            <div className="flex items-center justify-between mb-2 px-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Exercice {exo}</span>
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="text-slate-400">Appelé <span className="font-mono font-semibold text-slate-600">{fmt(exoM)}</span></span>
+                <span className="text-emerald-600">Reçu <span className="font-mono font-semibold">{fmt(exoR)}</span></span>
+                <span className={`font-mono font-bold ${exoM - exoR > 0 ? "text-red-500" : "text-emerald-600"}`}>{pct}%</span>
               </div>
             </div>
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
-                  <th className="px-4 py-2 text-left font-semibold">Période</th>
-                  <th className="px-4 py-2 text-right font-semibold">Appelé (MAD)</th>
-                  <th className="px-4 py-2 text-right font-semibold">Encaissé (MAD)</th>
-                  <th className="px-4 py-2 text-right font-semibold">Solde (MAD)</th>
-                  <th className="px-4 py-2 text-center font-semibold">Statut</th>
-                  <th className="px-4 py-2 text-center font-semibold">Avancement</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(d => {
-                  const m = parseFloat(d.montant ?? 0);
-                  const r = parseFloat(d.montant_recu ?? 0);
-                  const s = m - r;
-                  const p = m > 0 ? Math.min(100, Math.round((r / m) * 100)) : 0;
-                  const statut = d.statut ?? "NON_PAYE";
-                  return (
-                    <tr key={d.id} className="border-b border-slate-50 hover:bg-slate-50/60">
-                      <td className="px-4 py-2.5 font-medium text-slate-700">
-                        {d.appel_code ?? d.appel_periode ?? "—"}
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-slate-600">{fmt(m)}</td>
-                      <td className="px-4 py-2.5 text-right font-mono text-emerald-600 font-semibold">{fmt(r)}</td>
-                      <td className={`px-4 py-2.5 text-right font-mono font-semibold ${s > 0 ? "text-red-500" : "text-emerald-600"}`}>
-                        {fmt(s)}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${DETAIL_STATUT_CLS[statut] ?? ""}`}>
-                          {DETAIL_STATUT_LABEL[statut] ?? statut}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[60px]">
-                            <div
-                              className={`h-1.5 rounded-full ${p >= 100 ? "bg-emerald-500" : p > 0 ? "bg-amber-400" : "bg-red-300"}`}
-                              style={{ width: `${p}%` }}
-                            />
-                          </div>
-                          <span className="text-slate-400 w-8 text-right">{p}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            {/* Kanban cards — 1 par ligne */}
+            <div className="space-y-1.5">
+              {items.map(d => {
+                const m      = parseFloat(d.montant ?? 0);
+                const r      = parseFloat(d.montant_recu ?? 0);
+                const s      = m - r;
+                const p      = m > 0 ? Math.min(100, Math.round((r / m) * 100)) : 0;
+                const statut = d.statut ?? "NON_PAYE";
+                return (
+                  <div key={d.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
+                    <span className="text-xs font-semibold text-slate-700 w-28 shrink-0">{d.appel_code ?? d.appel_periode ?? "—"}</span>
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      <div className={`flex-1 h-2 rounded-full overflow-hidden ${trackCls}`}>
+                        <div className={`h-full rounded-full ${p >= 100 ? "bg-emerald-500" : p > 0 ? "bg-amber-400" : "bg-red-300"}`}
+                          style={{ width: `${p}%` }} />
+                      </div>
+                      <span className="text-[11px] text-slate-400 w-8 shrink-0 text-right">{p}%</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-500 w-20 text-right shrink-0">{fmt(m)}</span>
+                    <span className="text-[11px] font-mono font-semibold text-emerald-600 w-20 text-right shrink-0">{fmt(r)}</span>
+                    <span className={`text-[11px] font-mono font-bold w-20 text-right shrink-0 ${s > 0 ? "text-red-500" : "text-emerald-600"}`}>{fmt(s)}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${DETAIL_STATUT_CLS[statut] ?? ""}`}>
+                      {DETAIL_STATUT_LABEL[statut] ?? statut}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })}
@@ -913,7 +884,7 @@ export default function FicheLotPage() {
               <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Appels de fond ({detailsFond.length})</span>
             </div>
             <div className="p-4">
-              <ChargesSection details={detailsFond} typeLabel="fond" />
+              <ChargesSection details={detailsFond} typeLabel="fond" accent="amber" />
             </div>
           </div>
 
@@ -922,45 +893,30 @@ export default function FicheLotPage() {
             <div className="bg-emerald-50 px-4 py-2.5 border-b border-emerald-100">
               <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Paiements ({paiements.length})</span>
             </div>
-            <div className="p-4">
+            <div className="p-3">
               {paiementsWithBalance.length === 0 ? (
-                <div className="py-6 text-center text-slate-400 text-sm">Aucun paiement enregistré.</div>
+                <p className="text-xs text-slate-400 text-center py-4">Aucun paiement enregistré.</p>
               ) : (
-                <div className="overflow-hidden rounded-xl border border-slate-100">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
-                        <th className="px-4 py-2.5 text-left font-semibold">Date</th>
-                        <th className="px-4 py-2.5 text-left font-semibold">Référence</th>
-                        <th className="px-4 py-2.5 text-left font-semibold">Mode</th>
-                        <th className="px-4 py-2.5 text-right font-semibold">Montant (MAD)</th>
-                        <th className="px-4 py-2.5 text-right font-semibold">Solde après (MAD)</th>
-                        <th className="px-4 py-2.5 text-left font-semibold">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paiementsWithBalance.map((p, i) => (
-                        <tr key={p.id} className={`border-b border-slate-50 hover:bg-slate-50/60 ${i % 2 === 0 ? "" : "bg-slate-50/30"}`}>
-                          <td className="px-4 py-2.5 text-slate-600 font-medium whitespace-nowrap">{fmtDate(p.date_paiement)}</td>
-                          <td className="px-4 py-2.5 text-slate-500 font-mono">{p.reference || <span className="text-slate-300 italic">—</span>}</td>
-                          <td className="px-4 py-2.5 text-slate-500">{p.mode_paiement || <span className="text-slate-300 italic">—</span>}</td>
-                          <td className="px-4 py-2.5 text-right font-mono font-bold text-indigo-700">{fmt(p.montant)}</td>
-                          <td className={`px-4 py-2.5 text-right font-mono font-semibold ${p.soldeApres > 0 ? "text-red-500" : p.soldeApres < 0 ? "text-blue-500" : "text-emerald-600"}`}>
-                            {fmt(Math.abs(p.soldeApres))}
-                            {p.soldeApres < 0 && <span className="ml-1 text-[10px] text-blue-400 font-normal">avance</span>}
-                          </td>
-                          <td className="px-4 py-2.5 text-slate-400 max-w-[160px] truncate">{p.notes || "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-emerald-50 border-t-2 border-emerald-100">
-                        <td colSpan={3} className="px-4 py-2.5 text-xs font-bold text-emerald-700 uppercase tracking-wide">Total paiements</td>
-                        <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-700">{fmt(paiements.reduce((s, p) => s + parseFloat(p.montant ?? 0), 0))} MAD</td>
-                        <td colSpan={2} />
-                      </tr>
-                    </tfoot>
-                  </table>
+                <div className="space-y-1.5">
+                  {paiementsWithBalance.map(p => (
+                    <div key={p.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
+                      <span className="text-[11px] font-mono text-slate-500 w-20 shrink-0">{fmtDate(p.date_paiement)}</span>
+                      <span className="text-[11px] font-mono text-slate-400 w-24 shrink-0 truncate">{p.reference || "—"}</span>
+                      <span className="text-[11px] text-slate-400 w-20 shrink-0 truncate">{p.mode_paiement || "—"}</span>
+                      <span className="flex-1 text-[11px] text-slate-400 truncate">{p.notes || ""}</span>
+                      <span className="text-xs font-mono font-bold text-emerald-700 w-24 text-right shrink-0">{fmt(p.montant)}</span>
+                      <span className={`text-[11px] font-mono font-semibold w-24 text-right shrink-0 ${p.soldeApres > 0 ? "text-red-500" : p.soldeApres < 0 ? "text-blue-500" : "text-emerald-600"}`}>
+                        {fmt(Math.abs(p.soldeApres))}
+                        {p.soldeApres < 0 && <span className="ml-1 text-[9px] text-blue-400 font-normal">avance</span>}
+                      </span>
+                    </div>
+                  ))}
+                  {/* Total */}
+                  <div className="flex justify-end px-3 pt-1">
+                    <span className="text-[11px] font-bold text-emerald-700">
+                      Total : {fmt(paiements.reduce((s, p) => s + parseFloat(p.montant ?? 0), 0))} MAD
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

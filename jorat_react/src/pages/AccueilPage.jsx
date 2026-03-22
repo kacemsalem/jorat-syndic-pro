@@ -99,16 +99,21 @@ function ActionCard({ onClick, icon, label, sub, accent = "emerald", featured = 
 }
 
 /* ── SectionCard wrapper ───────────────────────────────────── */
-function SectionCard({ label, dot, children, featured = false }) {
-  const dots   = { blue: "bg-blue-500", emerald: "bg-emerald-500", violet: "bg-violet-500", indigo: "bg-indigo-500", sky: "bg-sky-500", amber: "bg-amber-500", teal: "bg-teal-500" };
-  const hdrBg  = featured ? "bg-emerald-50 border-b border-emerald-200" : "bg-slate-50 border-b border-slate-200";
-  const cardCls = featured
-    ? "bg-white rounded-2xl overflow-hidden border-2 border-emerald-300 shadow-lg"
-    : "bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-md";
+function SectionCard({ label, dot = "blue", children, featured = false }) {
+  const themes = {
+    blue:    { dot: "bg-blue-500",    border: "border-blue-200",    hdr: "bg-blue-50/70 border-b border-blue-100",    shadow: "shadow-blue-100/60"   },
+    emerald: { dot: "bg-emerald-500", border: "border-emerald-300", hdr: "bg-emerald-50 border-b border-emerald-200", shadow: "shadow-emerald-100/80" },
+    amber:   { dot: "bg-amber-500",   border: "border-amber-200",   hdr: "bg-amber-50/70 border-b border-amber-100",  shadow: "shadow-amber-100/60"   },
+    indigo:  { dot: "bg-indigo-500",  border: "border-indigo-200",  hdr: "bg-indigo-50/70 border-b border-indigo-100",shadow: "shadow-indigo-100/60"  },
+    sky:     { dot: "bg-sky-500",     border: "border-sky-200",     hdr: "bg-sky-50/70 border-b border-sky-100",      shadow: "shadow-sky-100/60"     },
+    violet:  { dot: "bg-violet-500",  border: "border-violet-200",  hdr: "bg-violet-50/70 border-b border-violet-100",shadow: "shadow-violet-100/60"  },
+    teal:    { dot: "bg-teal-500",    border: "border-teal-200",    hdr: "bg-teal-50/70 border-b border-teal-100",    shadow: "shadow-teal-100/60"    },
+  };
+  const t = themes[dot] || themes.blue;
   return (
-    <div className={cardCls}>
-      <div className={`flex items-center gap-2.5 px-4 py-3 ${hdrBg}`}>
-        <span className={`w-2 h-2 rounded-full ${dots[dot] || dots.blue}`} />
+    <div className={`bg-white rounded-2xl overflow-hidden border-2 ${t.border} shadow-md ${t.shadow}`}>
+      <div className={`flex items-center gap-2.5 px-4 py-3 ${t.hdr}`}>
+        <span className={`w-2 h-2 rounded-full ${t.dot}`} />
         <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600">{label}</span>
         {featured && (
           <span className="ml-auto text-[9px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500 text-white tracking-wide uppercase">Prioritaire</span>
@@ -268,7 +273,7 @@ export default function AccueilPage() {
             label="Analyse Paiements — Timeline"
             sub="Couverture mois par mois par lot"
             icon={<><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/></>} />
-          <ActionCard accent="amber" onClick={() => navigate("/etat-mensuel")}
+          <ActionCard accent="emerald" onClick={() => navigate("/etat-mensuel")}
             label="État mensuel — Entrées / Sorties"
             sub="Tableau croisé lot × 12 mois"
             icon={<><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>} />

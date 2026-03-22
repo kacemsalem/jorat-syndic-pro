@@ -835,8 +835,9 @@ def situation_paiements_view(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def send_email_view(request):
-    from django.core.mail import send_mail
+    from django.core.mail import get_connection, EmailMessage
     from django.conf import settings as django_settings
+    from .models import Residence
 
     to_email = request.data.get("to", "").strip()
     subject  = request.data.get("subject", "").strip()
@@ -845,14 +846,35 @@ def send_email_view(request):
     if not to_email or not subject or not body:
         return Response({"error": "Champs manquants (to, subject, body)."}, status=400)
 
+    # Récupérer les SMTP de la résidence active de l'utilisateur
+    from_email = None
+    connection = None
     try:
-        send_mail(
+        membership = request.user.memberships.select_related("residence").first()
+        residence  = membership.residence if membership else None
+        if residence and residence.email and residence.email_password:
+            connection = get_connection(
+                backend="django.core.mail.backends.smtp.EmailBackend",
+                host="smtp.gmail.com",
+                port=587,
+                username=residence.email,
+                password=residence.email_password,
+                use_tls=True,
+                fail_silently=False,
+            )
+            from_email = residence.email
+    except Exception:
+        pass  # fallback sur les settings Django
+
+    try:
+        msg = EmailMessage(
             subject=subject,
-            message=body,
-            from_email=django_settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[to_email],
-            fail_silently=False,
+            body=body,
+            from_email=from_email or django_settings.DEFAULT_FROM_EMAIL,
+            to=[to_email],
+            connection=connection,
         )
+        msg.send(fail_silently=False)
         return Response({"ok": True})
     except Exception as e:
         return Response({"error": str(e)}, status=500)

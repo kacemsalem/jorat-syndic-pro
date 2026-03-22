@@ -79,6 +79,8 @@ class Residence(TimeStampedModel):
     logo_base64 = models.TextField(blank=True, null=True)
 
     email = models.EmailField(blank=True, null=True)
+    email_password = models.CharField(max_length=255, blank=True, null=True,
+        help_text="Mot de passe d'application SMTP pour l'envoi d'emails")
 
     partage_rapport_resident = models.BooleanField(
         default=False,
