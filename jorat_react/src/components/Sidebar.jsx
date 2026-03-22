@@ -88,11 +88,11 @@ const ADMIN_ITEMS = [
 function NavItem({ item, isActive, onClose }) {
   const navigate = useNavigate();
 
-  const base = "flex items-center gap-2 px-2.5 py-1.5 mx-1.5 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer select-none";
+  const base = "relative flex items-center gap-2.5 px-3 py-1.5 mx-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer select-none overflow-hidden";
 
   if (item.disabled) {
     return (
-      <div className={`${base} text-slate-600 cursor-not-allowed opacity-50`}>
+      <div className={`${base} text-slate-600 cursor-not-allowed opacity-40`}>
         <span className="text-slate-600 shrink-0">{ICONS[item.icon]}</span>
         <span className="truncate">{item.label}</span>
         <span className="ml-auto text-[10px] text-slate-600 font-normal shrink-0">bientôt</span>
@@ -105,11 +105,15 @@ function NavItem({ item, isActive, onClose }) {
       onClick={() => { navigate(item.path); onClose(); }}
       className={`${base} ${
         isActive
-          ? "bg-blue-600 text-white shadow-sm"
-          : "text-slate-400 hover:text-white hover:bg-slate-800"
+          ? "bg-indigo-500/20 text-white"
+          : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.06]"
       }`}
     >
-      <span className={`shrink-0 ${isActive ? "text-white" : "text-slate-500"}`}>
+      {/* Left accent bar for active item */}
+      {isActive && (
+        <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-indigo-400 rounded-r" />
+      )}
+      <span className={`shrink-0 transition-colors ${isActive ? "text-indigo-300" : "text-slate-500 group-hover:text-slate-300"}`}>
         {ICONS[item.icon]}
       </span>
       <span className="truncate">{item.label}</span>
@@ -167,61 +171,65 @@ export default function Sidebar({ isOpen, onClose }) {
 
   return (
     <aside
-      className="bg-slate-900 flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out"
+      className="bg-[#0f172a] flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out"
       style={{ width: isOpen ? "11rem" : "0" }}
     >
       <div className="w-44 h-full flex flex-col">
+
       {/* ── Brand ── */}
-      <div className="h-11 flex items-center px-3 border-b border-slate-800 flex-shrink-0">
-        <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center mr-2 flex-shrink-0">
+      <div className="h-12 flex items-center px-3.5 border-b border-white/[0.07] flex-shrink-0">
+        <div className="w-6 h-6 rounded-lg bg-indigo-600 flex items-center justify-center mr-2.5 flex-shrink-0 shadow-[0_0_10px_rgba(99,102,241,0.5)]">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22" fill="white"/>
           </svg>
         </div>
-        <div className="min-w-0">
-          <div className="text-white font-bold text-xs leading-tight tracking-wide">XYZ SYNDIC</div>
-          <div className="text-slate-500 text-[10px] truncate">Gestion copropriété</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-white font-bold text-xs leading-tight tracking-wide">SYNDIC PRO</div>
+          <div className="text-slate-600 text-[10px] truncate">Gestion copropriété</div>
         </div>
         <button
           onClick={onClose}
-          className="ml-auto text-slate-500 hover:text-white transition-colors p-1 rounded shrink-0"
+          className="ml-1 text-slate-600 hover:text-slate-300 transition-colors p-1 rounded-md hover:bg-white/[0.06] shrink-0"
           aria-label="Fermer le menu"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
       </div>
 
       {/* ── Navigation ── */}
-      <nav className="flex-1 overflow-y-auto py-2 space-y-0.5 [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-slate-700 [&::-webkit-scrollbar-thumb]:bg-slate-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-slate-300">
+      <nav className="flex-1 overflow-y-auto py-2 space-y-0.5
+        [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent
+        [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full
+        [&::-webkit-scrollbar-thumb]:hover:bg-white/20">
         {navGroups.map((group, gi) => {
           const isCollapsible = group.collapsible && group.label;
           const isOpen = isCollapsible ? (openSections[group.label] ?? true) : true;
 
           return (
-            <div key={gi} className="mb-0.5">
+            <div key={gi} className="mb-1">
               {/* Section header */}
               {group.label && (
                 isCollapsible ? (
                   <button
                     onClick={() => toggleSection(group.label)}
-                    className="w-full flex items-center justify-between px-3 py-1.5 mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-200 transition-colors bg-slate-800/60 rounded-sm"
+                    className="w-full flex items-center justify-between px-3.5 pt-2 pb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600 hover:text-slate-400 transition-colors"
                   >
                     <span>{group.label}</span>
                     <Chevron open={isOpen} />
                   </button>
                 ) : (
-                  <div className="px-3 py-1.5 mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-800/60 rounded-sm">
+                  <div className="px-3.5 pt-2 pb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">
                     {group.label}
                   </div>
                 )
               )}
 
-              {/* Items — hidden when collapsed */}
+              {/* Items */}
               {isOpen && (
-                <div className="space-y-0.5 mt-0.5">
+                <div className="space-y-0.5">
                   {group.items.map((item) => (
                     <NavItem key={item.label} item={item} isActive={isActive(item)} onClose={onClose} />
                   ))}
@@ -233,9 +241,10 @@ export default function Sidebar({ isOpen, onClose }) {
       </nav>
 
       {/* ── Footer ── */}
-      <div className="border-t border-slate-800 px-3 py-2 flex-shrink-0">
-        <div className="text-[10px] text-slate-600 text-center">© 2026 XYZ Syndic</div>
+      <div className="border-t border-white/[0.06] px-3.5 py-2.5 flex-shrink-0">
+        <div className="text-[10px] text-slate-700 text-center">© {new Date().getFullYear()} Syndic Pro</div>
       </div>
+
       </div>
     </aside>
   );
