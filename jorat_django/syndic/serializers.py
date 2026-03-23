@@ -518,3 +518,42 @@ class PassationConsignesSerializer(serializers.ModelSerializer):
         model  = PassationConsignes
         fields = "__all__"
         extra_kwargs = {"residence": {"read_only": True}}
+
+
+from .models import ResolutionVote, VoteResident, NotificationVote
+
+class ResolutionVoteSerializer(serializers.ModelSerializer):
+    assemblee_titre   = serializers.SerializerMethodField()
+    nb_votes          = serializers.SerializerMethodField()
+    nb_notifies       = serializers.SerializerMethodField()
+    type_vote_label   = serializers.SerializerMethodField()
+    statut            = serializers.SerializerMethodField()
+
+    def get_assemblee_titre(self, obj):
+        return str(obj.assemblee) if obj.assemblee else None
+
+    def get_nb_votes(self, obj):
+        return obj.votes.count()
+
+    def get_nb_notifies(self, obj):
+        return obj.notifications_vote.count()
+
+    def get_type_vote_label(self, obj):
+        return obj.get_type_vote_display()
+
+    def get_statut(self, obj):
+        return obj.statut_effectif
+
+    class Meta:
+        model  = ResolutionVote
+        fields = "__all__"
+        extra_kwargs = {"residence": {"read_only": True}}
+
+
+class VoteResidentSerializer(serializers.ModelSerializer):
+    lot_numero = serializers.SerializerMethodField()
+    def get_lot_numero(self, obj): return obj.lot.numero_lot if obj.lot else None
+
+    class Meta:
+        model  = VoteResident
+        fields = "__all__"

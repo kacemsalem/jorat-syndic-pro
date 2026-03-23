@@ -238,6 +238,23 @@ export default function ResidentPortalPage() {
         </button>
       </div>
 
+      {/* ── Votes ── */}
+      <button
+        onClick={() => navigate("/espace-resident/votes")}
+        className="w-full bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white rounded-2xl px-4 py-3.5 flex items-center justify-between gap-3 shadow-sm transition"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl leading-none">🗳️</span>
+          <div className="text-left">
+            <p className="text-sm font-bold">Résolutions par vote</p>
+            <p className="text-[11px] text-violet-200 mt-0.5">Consultez et votez les résolutions</p>
+          </div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+
       {/* ── No lot warning ── */}
       {!lot && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">

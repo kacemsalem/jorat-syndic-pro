@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 function getCsrf() {
@@ -6,30 +6,11 @@ function getCsrf() {
 }
 const fmt = v => Number(v || 0).toLocaleString("fr-MA", { minimumFractionDigits: 2 });
 const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 bg-white";
+const SELECT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 bg-white";
 
-const EMPTY_FORM = {
-  date_passation:        new Date().toISOString().slice(0, 10),
-  solde_banque:          "",
-  notes:                 "",
-  nom_syndic:            "",
-  nom_tresorier:         "",
-  nom_syndic_entrant:    "",
-  nom_tresorier_entrant: "",
-};
-
-function PersonneSelect({ label, value, onChange, personnes }) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
-      <select className={INPUT} value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">— Sélectionner —</option>
-        {personnes.map(p => {
-          const lbl = `${p.prenom || ""} ${p.nom}`.trim();
-          return <option key={p.id} value={lbl}>{lbl}</option>;
-        })}
-      </select>
-    </div>
-  );
+function parseJustifs(raw) {
+  try { const a = JSON.parse(raw); return Array.isArray(a) ? a : []; }
+  catch { return raw ? [{ libelle: raw, montant: "" }] : []; }
 }
 
 export default function PassationConsignesPage() {
@@ -37,41 +18,56 @@ export default function PassationConsignesPage() {
   const [params] = useSearchParams();
   const assembleeId = params.get("assemblee");
 
-  const [passation,   setPassation]   = useState(null);
-  const [situation,   setSituation]   = useState([]);
-  const [personnes,   setPersonnes]   = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [saving,      setSaving]      = useState(false);
-  const [pdfLoading,  setPdfLoading]  = useState(false);
-  const [error,       setError]       = useState("");
+  const [passation,  setPassation]  = useState(null);
+  const [situation,  setSituation]  = useState([]);
+  const [personnes,  setPersonnes]  = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [error,      setError]      = useState("");
 
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState({
+    date_passation:        new Date().toISOString().slice(0, 10),
+    solde_banque:          "",
+    notes:                 "",
+    nom_syndic:            "",
+    nom_tresorier:         "",
+    nom_syndic_entrant:    "",
+    nom_tresorier_entrant: "",
+  });
 
-  // Justifications écart — liste [{libelle, montant}]
-  const [justifications,  setJustifications]  = useState([]);
-  const [newJustif,       setNewJustif]       = useState({ libelle: "", montant: "" });
-
-  // Réserves
   const [reserves,   setReserves]   = useState([]);
   const [newReserve, setNewReserve] = useState({ libelle: "", montant: "" });
   const [addingRes,  setAddingRes]  = useState(false);
 
-  // Contacts
+  const [justifs,      setJustifs]      = useState([]);
+  const [newJustif,    setNewJustif]    = useState({ libelle: "", montant: "", sens: "CREDIT" });
+  const [editJustifIdx, setEditJustifIdx] = useState(null);
+
+  // ── Contacts ─────────────────────────────────────────────
   useEffect(() => {
-    fetch("/api/personnes/", { credentials: "include" })
-      .then(r => r.json())
-      .then(d => setPersonnes(Array.isArray(d) ? d : (d.results ?? [])))
-      .catch(() => {});
+    fetch("/api/personnes/?limit=500", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { results: [] })
+      .then(d => setPersonnes(Array.isArray(d) ? d : (d.results ?? [])));
   }, []);
 
-  // Charger passation existante pour cette AG
+  const refreshCaisse = useCallback(async (id) => {
+    const r = await fetch(`/api/passations/${id}/refresh-caisse/`, {
+      method: "POST", credentials: "include",
+      headers: { "X-CSRFToken": getCsrf() },
+    });
+    if (r.ok) {
+      const d = await r.json();
+      setPassation(p => ({ ...p, solde_caisse: d.solde_caisse }));
+    }
+  }, []);
+
+  // ── Chargement ───────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const url = assembleeId
-          ? `/api/passations/?assemblee=${assembleeId}`
-          : "/api/passations/";
+        const url = assembleeId ? `/api/passations/?assemblee=${assembleeId}` : "/api/passations/";
         const r = await fetch(url, { credentials: "include" });
         const data = await r.json();
         const list = Array.isArray(data) ? data : [];
@@ -81,34 +77,33 @@ export default function PassationConsignesPage() {
           setForm({
             date_passation:        p.date_passation,
             solde_banque:          p.solde_banque,
-            notes:                 p.notes || "",
-            nom_syndic:            p.nom_syndic || "",
-            nom_tresorier:         p.nom_tresorier || "",
-            nom_syndic_entrant:    p.nom_syndic_entrant || "",
+            notes:                 p.notes,
+            nom_syndic:            p.nom_syndic            || "",
+            nom_tresorier:         p.nom_tresorier         || "",
+            nom_syndic_entrant:    p.nom_syndic_entrant    || "",
             nom_tresorier_entrant: p.nom_tresorier_entrant || "",
           });
           setReserves(p.reserves || []);
-          // Parse justifications JSON
-          try {
-            const j = JSON.parse(p.justification_ecart);
-            setJustifications(Array.isArray(j) ? j : []);
-          } catch { setJustifications([]); }
-          // Charger situation lots
-          const rs = await fetch(`/api/passations/${p.id}/situation/`, { credentials: "include" });
+          setJustifs(parseJustifs(p.justification_ecart));
+          // Charger situation + recalculer solde à chaque ouverture
+          const [rs] = await Promise.all([
+            fetch(`/api/passations/${p.id}/situation/`, { credentials: "include" }),
+            refreshCaisse(p.id),
+          ]);
           if (rs.ok) setSituation(await rs.json());
         }
       } catch {}
       setLoading(false);
     };
     load();
-  }, [assembleeId]);
+  }, [assembleeId, refreshCaisse]);
 
+  // ── Sauvegarde ───────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true); setError("");
     const payload = {
       ...form,
-      solde_banque: form.solde_banque || 0,
-      justification_ecart: JSON.stringify(justifications),
+      justification_ecart: JSON.stringify(justifs),
       assemblee: assembleeId || null,
     };
     try {
@@ -119,14 +114,17 @@ export default function PassationConsignesPage() {
           body: JSON.stringify(payload),
         });
         if (!r.ok) {
-          const d = await r.json().catch(() => ({}));
-          setError(Object.values(d).flat().join(" ") || "Erreur création.");
-          return;
+          const err = await r.json().catch(() => ({}));
+          setError(err.detail || JSON.stringify(err) || "Erreur création."); return;
         }
         const p = await r.json();
         setPassation(p);
         setReserves(p.reserves || []);
-        const rs = await fetch(`/api/passations/${p.id}/situation/`, { credentials: "include" });
+        setJustifs(parseJustifs(p.justification_ecart));
+        const [rs] = await Promise.all([
+          fetch(`/api/passations/${p.id}/situation/`, { credentials: "include" }),
+          refreshCaisse(p.id),
+        ]);
         if (rs.ok) setSituation(await rs.json());
       } else {
         const r = await fetch(`/api/passations/${passation.id}/`, {
@@ -134,29 +132,14 @@ export default function PassationConsignesPage() {
           headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
           body: JSON.stringify(payload),
         });
-        if (!r.ok) {
-          const d = await r.json().catch(() => ({}));
-          setError(Object.values(d).flat().join(" ") || "Erreur modification.");
-          return;
-        }
+        if (!r.ok) { setError("Erreur modification."); return; }
         const p = await r.json();
-        setPassation(p);
+        setPassation(prev => ({ ...prev, ...p }));
       }
     } finally { setSaving(false); }
   };
 
-  const handleRefreshCaisse = async () => {
-    if (!passation) return;
-    const r = await fetch(`/api/passations/${passation.id}/refresh-caisse/`, {
-      method: "POST", credentials: "include",
-      headers: { "X-CSRFToken": getCsrf() },
-    });
-    if (r.ok) {
-      const d = await r.json();
-      setPassation(p => ({ ...p, solde_caisse: d.solde_caisse }));
-    }
-  };
-
+  // ── Réserves ─────────────────────────────────────────────
   const handleAddReserve = async () => {
     if (!passation || !newReserve.libelle.trim()) return;
     setAddingRes(true);
@@ -183,19 +166,46 @@ export default function PassationConsignesPage() {
     setReserves(prev => prev.filter(r => r.id !== resId));
   };
 
+  // ── Justifications ───────────────────────────────────────
   const addJustif = () => {
     if (!newJustif.libelle.trim()) return;
-    setJustifications(prev => [...prev, { libelle: newJustif.libelle, montant: newJustif.montant }]);
-    setNewJustif({ libelle: "", montant: "" });
+    const entry = { libelle: newJustif.libelle, montant: newJustif.montant, sens: newJustif.sens };
+    if (editJustifIdx !== null) {
+      setJustifs(prev => prev.map((j, i) => i === editJustifIdx ? entry : j));
+      setEditJustifIdx(null);
+    } else {
+      setJustifs(prev => [...prev, entry]);
+    }
+    setNewJustif({ libelle: "", montant: "", sens: "CREDIT" });
   };
 
-  const removeJustif = (idx) => setJustifications(prev => prev.filter((_, i) => i !== idx));
+  const startEditJustif = (idx) => {
+    setEditJustifIdx(idx);
+    setNewJustif({ ...justifs[idx] });
+  };
 
-  const solveBanque = parseFloat(form.solde_banque) || 0;
-  const solveCaisse = parseFloat(passation?.solde_caisse ?? 0);
-  const ecart = solveCaisse - solveBanque;
+  const cancelEditJustif = () => {
+    setEditJustifIdx(null);
+    setNewJustif({ libelle: "", montant: "", sens: "CREDIT" });
+  };
 
-  // ── PDF ─────────────────────────────────────────────────────────────────
+  const ecart = passation
+    ? parseFloat(passation.solde_caisse) - parseFloat(form.solde_banque || 0)
+    : 0;
+
+  // Total justifications signé : CREDIT = positif, DEBIT = négatif
+  const totalJustifs = justifs.reduce((s, j) => {
+    const m = parseFloat(j.montant || 0);
+    return s + (j.sens === "DEBIT" ? -m : m);
+  }, 0);
+  const ecartRestant = Math.round((ecart - totalJustifs) * 100) / 100;
+
+  const personnesOptions = personnes.map(p => ({
+    value: `${p.nom}${p.prenom ? " " + p.prenom : ""}`,
+    label: `${p.nom}${p.prenom ? " " + p.prenom : ""}`,
+  }));
+
+  // ── PDF ──────────────────────────────────────────────────
   const handlePdf = () => {
     if (!passation) return;
     setPdfLoading(true);
@@ -219,15 +229,15 @@ export default function PassationConsignesPage() {
         <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;font-family:monospace">${r.montant ? fmt(r.montant) + " MAD" : "—"}</td>
       </tr>`).join("");
 
-    const justifRows = justifications.map(j => `
+    const justifRows = justifs.map(j => `
       <tr>
-        <td style="padding:4px 8px;border:1px solid #e5e7eb">${j.libelle}</td>
-        <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;font-family:monospace">${j.montant ? fmt(j.montant) + " MAD" : "—"}</td>
+        <td style="padding:4px 8px;border:1px solid #e5e7eb">
+          <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${j.sens === "CREDIT" ? "#d1fae5" : "#fee2e2"};color:${j.sens === "CREDIT" ? "#065f46" : "#991b1b"};margin-right:6px">${j.sens === "CREDIT" ? "Crédit" : "Débit"}</span>${j.libelle}
+        </td>
+        <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;font-family:monospace;color:${j.sens === "CREDIT" ? "#059669" : "#dc2626"}">${j.montant ? (j.sens === "CREDIT" ? "+" : "−") + fmt(j.montant) + " MAD" : "—"}</td>
       </tr>`).join("");
 
-    const sectNum = (n) => n;
     let sec = 1;
-
     const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -245,20 +255,18 @@ export default function PassationConsignesPage() {
     .kpi-box { flex: 1; border: 1px solid #ddd; border-radius: 4px; padding: 6px 10px; }
     .kpi-label { font-size: 8px; color: #555; text-transform: uppercase; letter-spacing: 0.06em; }
     .kpi-val { font-size: 13px; font-weight: 800; margin-top: 2px; }
-    .sign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 36px; }
-    .sign-group { border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; }
-    .sign-group-title { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #555; margin-bottom: 6px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-    .sign-row { display: flex; justify-content: space-between; gap: 10px; }
-    .sign-box { flex: 1; }
-    .sign-title { font-size: 9px; font-weight: 700; margin-bottom: 2px; }
+    .sign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 36px; }
+    .sign-col-label { font-size: 8px; font-weight: 700; text-transform: uppercase; color: #555; border-bottom: 1px solid #ccc; padding-bottom: 3px; margin-bottom: 10px; }
+    .sign-block { margin-bottom: 18px; }
+    .sign-box { border-top: 1px solid #111; padding-top: 5px; }
+    .sign-role { font-size: 9px; font-weight: 700; margin-bottom: 1px; }
     .sign-name { font-size: 10px; color: #333; }
-    .sign-line { margin-top: 22px; border-top: 1px solid #111; padding-top: 4px; font-size: 7px; color: #aaa; }
+    .sign-space { height: 28px; }
     .red { color: #dc2626; } .green { color: #059669; }
   </style>
 </head>
 <body>
 
-  <!-- En-tête -->
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:10px;border-bottom:3px solid #111">
     <div>
       <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.1em;color:#555;margin-bottom:3px">Procès-verbal de</div>
@@ -271,7 +279,6 @@ export default function PassationConsignesPage() {
     </div>
   </div>
 
-  <!-- Situation financière -->
   <h2>${sec++}. Situation Financière</h2>
   <div class="kpi">
     <div class="kpi-box">
@@ -288,14 +295,13 @@ export default function PassationConsignesPage() {
     </div>
   </div>
 
-  ${justifications.length > 0 ? `
+  ${justifs.length > 0 ? `
   <h2>${sec++}. Justification des Écarts</h2>
   <table>
-    <thead><tr><th>Justification</th><th style="text-align:right;width:120px">Montant</th></tr></thead>
+    <thead><tr><th>Libellé</th><th style="text-align:right;width:120px">Montant</th></tr></thead>
     <tbody>${justifRows}</tbody>
   </table>` : ""}
 
-  <!-- Situation paiements -->
   <h2>${sec++}. Situation des Paiements par Lot</h2>
   <table>
     <thead><tr>
@@ -326,57 +332,64 @@ export default function PassationConsignesPage() {
   <h2>${sec++}. Notes Complémentaires</h2>
   <div style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:3px;font-size:9px;line-height:1.6">${form.notes}</div>` : ""}
 
-  <!-- Signatures -->
   <div class="sign-grid">
-    <div class="sign-group">
-      <div class="sign-group-title">Bureau Syndical Sortant</div>
-      <div class="sign-row">
+    <div>
+      <div class="sign-col-label">Bureau sortant</div>
+      <div class="sign-block">
         <div class="sign-box">
-          <div class="sign-title">Le Syndic</div>
-          <div class="sign-name">${form.nom_syndic || "___________________"}</div>
-          <div class="sign-line">Signature</div>
-        </div>
-        <div class="sign-box">
-          <div class="sign-title">Le Trésorier</div>
+          <div class="sign-role">Le Trésorier Sortant</div>
           <div class="sign-name">${form.nom_tresorier || "___________________"}</div>
-          <div class="sign-line">Signature</div>
+          <div class="sign-space"></div>
+          <div style="font-size:8px;color:#777">Signature</div>
+        </div>
+      </div>
+      <div class="sign-block">
+        <div class="sign-box">
+          <div class="sign-role">Le Syndic Sortant</div>
+          <div class="sign-name">${form.nom_syndic || "___________________"}</div>
+          <div class="sign-space"></div>
+          <div style="font-size:8px;color:#777">Signature</div>
         </div>
       </div>
     </div>
-    <div class="sign-group">
-      <div class="sign-group-title">Bureau Syndical Entrant</div>
-      <div class="sign-row">
+    <div>
+      <div class="sign-col-label">Bureau entrant</div>
+      <div class="sign-block">
         <div class="sign-box">
-          <div class="sign-title">Le Syndic</div>
-          <div class="sign-name">${form.nom_syndic_entrant || "___________________"}</div>
-          <div class="sign-line">Signature</div>
-        </div>
-        <div class="sign-box">
-          <div class="sign-title">Le Trésorier</div>
+          <div class="sign-role">Le Trésorier Entrant</div>
           <div class="sign-name">${form.nom_tresorier_entrant || "___________________"}</div>
-          <div class="sign-line">Signature</div>
+          <div class="sign-space"></div>
+          <div style="font-size:8px;color:#777">Signature</div>
+        </div>
+      </div>
+      <div class="sign-block">
+        <div class="sign-box">
+          <div class="sign-role">Le Syndic Entrant</div>
+          <div class="sign-name">${form.nom_syndic_entrant || "___________________"}</div>
+          <div class="sign-space"></div>
+          <div style="font-size:8px;color:#777">Signature</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Pied de page -->
   <div style="margin-top:16px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:7px;color:#aaa;display:flex;justify-content:space-between">
     <span>Passation de consignes · Syndic Pro</span>
-    <span>${form.date_passation}</span>
+    <span>Édité le ${new Date().toLocaleDateString("fr-FR")}</span>
   </div>
 
 </body>
 </html>`;
 
-    const blob = new Blob([html], { type: "text/html" });
-    const url  = URL.createObjectURL(blob);
-    const win  = window.open(url, "_blank");
-    win.onload = () => { win.focus(); win.print(); URL.revokeObjectURL(url); };
+    const win = window.open("", "_blank");
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
     setPdfLoading(false);
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -385,12 +398,10 @@ export default function PassationConsignesPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 pb-10">
-      <button onClick={() => navigate(-1)}
-        className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
+      <button onClick={() => navigate(-1)} className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
         ← Retour
       </button>
 
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Passation de consignes</h1>
@@ -413,37 +424,60 @@ export default function PassationConsignesPage() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5">
 
         {/* Date */}
-        <div className="max-w-xs">
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Date de passation *</label>
-          <input type="date" className={INPUT} value={form.date_passation}
-            onChange={e => setForm(f => ({ ...f, date_passation: e.target.value }))} />
-        </div>
-
-        {/* Signataires — sortants */}
-        <div>
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
-            Bureau sortant
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <PersonneSelect label="Syndic sortant" value={form.nom_syndic}
-              onChange={v => setForm(f => ({ ...f, nom_syndic: v }))} personnes={personnes} />
-            <PersonneSelect label="Trésorier sortant" value={form.nom_tresorier}
-              onChange={v => setForm(f => ({ ...f, nom_tresorier: v }))} personnes={personnes} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Date de passation *</label>
+            <input type="date" className={INPUT} value={form.date_passation}
+              onChange={e => setForm(f => ({ ...f, date_passation: e.target.value }))} />
           </div>
         </div>
 
-        {/* Signataires — entrants */}
-        <div>
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-            Bureau entrant
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <PersonneSelect label="Syndic entrant" value={form.nom_syndic_entrant}
-              onChange={v => setForm(f => ({ ...f, nom_syndic_entrant: v }))} personnes={personnes} />
-            <PersonneSelect label="Trésorier entrant" value={form.nom_tresorier_entrant}
-              onChange={v => setForm(f => ({ ...f, nom_tresorier_entrant: v }))} personnes={personnes} />
+        {/* Signataires */}
+        <div className="border-t border-slate-100 pt-4">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Signataires</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 border-b border-slate-100 pb-1">Bureau sortant</p>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Syndic sortant</label>
+                  <select className={SELECT} value={form.nom_syndic}
+                    onChange={e => setForm(f => ({ ...f, nom_syndic: e.target.value }))}>
+                    <option value="">— Sélectionner —</option>
+                    {personnesOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Trésorier sortant</label>
+                  <select className={SELECT} value={form.nom_tresorier}
+                    onChange={e => setForm(f => ({ ...f, nom_tresorier: e.target.value }))}>
+                    <option value="">— Sélectionner —</option>
+                    {personnesOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 border-b border-slate-100 pb-1">Bureau entrant</p>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Syndic entrant</label>
+                  <select className={SELECT} value={form.nom_syndic_entrant}
+                    onChange={e => setForm(f => ({ ...f, nom_syndic_entrant: e.target.value }))}>
+                    <option value="">— Sélectionner —</option>
+                    {personnesOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Trésorier entrant</label>
+                  <select className={SELECT} value={form.nom_tresorier_entrant}
+                    onChange={e => setForm(f => ({ ...f, nom_tresorier_entrant: e.target.value }))}>
+                    <option value="">— Sélectionner —</option>
+                    {personnesOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -451,12 +485,13 @@ export default function PassationConsignesPage() {
         <div className="border-t border-slate-100 pt-4">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Situation financière</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
             {/* Caisse auto */}
             <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Solde Caisse</span>
                 {passation && (
-                  <button onClick={handleRefreshCaisse} title="Actualiser"
+                  <button onClick={() => refreshCaisse(passation.id)} title="Recalculer"
                     className="text-slate-400 hover:text-indigo-600 transition text-xs">↺</button>
                 )}
               </div>
@@ -464,14 +499,15 @@ export default function PassationConsignesPage() {
               <p className="text-[10px] text-slate-400">MAD · automatique</p>
             </div>
 
-            {/* Banque — formatted display + input */}
+            {/* Banque avec affichage formaté */}
             <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Solde Compte Bancaire</span>
-              <p className="text-lg font-bold text-slate-800 mb-1">{fmt(form.solde_banque || 0)}</p>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Solde Bancaire</div>
+              <p className="text-lg font-bold text-slate-800">{fmt(form.solde_banque || 0)}</p>
               <input type="number" step="0.01" placeholder="Saisir le montant"
-                className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-indigo-400 bg-white"
+                className="mt-1 w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-indigo-400 bg-white"
                 value={form.solde_banque}
                 onChange={e => setForm(f => ({ ...f, solde_banque: e.target.value }))} />
+              <p className="text-[10px] text-slate-400 mt-0.5">MAD · manuel</p>
             </div>
 
             {/* Écart */}
@@ -482,49 +518,82 @@ export default function PassationConsignesPage() {
             </div>
           </div>
 
-          {/* Justifications écart */}
+          {/* Justifications de l'écart */}
           {Math.abs(ecart) >= 0.01 && (
             <div className="mt-4 space-y-2">
-              <label className="block text-xs font-semibold text-slate-600">
-                Justifications de l'écart
-                <span className="ml-1 text-slate-400 font-normal">(détaillez chaque poste)</span>
-              </label>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Justification(s) de l'écart</h3>
 
-              {justifications.length > 0 && (
+              {justifs.length > 0 && (
                 <div className="space-y-1.5">
-                  {justifications.map((j, idx) => (
-                    <div key={idx} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-orange-50 border border-orange-100">
+                  {justifs.map((j, idx) => (
+                    <div key={idx} className={`flex items-center justify-between gap-3 px-3 py-2 rounded-xl border ${editJustifIdx === idx ? "bg-indigo-50 border-indigo-300" : "bg-red-50 border-red-100"}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${j.sens === "CREDIT" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                        {j.sens === "CREDIT" ? "Crédit +" : "Débit −"}
+                      </span>
                       <span className="text-sm text-slate-700 flex-1">{j.libelle}</span>
-                      {j.montant && <span className="text-xs font-mono font-semibold text-orange-700 shrink-0">{fmt(j.montant)} MAD</span>}
-                      <button onClick={() => removeJustif(idx)}
+                      {j.montant && (
+                        <span className={`text-xs font-mono font-semibold shrink-0 ${j.sens === "CREDIT" ? "text-emerald-700" : "text-red-700"}`}>
+                          {j.sens === "CREDIT" ? "+" : "−"}{fmt(j.montant)} MAD
+                        </span>
+                      )}
+                      <button onClick={() => startEditJustif(idx)}
+                        className="text-slate-400 hover:text-indigo-600 transition text-xs shrink-0" title="Modifier">✎</button>
+                      <button onClick={() => { if (editJustifIdx === idx) cancelEditJustif(); setJustifs(prev => prev.filter((_, i) => i !== idx)); }}
                         className="text-slate-300 hover:text-red-500 transition text-xs shrink-0">✕</button>
                     </div>
                   ))}
                 </div>
               )}
 
+              {/* Indicateur équilibre */}
+              {justifs.some(j => j.montant) && (
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold ${Math.abs(ecartRestant) < 0.01 ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
+                  <span className="text-base">{Math.abs(ecartRestant) < 0.01 ? "↑" : "↓"}</span>
+                  <span>
+                    {Math.abs(ecartRestant) < 0.01
+                      ? "Justifications équilibrées — écart couvert"
+                      : `Reste à justifier : ${fmt(Math.abs(ecartRestant))} MAD`}
+                  </span>
+                  <span className="ml-auto text-xs font-normal opacity-70">
+                    Total justifié : {fmt(Math.abs(totalJustifs))} / Écart : {fmt(Math.abs(ecart))}
+                  </span>
+                </div>
+              )}
+
               <div className="flex gap-2 items-end">
                 <div className="flex-1">
-                  <input className={INPUT} placeholder="Ex : Chèque non encore encaissé…"
+                  <input className={INPUT} placeholder="Ex : chèque non encore encaissé…"
                     value={newJustif.libelle}
                     onChange={e => setNewJustif(j => ({ ...j, libelle: e.target.value }))}
                     onKeyDown={e => e.key === "Enter" && addJustif()} />
                 </div>
-                <div className="w-36">
-                  <input type="number" step="0.01" className={INPUT} placeholder="Montant (opt.)"
+                <div className="w-32">
+                  <input type="number" step="0.01" className={INPUT} placeholder="Montant"
                     value={newJustif.montant}
                     onChange={e => setNewJustif(j => ({ ...j, montant: e.target.value }))} />
                 </div>
+                <select className="border border-slate-200 rounded-xl px-2 py-2 text-xs focus:outline-none focus:border-indigo-400 bg-white"
+                  value={newJustif.sens}
+                  onChange={e => setNewJustif(j => ({ ...j, sens: e.target.value }))}>
+                  <option value="CREDIT">Crédit +</option>
+                  <option value="DEBIT">Débit −</option>
+                </select>
+                {editJustifIdx !== null && (
+                  <button onClick={cancelEditJustif}
+                    className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-200 transition shrink-0">
+                    ✕
+                  </button>
+                )}
                 <button onClick={addJustif} disabled={!newJustif.libelle.trim()}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition shrink-0">
-                  + Ajouter
+                  className={`px-4 py-2 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition shrink-0 ${editJustifIdx !== null ? "bg-indigo-600 hover:bg-indigo-700" : "bg-red-500 hover:bg-red-600"}`}>
+                  {editJustifIdx !== null ? "Modifier" : "+ Ajouter"}
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex justify-end gap-3 pt-1 border-t border-slate-100">
+        <div className="flex justify-end pt-1">
           <button onClick={handleSave} disabled={saving}
             className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition">
             {saving ? "Enregistrement…" : passation ? "Mettre à jour" : "Créer la passation"}
@@ -579,7 +648,6 @@ export default function PassationConsignesPage() {
         {/* ── Réserves ── */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Réserves et observations</h2>
-
           {reserves.length > 0 && (
             <div className="space-y-2">
               {reserves.map(r => (
@@ -592,7 +660,6 @@ export default function PassationConsignesPage() {
               ))}
             </div>
           )}
-
           <div className="flex gap-2 items-end">
             <div className="flex-1">
               <input className={INPUT} placeholder="Libellé de la réserve…"

@@ -1439,3 +1439,97 @@ class ReservePassation(models.Model):
 
     def __str__(self):
         return self.libelle
+
+
+# ============================================================
+# RÉSOLUTIONS PAR VOTE
+# ============================================================
+
+class ResolutionVote(TimeStampedModel):
+
+    STATUS_CHOICES = [
+        ("EN_PREPARATION", "En préparation"),
+        ("EN_COURS",       "En cours de vote"),
+        ("CLOTURE",        "Clôturé"),
+    ]
+    TYPE_VOTE_CHOICES = [
+        ("MAJORITE_SIMPLE",  "Majorité simple (> 50 % des votants)"),
+        ("MAJORITE_ABSOLUE", "Majorité absolue (> 50 % des copropriétaires)"),
+        ("DOUBLE_MAJORITE",  "Double majorité"),
+        ("UNANIMITE",        "Unanimité"),
+    ]
+
+    residence         = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="resolutions_vote")
+    assemblee         = models.ForeignKey("AssembleeGenerale", on_delete=models.SET_NULL, null=True, blank=True, related_name="resolutions_vote")
+    intitule          = models.CharField(max_length=250)
+    description       = models.TextField(blank=True)
+    type_vote         = models.CharField(max_length=30, choices=TYPE_VOTE_CHOICES, default="MAJORITE_SIMPLE")
+    date_resolution   = models.DateField()
+    date_debut_vote   = models.DateTimeField(null=True, blank=True)
+    date_cloture_vote = models.DateTimeField(null=True, blank=True)
+    statut            = models.CharField(max_length=20, choices=STATUS_CHOICES, default="EN_PREPARATION")
+
+    class Meta:
+        ordering = ["-date_resolution", "-created_at"]
+
+    def __str__(self):
+        return f"{self.intitule} ({self.get_statut_display()})"
+
+    @property
+    def statut_effectif(self):
+        """Statut calculé automatiquement en fonction des dates."""
+        from django.utils import timezone
+        from django.utils.dateparse import parse_datetime
+
+        def to_dt(val):
+            if not val:
+                return None
+            if isinstance(val, str):
+                dt = parse_datetime(val)
+                if dt and timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt)
+                return dt
+            if hasattr(val, 'tzinfo') and val.tzinfo is None:
+                return timezone.make_aware(val)
+            return val
+
+        now = timezone.now()
+        d1 = to_dt(self.date_debut_vote)
+        d2 = to_dt(self.date_cloture_vote)
+        if d1 and d2:
+            if now < d1:
+                return "EN_PREPARATION"
+            elif now <= d2:
+                return "EN_COURS"
+            else:
+                return "CLOTURE"
+        if d1:
+            return "EN_PREPARATION" if now < d1 else "EN_COURS"
+        if d2:
+            return "CLOTURE" if now > d2 else self.statut
+        return self.statut
+
+
+class VoteResident(TimeStampedModel):
+
+    CHOIX_CHOICES = [("OUI", "Oui"), ("NON", "Non"), ("NEUTRE", "Neutre")]
+
+    resolution = models.ForeignKey(ResolutionVote, on_delete=models.CASCADE, related_name="votes")
+    lot        = models.ForeignKey("Lot", on_delete=models.CASCADE, related_name="votes_resolution")
+    user       = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    choix      = models.CharField(max_length=10, choices=CHOIX_CHOICES)
+
+    class Meta:
+        unique_together = ("resolution", "lot")
+        ordering = ["lot__numero_lot"]
+
+
+class NotificationVote(TimeStampedModel):
+
+    resolution      = models.ForeignKey(ResolutionVote, on_delete=models.CASCADE, related_name="notifications_vote")
+    lot             = models.ForeignKey("Lot", on_delete=models.CASCADE, related_name="notifications_vote")
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("resolution", "lot")
+        ordering = ["lot__numero_lot"]

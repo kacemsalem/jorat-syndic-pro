@@ -43,6 +43,8 @@ import MessagesResidentPage from "./pages/MessagesResidentPage";
 import ConsultationPage from "./pages/ConsultationPage";
 import EtatMensuelPage from "./pages/EtatMensuelPage";
 import PassationConsignesPage from "./pages/PassationConsignesPage";
+import ResolutionsVotePage from "./pages/ResolutionsVotePage";
+import ResidentVotePage from "./pages/ResidentVotePage";
 import JournalPage    from "./pages/comptabilite/JournalPage";
 import GrandLivrePage from "./pages/comptabilite/GrandLivrePage";
 import BalancePage    from "./pages/comptabilite/BalancePage";
@@ -54,7 +56,7 @@ import AppHeader from "./components/AppHeader";
 import { ToastProvider } from "./components/Toast";
 
 // Pages that use their own full-screen layout (no sidebar/header)
-const PUBLIC_PATHS = ["/login", "/resident", "/change-password"];
+const PUBLIC_PATHS = ["/login", "/resident", "/change-password", "/espace-resident/votes"];
 
 function AppLayout() {
   const location = useLocation();
@@ -112,9 +114,10 @@ function AppLayout() {
     return (
       <div className="min-h-screen">
         <Routes>
-          <Route path="/login"           element={<LandingApp />} />
-          <Route path="/change-password" element={<ChangePasswordPage />} />
-          <Route path="/resident"        element={<ResidentRoute><ResidentPortalPage /></ResidentRoute>} />
+          <Route path="/login"                  element={<LandingApp />} />
+          <Route path="/change-password"        element={<ChangePasswordPage />} />
+          <Route path="/resident"               element={<ResidentRoute><ResidentPortalPage /></ResidentRoute>} />
+          <Route path="/espace-resident/votes"  element={<ResidentRoute><ResidentVotePage /></ResidentRoute>} />
         </Routes>
       </div>
     );
@@ -162,6 +165,7 @@ function AppLayout() {
               <Route path="/gouvernance/documents"   element={<DocumentsGouvernancePage />} />
               <Route path="/gouvernance/travaux"          element={<TravauxPage />} />
               <Route path="/gouvernance/notifications"        element={<NotificationsPage />} />
+              <Route path="/gouvernance/resolutions-vote"    element={<ResolutionsVotePage />} />
               <Route path="/espace-resident/messages"        element={<MessagesResidentPage />} />
               <Route path="/espace-resident/consultation"    element={<ConsultationPage />} />
               <Route path="/etat-mensuel"                  element={<EtatMensuelPage />} />

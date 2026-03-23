@@ -62,6 +62,19 @@ const BASE_NAV_GROUPS = [
     ],
   },
   {
+    label: "Gouvernance",
+    collapsible: true,
+    items: [
+      { label: "Assemblées",         path: "/gouvernance/assemblees",       icon: "ag" },
+      { label: "Bureau syndical",    path: "/gouvernance/bureau",           icon: "bureau" },
+      { label: "Résolutions",        path: "/gouvernance/resolutions",      icon: "resolutions" },
+      { label: "Documents",          path: "/gouvernance/documents",        icon: "documents" },
+      { label: "Résolutions / vote", path: "/gouvernance/resolutions-vote", icon: "resolutions" },
+      { label: "Travaux",            path: "/gouvernance/travaux",          icon: "travaux" },
+      { label: "Notifications",      path: "/gouvernance/notifications",    icon: "notif" },
+    ],
+  },
+  {
     label: "Administration",
     collapsible: true,
     items: [

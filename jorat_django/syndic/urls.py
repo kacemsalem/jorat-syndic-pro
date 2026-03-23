@@ -22,6 +22,11 @@ from .views_users import (
 from .views_init import init_complete
 from .views import passation_list_create, passation_detail, passation_refresh_caisse, passation_reserves, passation_situation_lots
 from .views_archive import archive_list, archive_create, archive_restore
+from .views_vote import (
+    resolution_vote_list_create, resolution_vote_detail,
+    resolution_vote_envoyer_notifs, resolution_vote_resultats,
+    resolution_vote_mes, resolution_vote_accuser, resolution_vote_voter,
+)
 from .views_notifications import create_notification, resident_notifications_view, mark_notification_read
 from .views_messages import messages_list, message_update, message_submit, message_mes, admin_resident_lot
 from .views import (
@@ -109,6 +114,15 @@ urlpatterns = [
     path("notification-send/",            create_notification,         name="notification-create"),
     path("notification-mes/",             resident_notifications_view, name="resident-notifications"),
     path("notification-read/<int:pk>/",   mark_notification_read,      name="notification-read"),
+
+    # ── Résolutions par vote ─────────────────────────────────
+    path("resolutions-vote/",                        resolution_vote_list_create,   name="rv-list"),
+    path("resolutions-vote/<int:pk>/",               resolution_vote_detail,        name="rv-detail"),
+    path("resolutions-vote/<int:pk>/envoyer-notifs/",resolution_vote_envoyer_notifs,name="rv-notifs"),
+    path("resolutions-vote/<int:pk>/resultats/",     resolution_vote_resultats,     name="rv-resultats"),
+    path("resolutions-vote/<int:pk>/voter/",         resolution_vote_voter,         name="rv-voter"),
+    path("resolutions-vote/<int:pk>/accuser/",       resolution_vote_accuser,       name="rv-accuser"),
+    path("resolutions-vote/mes/",                    resolution_vote_mes,           name="rv-mes"),
 
     # ── Espace résident — messages ────────────────────────────
     path("messages-resident/",            messages_list,       name="messages-resident-list"),
