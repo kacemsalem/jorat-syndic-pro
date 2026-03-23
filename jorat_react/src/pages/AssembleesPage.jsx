@@ -382,6 +382,10 @@ export default function AssembleesPage() {
                   className="flex items-center gap-1 px-3 py-1 rounded-lg bg-pink-100 text-pink-700 text-xs font-semibold hover:bg-pink-200 transition">
                   Bureau Syndical
                 </button>
+                <button onClick={() => navigate(`/passation-consignes?assemblee=${item.id}`)}
+                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-semibold hover:bg-emerald-200 transition">
+                  Passation de consignes
+                </button>
                 {item.pv_document && (
                   <a href={item.pv_document} target="_blank" rel="noreferrer"
                     className="px-3 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-semibold hover:bg-blue-200 transition">

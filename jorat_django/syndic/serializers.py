@@ -499,3 +499,22 @@ class NotificationSerializer(serializers.ModelSerializer):
         if not obj.personne:
             return None
         return f"{obj.personne.prenom} {obj.personne.nom}".strip()
+
+
+# -------------------------------------------------
+# Passation de consignes
+# -------------------------------------------------
+from .models import PassationConsignes, ReservePassation
+
+class ReservePassationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = ReservePassation
+        fields = "__all__"
+
+class PassationConsignesSerializer(serializers.ModelSerializer):
+    reserves = ReservePassationSerializer(many=True, read_only=True)
+
+    class Meta:
+        model  = PassationConsignes
+        fields = "__all__"
+        extra_kwargs = {"residence": {"read_only": True}}

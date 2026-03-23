@@ -42,6 +42,7 @@ import ModelesDepensePage from "./pages/ModelesDepensePage";
 import MessagesResidentPage from "./pages/MessagesResidentPage";
 import ConsultationPage from "./pages/ConsultationPage";
 import EtatMensuelPage from "./pages/EtatMensuelPage";
+import PassationConsignesPage from "./pages/PassationConsignesPage";
 import JournalPage    from "./pages/comptabilite/JournalPage";
 import GrandLivrePage from "./pages/comptabilite/GrandLivrePage";
 import BalancePage    from "./pages/comptabilite/BalancePage";
@@ -164,6 +165,7 @@ function AppLayout() {
               <Route path="/espace-resident/messages"        element={<MessagesResidentPage />} />
               <Route path="/espace-resident/consultation"    element={<ConsultationPage />} />
               <Route path="/etat-mensuel"                  element={<EtatMensuelPage />} />
+              <Route path="/passation-consignes"          element={<PassationConsignesPage />} />
               <Route path="/comptabilite/journal"    element={<JournalPage />} />
               <Route path="/comptabilite/grand-livre" element={<GrandLivrePage />} />
               <Route path="/comptabilite/balance"    element={<BalancePage />} />

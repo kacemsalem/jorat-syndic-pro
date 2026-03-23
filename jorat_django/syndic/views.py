@@ -967,3 +967,149 @@ class NotificationViewSet(ModelViewSet):
         if not residence:
             raise ValidationError("Aucune résidence associée.")
         serializer.save(residence=residence)
+
+
+# ============================================================
+# Passation de consignes
+# ============================================================
+from .models import PassationConsignes, ReservePassation
+from .serializers import PassationConsignesSerializer, ReservePassationSerializer
+from django.db.models import Sum
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def passation_list_create(request):
+    residence = get_user_residence(request)
+    if not residence:
+        return Response({"detail": "Aucune résidence."}, status=400)
+
+    if request.method == "GET":
+        qs = PassationConsignes.objects.filter(residence=residence).prefetch_related("reserves")
+        assemblee_id = request.query_params.get("assemblee")
+        if assemblee_id:
+            qs = qs.filter(assemblee_id=assemblee_id)
+        return Response(PassationConsignesSerializer(qs, many=True).data)
+
+    # POST — créer
+    date_passation = request.data.get("date_passation") or None
+    solde_caisse = _compute_solde_caisse(residence, date=date_passation)
+    p = PassationConsignes.objects.create(
+        residence       = residence,
+        assemblee_id    = request.data.get("assemblee") or None,
+        date_passation  = date_passation,
+        solde_caisse    = solde_caisse,
+        solde_banque    = request.data.get("solde_banque") or 0,
+        justification_ecart = request.data.get("justification_ecart", ""),
+        notes                 = request.data.get("notes", ""),
+        nom_syndic            = request.data.get("nom_syndic", ""),
+        nom_tresorier         = request.data.get("nom_tresorier", ""),
+        nom_syndic_entrant    = request.data.get("nom_syndic_entrant", ""),
+        nom_tresorier_entrant = request.data.get("nom_tresorier_entrant", ""),
+    )
+    return Response(PassationConsignesSerializer(p).data, status=201)
+
+
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def passation_detail(request, pk):
+    residence = get_user_residence(request)
+    try:
+        p = PassationConsignes.objects.prefetch_related("reserves").get(pk=pk, residence=residence)
+    except PassationConsignes.DoesNotExist:
+        return Response(status=404)
+
+    if request.method == "GET":
+        return Response(PassationConsignesSerializer(p).data)
+
+    if request.method == "PATCH":
+        for field in ["date_passation","justification_ecart","notes","nom_syndic","nom_tresorier","nom_syndic_entrant","nom_tresorier_entrant"]:
+            if field in request.data:
+                setattr(p, field, request.data[field])
+        if "solde_banque" in request.data:
+            p.solde_banque = request.data["solde_banque"] or 0
+        p.save()
+        return Response(PassationConsignesSerializer(p).data)
+
+    p.delete()
+    return Response(status=204)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def passation_refresh_caisse(request, pk):
+    residence = get_user_residence(request)
+    try:
+        p = PassationConsignes.objects.get(pk=pk, residence=residence)
+    except PassationConsignes.DoesNotExist:
+        return Response(status=404)
+    p.solde_caisse = _compute_solde_caisse(residence, date=p.date_passation)
+    p.save()
+    return Response({"solde_caisse": str(p.solde_caisse)})
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def passation_reserves(request, pk):
+    residence = get_user_residence(request)
+    try:
+        p = PassationConsignes.objects.get(pk=pk, residence=residence)
+    except PassationConsignes.DoesNotExist:
+        return Response(status=404)
+
+    if request.method == "POST":
+        r = ReservePassation.objects.create(
+            passation = p,
+            libelle   = request.data.get("libelle", ""),
+            montant   = request.data.get("montant") or None,
+            ordre     = request.data.get("ordre", 0),
+        )
+        return Response(ReservePassationSerializer(r).data, status=201)
+
+    # DELETE reserve
+    rid = request.data.get("id")
+    ReservePassation.objects.filter(id=rid, passation=p).delete()
+    return Response(status=204)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def passation_situation_lots(request, pk):
+    """Retourne la situation paiements par lot pour une passation."""
+    residence = get_user_residence(request)
+    try:
+        PassationConsignes.objects.get(pk=pk, residence=residence)
+    except PassationConsignes.DoesNotExist:
+        return Response(status=404)
+
+    from .models import Lot, DetailAppelCharge
+    from django.db.models import Sum as S
+    lots = Lot.objects.filter(residence=residence).select_related("representant","groupe").order_by("groupe__nom_groupe","numero_lot")
+    result = []
+    for lot in lots:
+        agg = DetailAppelCharge.objects.filter(lot=lot).aggregate(du=S("montant"), recu=S("montant_recu"))
+        du   = float(agg["du"]   or 0)
+        recu = float(agg["recu"] or 0)
+        if du == 0:
+            continue
+        rep = lot.representant
+        result.append({
+            "lot":    lot.numero_lot,
+            "nom":    f"{rep.nom} {rep.prenom or ''}".strip() if rep else "—",
+            "du":     du,
+            "recu":   recu,
+            "reste":  round(du - recu, 2),
+        })
+    return Response(result)
+
+
+def _compute_solde_caisse(residence, date=None):
+    from .models import CaisseMouvement
+    from django.db.models import Sum, Q
+    qs = CaisseMouvement.objects.filter(residence=residence)
+    if date:
+        qs = qs.filter(date_mouvement__lte=date)
+    agg = qs.aggregate(
+        entrees=Sum("montant", filter=Q(sens="DEBIT")),
+        sorties=Sum("montant", filter=Q(sens="CREDIT")),
+    )
+    return float(agg["entrees"] or 0) - float(agg["sorties"] or 0)

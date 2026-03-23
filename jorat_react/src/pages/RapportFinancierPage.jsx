@@ -206,18 +206,13 @@ export default function RapportFinancierPage() {
       {data && (
         <>
           <Section title="Résumé financier">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2">
-              <KPICard label="Total entrées"    value={`${fmt(data.entrees)} MAD`}   color="#059669" bg="#f0fdf4" />
-              <KPICard label="Total sorties"    value={`${fmt(data.sorties)} MAD`}   color="#dc2626" bg="#fef2f2" />
-              <KPICard label="Balance période"  value={`${fmt(data.balance)} MAD`}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <KPICard label="Balance période" value={`${fmt(data.balance)} MAD`}
                 color={balance >= 0 ? "#059669" : "#dc2626"}
                 bg={balance >= 0 ? "#f0fdf4" : "#fef2f2"}
                 sub={balance >= 0 ? "Excédent" : "Déficit"} />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <KPICard label="Paiements copropriétaires" value={`${fmt(data.total_paiements)} MAD`} color="#0369a1" bg="#f0f9ff" />
-              <KPICard label="Recettes externes"          value={`${fmt(data.total_recettes)} MAD`}  color="#059669" bg="#f0fdf4" />
-              <KPICard label="Dépenses"                   value={`${fmt(data.total_depenses)} MAD`}  color="#dc2626" bg="#fef2f2" />
+              <KPICard label="Total entrées" value={`${fmt(data.entrees)} MAD`} color="#059669" bg="#f0fdf4" />
+              <KPICard label="Total sorties" value={`${fmt(data.sorties)} MAD`} color="#dc2626" bg="#fef2f2" />
             </div>
           </Section>
 

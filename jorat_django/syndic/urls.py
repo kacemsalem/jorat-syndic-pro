@@ -20,6 +20,7 @@ from .views_users import (
     change_own_password,
 )
 from .views_init import init_complete
+from .views import passation_list_create, passation_detail, passation_refresh_caisse, passation_reserves, passation_situation_lots
 from .views_archive import archive_list, archive_create, archive_restore
 from .views_notifications import create_notification, resident_notifications_view, mark_notification_read
 from .views_messages import messages_list, message_update, message_submit, message_mes, admin_resident_lot
@@ -97,6 +98,11 @@ urlpatterns = [
     path("residence-users/<int:pk>/reset-password/", reset_user_password, name="residence-users-reset-password"),
     path("change-password/",               change_own_password,     name="change-password"),
     path("init-complete/",                 init_complete,           name="init-complete"),
+    path("passations/",                    passation_list_create,   name="passation-list"),
+    path("passations/<int:pk>/",           passation_detail,        name="passation-detail"),
+    path("passations/<int:pk>/refresh-caisse/", passation_refresh_caisse, name="passation-refresh"),
+    path("passations/<int:pk>/reserves/",  passation_reserves,      name="passation-reserves"),
+    path("passations/<int:pk>/situation/", passation_situation_lots,name="passation-situation"),
     path("archives/",                      archive_list,            name="archive-list"),
     path("archives/create/",              archive_create,          name="archive-create"),
     path("archives/<int:pk>/restore/",    archive_restore,         name="archive-restore"),

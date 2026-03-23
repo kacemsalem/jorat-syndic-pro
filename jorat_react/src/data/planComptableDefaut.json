@@ -1,0 +1,48 @@
+[
+  { "groupe": "CHARGES COURANTES", "comptes": [
+    { "code": "611", "libelle": "Gardiennage / Sécurité",           "type_compte": "CHARGE" },
+    { "code": "612", "libelle": "Nettoyage et entretien parties communes", "type_compte": "CHARGE" },
+    { "code": "613", "libelle": "Jardinage et espaces verts",       "type_compte": "CHARGE" },
+    { "code": "614", "libelle": "Électricité parties communes",     "type_compte": "CHARGE" },
+    { "code": "615", "libelle": "Eau parties communes",             "type_compte": "CHARGE" },
+    { "code": "616", "libelle": "Ascenseur — contrat entretien",    "type_compte": "CHARGE" },
+    { "code": "617", "libelle": "Pompe / groupe électrogène",       "type_compte": "CHARGE" },
+    { "code": "618", "libelle": "Piscine — entretien",              "type_compte": "CHARGE" },
+    { "code": "619", "libelle": "Charges diverses courantes",       "type_compte": "CHARGE" }
+  ]},
+  { "groupe": "CHARGES ADMINISTRATIVES", "comptes": [
+    { "code": "621", "libelle": "Honoraires syndic",                "type_compte": "CHARGE" },
+    { "code": "622", "libelle": "Frais juridiques et contentieux",  "type_compte": "CHARGE" },
+    { "code": "623", "libelle": "Frais de gestion bancaire",        "type_compte": "CHARGE" },
+    { "code": "624", "libelle": "Assurance immeuble",               "type_compte": "CHARGE" },
+    { "code": "625", "libelle": "Taxe et impôts",                   "type_compte": "CHARGE" },
+    { "code": "626", "libelle": "Frais de correspondance / courrier","type_compte": "CHARGE" },
+    { "code": "629", "libelle": "Charges administratives diverses", "type_compte": "CHARGE" }
+  ]},
+  { "groupe": "TRAVAUX ET GROSSES RÉPARATIONS", "comptes": [
+    { "code": "631", "libelle": "Travaux toiture",                  "type_compte": "CHARGE" },
+    { "code": "632", "libelle": "Travaux façade",                   "type_compte": "CHARGE" },
+    { "code": "633", "libelle": "Travaux plomberie commune",        "type_compte": "CHARGE" },
+    { "code": "634", "libelle": "Travaux électricité commune",      "type_compte": "CHARGE" },
+    { "code": "635", "libelle": "Travaux ascenseur",                "type_compte": "CHARGE" },
+    { "code": "636", "libelle": "Travaux parking / voirie",         "type_compte": "CHARGE" },
+    { "code": "639", "libelle": "Autres travaux",                   "type_compte": "CHARGE" }
+  ]},
+  { "groupe": "RECETTES ET APPELS", "comptes": [
+    { "code": "701", "libelle": "Appels de charges courantes",      "type_compte": "PRODUIT" },
+    { "code": "702", "libelle": "Appels de fonds travaux",          "type_compte": "PRODUIT" },
+    { "code": "703", "libelle": "Régularisation charges",           "type_compte": "PRODUIT" },
+    { "code": "704", "libelle": "Loyers locaux communs",            "type_compte": "PRODUIT" },
+    { "code": "709", "libelle": "Produits divers",                  "type_compte": "PRODUIT" }
+  ]},
+  { "groupe": "TRÉSORERIE", "comptes": [
+    { "code": "512", "libelle": "Banque — compte courant syndic",   "type_compte": "TRESORERIE" },
+    { "code": "514", "libelle": "Banque — compte fonds travaux",    "type_compte": "TRESORERIE" },
+    { "code": "530", "libelle": "Caisse espèces",                   "type_compte": "TRESORERIE" }
+  ]},
+  { "groupe": "COMPTES COPROPRIÉTAIRES", "comptes": [
+    { "code": "450", "libelle": "Copropriétaires — charges courantes", "type_compte": "PRODUIT" },
+    { "code": "451", "libelle": "Copropriétaires — fonds travaux",  "type_compte": "PRODUIT" },
+    { "code": "452", "libelle": "Copropriétaires — avances",        "type_compte": "PRODUIT" }
+  ]}
+]

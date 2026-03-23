@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const FAMILLE_OPTIONS = [
   { value: "PERSONNEL",      label: "Personnel" },
@@ -51,6 +51,7 @@ const EMPTY_FORM = { nom: "", famille: "DIVERS", type_depense: "EVENTUELLE", nat
 
 export default function CategoriesDepensePage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [categories, setCategories] = useState([]);
   const [comptes,    setComptes]    = useState([]);
@@ -76,6 +77,9 @@ export default function CategoriesDepensePage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    if (location.state?.openForm) window.history.replaceState({}, "");
+  }, []);
 
   const resetForm = () => { setForm(EMPTY_FORM); setEditItem(null); setError(""); setInfo(""); };
 

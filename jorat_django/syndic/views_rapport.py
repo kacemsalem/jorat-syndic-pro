@@ -13,7 +13,7 @@ from django.http import HttpResponse
 from django.db.models import Sum, OuterRef, Subquery
 
 from django.db.models import Prefetch
-from .models import CaisseMouvement, Depense, Recette, Paiement, Lot, DetailAppelCharge, AffectationPaiement
+from .models import CaisseMouvement, Depense, Recette, Paiement, Lot, DetailAppelCharge, AffectationPaiement, ArchivePaiement, ArchiveAffectationPaiement
 from .views import get_user_residence
 
 
@@ -718,46 +718,72 @@ def situation_paiements_view(request):
     for row in charges_rows:
         charges_map.setdefault(row["lot_id"], {})[row["appel__exercice"]] = float(row["total"])
 
-    # ── Montants ventilés par (lot, paiement, date) filtrés par type ──
-    aff_rows = (
+    # ── Montants ventilés live ──────────────────────────────────────────────
+    aff_map = {}  # {lot_id: [(date, pmt_id, montant)]}
+    for row in (
         AffectationPaiement.objects
         .filter(paiement__lot__in=lot_ids, detail__appel__type_charge=type_charge)
         .values("paiement__lot_id", "paiement__id", "paiement__date_paiement")
         .annotate(total=DSum("montant_affecte"))
         .order_by("paiement__lot_id", "paiement__date_paiement", "paiement__id")
-    )
-    # {lot_id: [(date, pmt_id, montant)]}
-    aff_map = {}
-    for row in aff_rows:
+    ):
         aff_map.setdefault(row["paiement__lot_id"], []).append((
             row["paiement__date_paiement"],
             row["paiement__id"],
             float(row["total"]),
         ))
 
-    # ── Paiements NON ventilés (montant_non_affecte > 0) — inclus dans CHARGE ──
-    # Un paiement "sans affectations du tout" est traité comme CHARGE par défaut
-    unvent_map = {}  # {lot_id: [(date, pmt_id, montant_unventile)]}
+    # ── Montants ventilés archivés ─────────────────────────────────────────
+    for row in (
+        ArchiveAffectationPaiement.objects
+        .filter(archive_paiement__lot__in=lot_ids, detail__appel__type_charge=type_charge)
+        .values("archive_paiement__lot_id", "archive_paiement__id", "archive_paiement__date_paiement")
+        .annotate(total=DSum("montant_affecte"))
+        .order_by("archive_paiement__lot_id", "archive_paiement__date_paiement", "archive_paiement__id")
+    ):
+        # offset archive ids to avoid collision with live ids
+        aff_map.setdefault(row["archive_paiement__lot_id"], []).append((
+            row["archive_paiement__date_paiement"],
+            -row["archive_paiement__id"],  # négatif pour différencier
+            float(row["total"]),
+        ))
+
+    # ── Paiements NON ventilés live — inclus dans CHARGE ──────────────────
+    unvent_map = {}  # {lot_id: [(date, pmt_id, montant)]}
     if type_charge == "CHARGE":
-        # IDs de paiements qui ont au moins une affectation (tout type confondu)
         has_aff = set(
             AffectationPaiement.objects
             .filter(paiement__lot__in=lot_ids)
             .values_list("paiement_id", flat=True)
             .distinct()
         )
-        unvent_rows = (
+        for row in (
             Paiement.objects
             .filter(lot__in=lot_ids)
             .exclude(id__in=has_aff)
             .values("lot_id", "id", "date_paiement", "montant")
             .order_by("date_paiement", "id")
-        )
-        for row in unvent_rows:
+        ):
             unvent_map.setdefault(row["lot_id"], []).append((
-                row["date_paiement"],
-                row["id"],
-                float(row["montant"]),
+                row["date_paiement"], row["id"], float(row["montant"]),
+            ))
+
+        # ── Paiements NON ventilés archivés ───────────────────────────────
+        has_arch_aff = set(
+            ArchiveAffectationPaiement.objects
+            .filter(archive_paiement__lot__in=lot_ids)
+            .values_list("archive_paiement_id", flat=True)
+            .distinct()
+        )
+        for row in (
+            ArchivePaiement.objects
+            .filter(lot__in=lot_ids)
+            .exclude(id__in=has_arch_aff)
+            .values("lot_id", "id", "date_paiement", "montant")
+            .order_by("date_paiement", "id")
+        ):
+            unvent_map.setdefault(row["lot_id"], []).append((
+                row["date_paiement"], -row["id"], float(row["montant"]),
             ))
 
     # ── Construction résultat ─────────────────────────────────

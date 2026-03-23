@@ -205,7 +205,7 @@ export default function AccueilPage() {
               )}
               {residence.email && (
                 <a href={`mailto:${residence.email}`}
-                  className="text-indigo-300/65 text-xs mt-2 hover:text-white transition-colors inline-flex items-center gap-1.5">
+                  className="text-yellow-300 text-xs mt-2 hover:text-yellow-100 transition-colors inline-flex items-center gap-1.5">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
                   </svg>
@@ -224,8 +224,8 @@ export default function AccueilPage() {
                 <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
                 <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
               </svg>
-              <span className="text-indigo-400/70 text-[11px]">
-                <span className="font-bold text-white/90">{residence.nombre_lots}</span>
+              <span className="text-yellow-300 text-[11px]">
+                <span className="font-bold text-yellow-200">{residence.nombre_lots}</span>
                 {" "}lot{residence.nombre_lots > 1 ? "s" : ""}
               </span>
             </div>
@@ -234,7 +234,7 @@ export default function AccueilPage() {
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
-            <span className="text-indigo-400/70 text-[11px]">Syndic Pro · {new Date().getFullYear()}</span>
+            <span className="text-yellow-300 text-[11px]">Syndic Pro · {new Date().getFullYear()}</span>
           </div>
         </div>
 

@@ -21,6 +21,7 @@ const INPUT_AUTO   = `${INPUT_BASE} border-blue-300 bg-blue-50 focus:border-blue
 const EMPTY_FORM = {
   modele_depense:    "",
   libelle:           "",
+  famille:           "",
   compte:            "",
   fournisseur:       "",
   date_depense:      new Date().toISOString().slice(0, 10),
@@ -31,7 +32,7 @@ const EMPTY_FORM = {
   mois:              "",
 };
 
-const EMPTY_AUTO = { libelle: false, compte: false, fournisseur: false };
+const EMPTY_AUTO = { libelle: false, famille: false, compte: false, fournisseur: false };
 
 // ── Mini sub-form quick-add ──────────────────────────────────────────────────
 function SubFormFamille({ onBack, onCreated }) {
@@ -440,10 +441,11 @@ export default function DepensesPage() {
         ...f,
         modele_depense: modeleId,
         libelle:    m.nom || f.libelle,
+        famille:    (autoFilled.famille || !f.famille) ? (m.famille_depense ? String(m.famille_depense) : "") : f.famille,
         compte:     (autoFilled.compte     || !f.compte)     ? (m.compte_comptable ? String(m.compte_comptable) : "") : f.compte,
         fournisseur:(autoFilled.fournisseur|| !f.fournisseur) ? (m.fournisseur      ? String(m.fournisseur)      : "") : f.fournisseur,
       }));
-      setAutoFilled({ libelle: !!m.nom, compte: !!m.compte_comptable, fournisseur: !!m.fournisseur });
+      setAutoFilled({ libelle: !!m.nom, famille: !!m.famille_depense, compte: !!m.compte_comptable, fournisseur: !!m.fournisseur });
     } else {
       setForm(f => ({ ...f, modele_depense: modeleId }));
       setAutoFilled(EMPTY_AUTO);
@@ -453,13 +455,15 @@ export default function DepensesPage() {
   const clearAuto = (field) => setAutoFilled(a => ({ ...a, [field]: false }));
 
   const openCreate = () => {
-    setForm({ ...EMPTY_FORM, mois: MOIS_OPTIONS[new Date().getMonth()].value });
+    const divers = familles.find(f => f.nom.toLowerCase() === "divers");
+    setForm({ ...EMPTY_FORM, mois: MOIS_OPTIONS[new Date().getMonth()].value, famille: divers ? String(divers.id) : "" });
     setAutoFilled(EMPTY_AUTO); setEditItem(null); setError(""); setSubForm(null); setShowForm(true);
   };
   const openEdit   = (d)  => {
     setForm({
       modele_depense:    String(d.modele_depense   || ""),
       libelle:           d.libelle                  || "",
+      famille:           String(d.famille           || ""),
       compte:            String(d.compte            || ""),
       fournisseur:       String(d.fournisseur       || ""),
       date_depense:      d.date_depense,
@@ -475,12 +479,14 @@ export default function DepensesPage() {
 
   const handleSave = async () => {
     if (!form.libelle.trim()) { setError("Le libellé est obligatoire."); return; }
+    if (!form.famille) { setError("La catégorie est obligatoire."); return; }
     if (!form.montant || parseFloat(form.montant) <= 0) { setError("Le montant doit être > 0."); return; }
     if (!form.date_depense) { setError("La date est obligatoire."); return; }
     setSaving(true); setError("");
     const payload = {
       modele_depense:    form.modele_depense    || null,
       libelle:           form.libelle,
+      famille:           form.famille           || null,
       compte:            form.compte            || null,
       fournisseur:       form.fournisseur       || null,
       date_depense:      form.date_depense,
@@ -754,6 +760,27 @@ export default function DepensesPage() {
                       onChange={e => { clearAuto("libelle"); setForm(f => ({ ...f, libelle: e.target.value })); }}
                       placeholder="Description courte de la dépense"
                     />
+                  </div>
+
+                  {/* Famille */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Catégorie <span className="text-red-500">*</span>
+                      {autoFilled.famille && <span className="ml-1.5 text-[10px] font-normal text-blue-400">pré-rempli</span>}
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        className={`flex-1 ${autoFilled.famille ? INPUT_AUTO : INPUT_NORMAL}`}
+                        value={form.famille}
+                        onChange={e => { clearAuto("famille"); setForm(f => ({ ...f, famille: e.target.value })); }}
+                      >
+                        <option value="">— Aucune —</option>
+                        {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                      </select>
+                      <button type="button" onClick={() => navigate("/familles-depense", { state: { openForm: true } })}
+                        title="Gérer les catégories"
+                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">↗</button>
+                    </div>
                   </div>
 
                   {/* Date | Période | Réf */}

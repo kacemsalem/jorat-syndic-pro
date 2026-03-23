@@ -1388,3 +1388,54 @@ class MessageResident(TimeStampedModel):
 
     def __str__(self):
         return f"[{self.statut}] {self.objet}"
+
+
+# ============================================================
+# PASSATION DE CONSIGNES
+# ============================================================
+
+class PassationConsignes(TimeStampedModel):
+    """Procès-verbal de passation de consignes lors d'un changement de bureau."""
+
+    assemblee       = models.OneToOneField(
+        "AssembleeGenerale", on_delete=models.CASCADE,
+        related_name="passation_consignes", null=True, blank=True
+    )
+    residence       = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="passations_consignes")
+    date_passation  = models.DateField()
+    solde_caisse    = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                        help_text="Calculé automatiquement depuis la caisse")
+    solde_banque    = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+                        help_text="Solde compte bancaire saisi manuellement")
+    justification_ecart = models.TextField(blank=True,
+                        help_text="Explication si solde caisse ≠ solde banque (ex: chèque non encaissé)")
+    notes           = models.TextField(blank=True)
+
+    # Signataires sortants
+    nom_syndic      = models.CharField(max_length=150, blank=True)
+    nom_tresorier   = models.CharField(max_length=150, blank=True)
+    # Signataires entrants
+    nom_syndic_entrant      = models.CharField(max_length=150, blank=True)
+    nom_tresorier_entrant   = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        ordering = ["-date_passation"]
+
+    def __str__(self):
+        return f"Passation {self.date_passation} — {self.residence}"
+
+
+class ReservePassation(models.Model):
+    """Ligne de réserve / remarque dans une passation de consignes."""
+
+    passation   = models.ForeignKey(PassationConsignes, on_delete=models.CASCADE, related_name="reserves")
+    libelle     = models.CharField(max_length=255)
+    montant     = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True,
+                    help_text="Montant associé si applicable")
+    ordre       = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["ordre", "id"]
+
+    def __str__(self):
+        return self.libelle

@@ -106,30 +106,25 @@ export default function ModelesDepensePage() {
     return modeles.filter(m => String(m.famille_depense) === filterFamille);
   }, [modeles, filterFamille]);
 
-  // Group by famille for display
-  const grouped = useMemo(() => {
-    const map = {};
-    filtered.forEach(m => {
-      const key = m.famille_nom || "—";
-      if (!map[key]) map[key] = [];
-      map[key].push(m);
-    });
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
-  }, [filtered]);
-
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">Modèles de dépenses</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Templates pré-remplis pour la saisie rapide des dépenses</p>
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <button onClick={() => navigate("/depenses", { state: { openForm: true } })}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-600 transition-colors font-medium">
+            ← Retour Dépenses
+          </button>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow"
-        >
-          + Nouveau modèle
-        </button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Modèles de dépenses</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Templates pré-remplis pour la saisie rapide des dépenses</p>
+          </div>
+          <button onClick={openCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow">
+            + Nouveau modèle
+          </button>
+        </div>
       </div>
 
       {/* Filtre famille */}
@@ -171,11 +166,16 @@ export default function ModelesDepensePage() {
             {/* Famille */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">Famille *</label>
-              <select className={INPUT} value={form.famille_depense}
-                onChange={e => setForm(f => ({ ...f, famille_depense: e.target.value }))}>
-                <option value="">— Choisir —</option>
-                {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-              </select>
+              <div className="flex gap-2">
+                <select className={`flex-1 ${INPUT}`} value={form.famille_depense}
+                  onChange={e => setForm(f => ({ ...f, famille_depense: e.target.value }))}>
+                  <option value="">— Choisir —</option>
+                  {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                </select>
+                <button type="button" onClick={() => navigate("/familles-depense", { state: { openForm: true } })}
+                  title="Gérer les catégories"
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">↗</button>
+              </div>
             </div>
             {/* Compte comptable */}
             <div>
@@ -227,54 +227,51 @@ export default function ModelesDepensePage() {
         </div>
       )}
 
-      {/* List grouped by famille */}
+      {/* Liste plate */}
       {loading ? (
         <div className="py-10 text-center text-slate-400 text-sm">Chargement…</div>
-      ) : grouped.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="py-10 text-center text-slate-400 text-sm">Aucun modèle défini.</div>
       ) : (
-        <div className="space-y-3">
-          {grouped.map(([familleNom, items]) => (
-            <div key={familleNom} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100">
-                <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">{familleNom}</span>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-left text-xs text-slate-500">
-                    <th className="px-4 py-2 font-semibold">Modèle</th>
-                    <th className="px-4 py-2 font-semibold">Compte</th>
-                    <th className="px-4 py-2 font-semibold">Fournisseur</th>
-                    <th className="px-4 py-2 font-semibold">Statut</th>
-                    <th className="px-4 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((m, i) => (
-                    <tr key={m.id} className={`border-b border-slate-50 ${i % 2 ? "bg-slate-50/40" : ""} ${!m.actif ? "opacity-50" : ""}`}>
-                      <td className="px-4 py-2.5 font-medium text-slate-800">{m.nom}</td>
-                      <td className="px-4 py-2.5 text-slate-500">
-                        {m.compte_code
-                          ? <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">{m.compte_code}</span>
-                          : <span className="text-slate-300 text-xs">—</span>}
-                        {m.compte_libelle && <span className="ml-1.5 text-xs">{m.compte_libelle}</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-slate-500 text-xs">{m.fournisseur_nom || <span className="text-slate-300">—</span>}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${m.actif ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>
-                          {m.actif ? "Actif" : "Inactif"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <button onClick={() => openEdit(m)} className="text-xs text-indigo-600 hover:underline mr-3">Modifier</button>
-                        <button onClick={() => handleDelete(m)} className="text-xs text-red-500 hover:underline">Supprimer</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100 text-left text-xs text-slate-500">
+                <th className="px-4 py-2 font-semibold">Modèle</th>
+                <th className="px-4 py-2 font-semibold">Famille</th>
+                <th className="px-4 py-2 font-semibold">Compte</th>
+                <th className="px-4 py-2 font-semibold">Fournisseur</th>
+                <th className="px-4 py-2 font-semibold">Statut</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((m, i) => (
+                <tr key={m.id} className={`border-b border-slate-50 hover:bg-slate-50/50 transition ${i % 2 ? "bg-slate-50/30" : ""} ${!m.actif ? "opacity-50" : ""}`}>
+                  <td className="px-4 py-2.5 font-medium text-slate-800">{m.nom}</td>
+                  <td className="px-4 py-2.5 text-xs text-amber-700">
+                    <span className="bg-amber-50 px-2 py-0.5 rounded-full">{m.famille_nom || "—"}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-slate-500">
+                    {m.compte_code
+                      ? <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">{m.compte_code}</span>
+                      : <span className="text-slate-300 text-xs">—</span>}
+                    {m.compte_libelle && <span className="ml-1.5 text-xs">{m.compte_libelle}</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-slate-500 text-xs">{m.fournisseur_nom || <span className="text-slate-300">—</span>}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${m.actif ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>
+                      {m.actif ? "Actif" : "Inactif"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    <button onClick={() => openEdit(m)} className="text-xs text-indigo-600 hover:underline mr-3">Modifier</button>
+                    <button onClick={() => handleDelete(m)} className="text-xs text-red-500 hover:underline">Supprimer</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
