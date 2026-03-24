@@ -146,11 +146,6 @@ export default function ResolutionsVotePage() {
     await loadResultats(rv.id);
   };
 
-  const cols = STATUT_COLS.map(c => ({
-    ...c,
-    items: resolutions.filter(r => r.statut === c.key),
-  }));
-
   const total = resultats ? resultats.counts.OUI + resultats.counts.NON + resultats.counts.NEUTRE : 0;
   const pct   = (n) => total > 0 ? Math.round((n / total) * 100) : 0;
 
@@ -175,53 +170,48 @@ export default function ResolutionsVotePage() {
 
       <div className="flex gap-5 items-start">
 
-        {/* ── Kanban ── */}
-        <div className="flex-1 min-w-0">
+        {/* ── Liste résolutions ── */}
+        {!(showForm || selected) && <div className="flex-1 min-w-0">
           {loading ? (
             <div className="text-center py-16 text-slate-400 text-sm">Chargement…</div>
+          ) : resolutions.length === 0 ? (
+            <div className="text-center py-16 text-slate-300 text-sm border-2 border-dashed border-slate-200 rounded-2xl">
+              Aucune résolution
+            </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {cols.map(col => (
-                <div key={col.key}>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-2 ${col.color} border ${col.border}`}>
-                    <span className={`w-2 h-2 rounded-full ${col.dot}`} />
-                    <span className="text-xs font-bold">{col.label}</span>
-                    <span className="ml-auto text-xs font-bold opacity-60">{col.items.length}</span>
+            <div className="space-y-2">
+              {resolutions.map(rv => (
+                <button key={rv.id} onClick={() => handleSelect(rv)}
+                  className={`w-full text-left bg-white rounded-xl border-2 px-3 py-3 hover:shadow-md transition ${selected?.id === rv.id ? "border-indigo-400 shadow-md" : "border-slate-100"}`}>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="text-sm font-semibold text-slate-800 leading-snug">{rv.intitule}</p>
+                    <Badge statut={rv.statut} />
                   </div>
-
-                  <div className="space-y-2">
-                    {col.items.length === 0 && (
-                      <div className="text-center py-6 text-slate-300 text-xs border-2 border-dashed border-slate-200 rounded-xl">
-                        Aucune résolution
-                      </div>
-                    )}
-                    {col.items.map(rv => (
-                      <button key={rv.id} onClick={() => handleSelect(rv)}
-                        className={`w-full text-left bg-white rounded-xl border-2 px-3 py-3 hover:shadow-md transition ${selected?.id === rv.id ? "border-indigo-400 shadow-md" : "border-slate-100"}`}>
-                        <p className="text-sm font-semibold text-slate-800 leading-snug mb-1">{rv.intitule}</p>
-                        <p className="text-[11px] text-slate-400 mb-2">{rv.date_resolution}</p>
-                        {rv.assemblee_titre && (
-                          <p className="text-[10px] text-indigo-500 mb-1.5">🏛 {rv.assemblee_titre}</p>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-slate-400">{rv.type_vote_label}</span>
-                          <div className="flex gap-2 text-[10px] text-slate-400">
-                            <span>📨 {rv.nb_notifies}</span>
-                            <span>🗳 {rv.nb_votes}</span>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                  <p className="text-[11px] text-slate-400 mb-1.5">{rv.date_resolution}</p>
+                  {rv.assemblee_titre && (
+                    <p className="text-[10px] text-indigo-500 mb-1.5">🏛 {rv.assemblee_titre}</p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400">{rv.type_vote_label}</span>
+                    <div className="flex gap-2 text-[10px] text-slate-400">
+                      <span>📨 {rv.nb_notifies}</span>
+                      <span>🗳 {rv.nb_votes}</span>
+                    </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* ── Panneau détail / formulaire ── */}
         {(showForm || selected) && (
-          <div className="w-[360px] shrink-0 space-y-4">
+          <div className="flex-1 min-w-0 max-w-2xl mx-auto space-y-4">
+
+            <button onClick={() => { setShowForm(false); setSelected(null); setResultats(null); }}
+              className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
+              ← Liste des résolutions
+            </button>
 
             {/* Formulaire */}
             {showForm && (

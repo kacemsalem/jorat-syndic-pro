@@ -29,11 +29,12 @@ export default function GouvernanceDashboard() {
   ];
 
   const links = [
-    { label: "Assemblées Générales",  path: "/gouvernance/assemblees"       },
-    { label: "Bureau Syndical",       path: "/gouvernance/bureau"           },
-    { label: "Résolutions",           path: "/gouvernance/resolutions"      },
-    { label: "Documents",             path: "/gouvernance/documents"        },
-    { label: "Résolutions par vote",  path: "/gouvernance/resolutions-vote" },
+    { label: "Assemblées Générales",  path: "/gouvernance/assemblees",          color: "bg-slate-800" },
+    { label: "Bureau Syndical",       path: "/gouvernance/bureau",              color: "bg-slate-800" },
+    { label: "Résolutions",           path: "/gouvernance/resolutions",         color: "bg-slate-800" },
+    { label: "Documents",             path: "/gouvernance/documents",           color: "bg-slate-800" },
+    { label: "🗳 Résolutions / Vote", path: "/gouvernance/resolutions-vote",    color: "bg-violet-600 hover:bg-violet-700" },
+    { label: "📋 Kanban Résolutions", path: "/gouvernance/kanban-resolutions",  color: "bg-indigo-600 hover:bg-indigo-700" },
   ];
 
   return (
@@ -68,7 +69,7 @@ export default function GouvernanceDashboard() {
         <div className="flex flex-wrap gap-3">
           {links.map(l => (
             <button key={l.path} onClick={() => navigate(l.path)}
-              className="px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded-xl hover:bg-slate-700 transition">
+              className={`px-4 py-2 text-white text-sm font-semibold rounded-xl transition ${l.color ?? "bg-slate-800 hover:bg-slate-700"}`}>
               {l.label} →
             </button>
           ))}

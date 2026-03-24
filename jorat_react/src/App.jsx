@@ -44,6 +44,7 @@ import ConsultationPage from "./pages/ConsultationPage";
 import EtatMensuelPage from "./pages/EtatMensuelPage";
 import PassationConsignesPage from "./pages/PassationConsignesPage";
 import ResolutionsVotePage from "./pages/ResolutionsVotePage";
+import KanbanResolutionsPage from "./pages/KanbanResolutionsPage";
 import ResidentVotePage from "./pages/ResidentVotePage";
 import JournalPage    from "./pages/comptabilite/JournalPage";
 import GrandLivrePage from "./pages/comptabilite/GrandLivrePage";
@@ -166,6 +167,7 @@ function AppLayout() {
               <Route path="/gouvernance/travaux"          element={<TravauxPage />} />
               <Route path="/gouvernance/notifications"        element={<NotificationsPage />} />
               <Route path="/gouvernance/resolutions-vote"    element={<ResolutionsVotePage />} />
+              <Route path="/gouvernance/kanban-resolutions"  element={<KanbanResolutionsPage />} />
               <Route path="/espace-resident/messages"        element={<MessagesResidentPage />} />
               <Route path="/espace-resident/consultation"    element={<ConsultationPage />} />
               <Route path="/etat-mensuel"                  element={<EtatMensuelPage />} />

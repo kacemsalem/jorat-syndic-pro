@@ -13,6 +13,15 @@ function parseJustifs(raw) {
   catch { return raw ? [{ libelle: raw, montant: "" }] : []; }
 }
 
+// Convert ISO datetime string (UTC) to local datetime-local input value
+function toLocalInput(iso) {
+  if (!iso) return new Date().toISOString().slice(0, 16);
+  const d = new Date(iso);
+  if (isNaN(d)) return iso.slice(0, 16);
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function PassationConsignesPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -27,7 +36,7 @@ export default function PassationConsignesPage() {
   const [error,      setError]      = useState("");
 
   const [form, setForm] = useState({
-    date_passation:        new Date().toISOString().slice(0, 10),
+    date_passation:        toLocalInput(null),
     solde_banque:          "",
     notes:                 "",
     nom_syndic:            "",
@@ -75,7 +84,7 @@ export default function PassationConsignesPage() {
           const p = list[0];
           setPassation(p);
           setForm({
-            date_passation:        p.date_passation,
+            date_passation:        toLocalInput(p.date_passation),
             solde_banque:          p.solde_banque,
             notes:                 p.notes,
             nom_syndic:            p.nom_syndic            || "",
@@ -100,9 +109,15 @@ export default function PassationConsignesPage() {
 
   // ── Sauvegarde ───────────────────────────────────────────
   const handleSave = async () => {
+    if (!form.nom_syndic)            { setError("Le syndic sortant est obligatoire.");    return; }
+    if (!form.nom_tresorier)         { setError("Le trésorier sortant est obligatoire."); return; }
+    if (!form.nom_syndic_entrant)    { setError("Le syndic entrant est obligatoire.");     return; }
+    if (!form.nom_tresorier_entrant) { setError("Le trésorier entrant est obligatoire.");  return; }
     setSaving(true); setError("");
+    // date_passation : figée côté serveur — exclure du payload
+    const { date_passation: _ignored, ...formFields } = form;
     const payload = {
-      ...form,
+      ...formFields,
       justification_ecart: JSON.stringify(justifs),
       assemblee: assembleeId || null,
     };
@@ -132,7 +147,10 @@ export default function PassationConsignesPage() {
           headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
           body: JSON.stringify(payload),
         });
-        if (!r.ok) { setError("Erreur modification."); return; }
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          setError(err.detail || JSON.stringify(err) || "Erreur modification."); return;
+        }
         const p = await r.json();
         setPassation(prev => ({ ...prev, ...p }));
       }
@@ -242,9 +260,9 @@ export default function PassationConsignesPage() {
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <title>Passation de consignes — ${form.date_passation}</title>
+  <title>Passation de consignes — ${form.date_passation.replace("T", " ")}</title>
   <style>
-    * { box-sizing:border-box; margin:0; padding:0; }
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     body { font-family: Arial, sans-serif; font-size: 10px; color: #111; background: #fff; padding: 18px 22px; }
     @page { size: A4; margin: 12mm 14mm; }
     h1 { font-size: 16px; font-weight: 800; letter-spacing: 0.03em; }
@@ -271,7 +289,7 @@ export default function PassationConsignesPage() {
     <div>
       <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.1em;color:#555;margin-bottom:3px">Procès-verbal de</div>
       <h1>PASSATION DE CONSIGNES</h1>
-      <div style="font-size:9px;color:#555;margin-top:3px">Date : <strong>${form.date_passation}</strong></div>
+      <div style="font-size:9px;color:#555;margin-top:3px">Date : <strong>${form.date_passation.replace("T", " ")}</strong></div>
     </div>
     <div style="text-align:right;font-size:9px;color:#555">
       <div style="font-weight:700;font-size:11px;color:#111">Syndic Pro</div>
@@ -423,12 +441,13 @@ export default function PassationConsignesPage() {
       {/* ── Formulaire principal ── */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5">
 
-        {/* Date */}
+        {/* Date — figée automatiquement à la création, non modifiable */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Date de passation *</label>
-            <input type="date" className={INPUT} value={form.date_passation}
-              onChange={e => setForm(f => ({ ...f, date_passation: e.target.value }))} />
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Date et heure de passation</label>
+            <input type="datetime-local" className={INPUT + " bg-slate-50 cursor-not-allowed opacity-70"}
+              value={form.date_passation} disabled />
+            <p className="text-[10px] text-slate-400 mt-0.5">Définie automatiquement · non modifiable</p>
           </div>
         </div>
 
@@ -560,34 +579,32 @@ export default function PassationConsignesPage() {
                 </div>
               )}
 
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <input className={INPUT} placeholder="Ex : chèque non encore encaissé…"
-                    value={newJustif.libelle}
-                    onChange={e => setNewJustif(j => ({ ...j, libelle: e.target.value }))}
-                    onKeyDown={e => e.key === "Enter" && addJustif()} />
-                </div>
-                <div className="w-32">
-                  <input type="number" step="0.01" className={INPUT} placeholder="Montant"
+              <div className="space-y-1.5">
+                <input className={INPUT} placeholder="Libellé de la justification…"
+                  value={newJustif.libelle}
+                  onChange={e => setNewJustif(j => ({ ...j, libelle: e.target.value }))}
+                  onKeyDown={e => e.key === "Enter" && addJustif()} />
+                <div className="flex gap-2 items-center">
+                  <input type="number" step="0.01" className={INPUT + " w-32"} placeholder="Montant"
                     value={newJustif.montant}
                     onChange={e => setNewJustif(j => ({ ...j, montant: e.target.value }))} />
-                </div>
-                <select className="border border-slate-200 rounded-xl px-2 py-2 text-xs focus:outline-none focus:border-indigo-400 bg-white"
-                  value={newJustif.sens}
-                  onChange={e => setNewJustif(j => ({ ...j, sens: e.target.value }))}>
-                  <option value="CREDIT">Crédit +</option>
-                  <option value="DEBIT">Débit −</option>
-                </select>
-                {editJustifIdx !== null && (
-                  <button onClick={cancelEditJustif}
-                    className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-200 transition shrink-0">
-                    ✕
+                  <select className="border border-slate-200 rounded-xl px-2 py-2 text-xs focus:outline-none focus:border-indigo-400 bg-white shrink-0"
+                    value={newJustif.sens}
+                    onChange={e => setNewJustif(j => ({ ...j, sens: e.target.value }))}>
+                    <option value="CREDIT">Crédit +</option>
+                    <option value="DEBIT">Débit −</option>
+                  </select>
+                  {editJustifIdx !== null && (
+                    <button onClick={cancelEditJustif}
+                      className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-200 transition shrink-0">
+                      ✕
+                    </button>
+                  )}
+                  <button onClick={addJustif} disabled={!newJustif.libelle.trim()}
+                    className={`px-4 py-2 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition shrink-0 ${editJustifIdx !== null ? "bg-indigo-600 hover:bg-indigo-700" : "bg-red-500 hover:bg-red-600"}`}>
+                    {editJustifIdx !== null ? "Modifier" : "+ Ajouter"}
                   </button>
-                )}
-                <button onClick={addJustif} disabled={!newJustif.libelle.trim()}
-                  className={`px-4 py-2 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition shrink-0 ${editJustifIdx !== null ? "bg-indigo-600 hover:bg-indigo-700" : "bg-red-500 hover:bg-red-600"}`}>
-                  {editJustifIdx !== null ? "Modifier" : "+ Ajouter"}
-                </button>
+                </div>
               </div>
             </div>
           )}
@@ -660,22 +677,20 @@ export default function PassationConsignesPage() {
               ))}
             </div>
           )}
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <input className={INPUT} placeholder="Libellé de la réserve…"
-                value={newReserve.libelle}
-                onChange={e => setNewReserve(r => ({ ...r, libelle: e.target.value }))}
-                onKeyDown={e => e.key === "Enter" && handleAddReserve()} />
-            </div>
-            <div className="w-32">
-              <input type="number" step="0.01" className={INPUT} placeholder="Montant (opt.)"
+          <div className="space-y-1.5">
+            <input className={INPUT} placeholder="Libellé de la réserve…"
+              value={newReserve.libelle}
+              onChange={e => setNewReserve(r => ({ ...r, libelle: e.target.value }))}
+              onKeyDown={e => e.key === "Enter" && handleAddReserve()} />
+            <div className="flex gap-2 items-center">
+              <input type="number" step="0.01" className={INPUT + " w-36"} placeholder="Montant (optionnel)"
                 value={newReserve.montant}
                 onChange={e => setNewReserve(r => ({ ...r, montant: e.target.value }))} />
+              <button onClick={handleAddReserve} disabled={addingRes || !newReserve.libelle.trim()}
+                className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition shrink-0">
+                + Ajouter
+              </button>
             </div>
-            <button onClick={handleAddReserve} disabled={addingRes || !newReserve.libelle.trim()}
-              className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition shrink-0">
-              + Ajouter
-            </button>
           </div>
         </div>
 

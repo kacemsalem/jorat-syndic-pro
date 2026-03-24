@@ -1402,7 +1402,7 @@ class PassationConsignes(TimeStampedModel):
         related_name="passation_consignes", null=True, blank=True
     )
     residence       = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="passations_consignes")
-    date_passation  = models.DateField()
+    date_passation  = models.DateTimeField()
     solde_caisse    = models.DecimalField(max_digits=14, decimal_places=2, default=0,
                         help_text="Calculé automatiquement depuis la caisse")
     solde_banque    = models.DecimalField(max_digits=14, decimal_places=2, default=0,
@@ -1460,7 +1460,7 @@ class ResolutionVote(TimeStampedModel):
     ]
 
     residence         = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="resolutions_vote")
-    assemblee         = models.ForeignKey("AssembleeGenerale", on_delete=models.SET_NULL, null=True, blank=True, related_name="resolutions_vote")
+    assemblee         = models.ForeignKey("AssembleeGenerale", on_delete=models.CASCADE, null=True, blank=True, related_name="resolutions_vote")
     intitule          = models.CharField(max_length=250)
     description       = models.TextField(blank=True)
     type_vote         = models.CharField(max_length=30, choices=TYPE_VOTE_CHOICES, default="MAJORITE_SIMPLE")

@@ -990,8 +990,9 @@ def passation_list_create(request):
             qs = qs.filter(assemblee_id=assemblee_id)
         return Response(PassationConsignesSerializer(qs, many=True).data)
 
-    # POST — créer
-    date_passation = request.data.get("date_passation") or None
+    # POST — créer : la date est toujours l'instant présent (non modifiable)
+    from django.utils import timezone as tz
+    date_passation = tz.now()
     solde_caisse = _compute_solde_caisse(residence, date=date_passation)
     p = PassationConsignes.objects.create(
         residence       = residence,
@@ -1022,12 +1023,14 @@ def passation_detail(request, pk):
         return Response(PassationConsignesSerializer(p).data)
 
     if request.method == "PATCH":
-        for field in ["date_passation","justification_ecart","notes","nom_syndic","nom_tresorier","nom_syndic_entrant","nom_tresorier_entrant"]:
+        # date_passation est figée — jamais modifiable après création
+        for field in ["justification_ecart","notes","nom_syndic","nom_tresorier","nom_syndic_entrant","nom_tresorier_entrant"]:
             if field in request.data:
                 setattr(p, field, request.data[field])
         if "solde_banque" in request.data:
             p.solde_banque = request.data["solde_banque"] or 0
         p.save()
+        p.refresh_from_db()
         return Response(PassationConsignesSerializer(p).data)
 
     p.delete()
@@ -1103,11 +1106,34 @@ def passation_situation_lots(request, pk):
 
 
 def _compute_solde_caisse(residence, date=None):
+    """
+    Calcule le solde caisse à une date donnée.
+
+    Tous les CaisseMouvement (y compris ARCHIVE_ADJUSTMENT) sont filtrés par
+    date_mouvement <= filter_date. L'ARCHIVE_ADJUSTMENT a date_mouvement=end_date
+    de l'archive, donc il est naturellement inclus quand la passation est
+    postérieure à la fin de l'archive — cas normal d'utilisation.
+    """
     from .models import CaisseMouvement
     from django.db.models import Sum, Q
-    qs = CaisseMouvement.objects.filter(residence=residence)
+    import datetime as dt_module
+    from django.utils.dateparse import parse_datetime, parse_date
+
+    # Convertit en date (CaisseMouvement.date_mouvement est un DateField)
+    filter_date = None
     if date:
-        qs = qs.filter(date_mouvement__lte=date)
+        if isinstance(date, str):
+            parsed = parse_datetime(date)
+            filter_date = parsed.date() if parsed else parse_date(date)
+        elif isinstance(date, dt_module.datetime):
+            filter_date = date.date()
+        elif isinstance(date, dt_module.date):
+            filter_date = date
+
+    qs = CaisseMouvement.objects.filter(residence=residence)
+    if filter_date:
+        qs = qs.filter(date_mouvement__lte=filter_date)
+
     agg = qs.aggregate(
         entrees=Sum("montant", filter=Q(sens="DEBIT")),
         sorties=Sum("montant", filter=Q(sens="CREDIT")),
