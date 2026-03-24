@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -39,6 +39,7 @@ function Badge({ statut }) {
 
 export default function ResolutionsVotePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [resolutions, setResolutions] = useState([]);
   const [assemblees,  setAssemblees]  = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -66,7 +67,12 @@ export default function ResolutionsVotePage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    if (searchParams.get("new") === "1") {
+      setEditItem(null); setForm(EMPTY_FORM); setError(""); setShowForm(true);
+    }
+  }, [load]);
 
   const loadResultats = async (id) => {
     setResLoading(true);
@@ -151,22 +157,18 @@ export default function ResolutionsVotePage() {
 
   return (
     <div className="max-w-7xl mx-auto pb-10">
-      <div className="flex items-center gap-4 mb-4">
-        <button onClick={() => navigate("/accueil")}
+      <div className="mb-4">
+        <button onClick={() => navigate("/gouvernance/kanban-resolutions")}
           className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
-          ← Tableau de bord
-        </button>
-        <button onClick={() => navigate("/gouvernance/dashboard")}
-          className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
-          ← Gouvernance
+          ← Résolutions
         </button>
       </div>
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Résolutions par vote</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Gérez les résolutions soumises au vote des copropriétaires</p>
+          <h1 className="text-xl font-bold text-slate-800">Résolutions par vote en ligne</h1>
+          <p className="text-xs text-slate-400 mt-0.5">Gérez les résolutions soumises au vote en ligne des copropriétaires</p>
         </div>
         <button onClick={openCreate}
           className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">

@@ -131,13 +131,18 @@ export default function AccueilPage() {
 
   useEffect(() => {
     fetch("/api/residences/", { credentials: "include" })
-      .then(r => r.ok ? r.json() : [])
+      .then(r => {
+        if (r.status === 401 || r.status === 403) { navigate("/login"); return null; }
+        return r.ok ? r.json() : [];
+      })
       .then(data => {
+        if (!data) return;
         const list = Array.isArray(data) ? data : (data?.results ?? []);
-        setResidence(list[0] ?? null);
+        if (list.length === 0) { navigate("/login"); return; }
+        setResidence(list[0]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [navigate]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -145,11 +150,7 @@ export default function AccueilPage() {
     </div>
   );
 
-  if (!residence) return (
-    <div className="max-w-xl mx-auto mt-16 text-center text-slate-400">
-      <p className="text-lg font-semibold">Aucune résidence assignée.</p>
-    </div>
-  );
+  if (!residence) return null;
 
   const adresse = [residence.adresse_residence, residence.ville_residence, residence.code_postal_residence]
     .filter(Boolean).join(" — ");

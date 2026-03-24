@@ -21,7 +21,6 @@ import RecettesPage from "./pages/RecettesPage";
 import LandingApp from "./pages/LandingPage";
 import RapportsPage from "./pages/RapportsPage";
 import RapportFinancierPage from "./pages/RapportFinancierPage";
-import GouvernanceDashboard from "./pages/GouvernanceDashboard";
 import BureauSyndicalPage from "./pages/BureauSyndicalPage";
 import AssembleesPage from "./pages/AssembleesPage";
 import ResolutionsPage from "./pages/ResolutionsPage";
@@ -159,7 +158,6 @@ function AppLayout() {
               <Route path="/recettes"           element={<RecettesPage />} />
               <Route path="/rapports"           element={<RapportsPage />} />
               <Route path="/rapport-financier"  element={<RapportFinancierPage />} />
-              <Route path="/gouvernance/dashboard"   element={<GouvernanceDashboard />} />
               <Route path="/gouvernance/bureau"      element={<BureauSyndicalPage />} />
               <Route path="/gouvernance/assemblees"  element={<AssembleesPage />} />
               <Route path="/gouvernance/resolutions" element={<ResolutionsPage />} />

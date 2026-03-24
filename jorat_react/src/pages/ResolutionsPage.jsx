@@ -50,6 +50,11 @@ export default function ResolutionsPage() {
     fetch("/api/assemblees/", { credentials: "include" })
       .then(r => r.json())
       .then(d => setAssemblees(Array.isArray(d) ? d : (d.results ?? [])));
+    if (searchParams.get("new") === "1") {
+      setForm({ ...EMPTY, assemblee_generale: agIdParam });
+      setEditItem(null);
+      setShowForm(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -104,10 +109,12 @@ export default function ResolutionsPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <button onClick={() => navigate("/gouvernance/assemblees")}
-            className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-2 transition">
-            ← Assemblées Générales
-          </button>
+          <div className="mb-2">
+            <button onClick={() => navigate("/gouvernance/kanban-resolutions")}
+              className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
+              ← Résolutions
+            </button>
+          </div>
           <h1 className="text-2xl font-bold text-slate-800">Résolutions</h1>
           <p className="text-sm text-slate-500 mt-1">{items.length} résolution{items.length !== 1 ? "s" : ""}</p>
         </div>

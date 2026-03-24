@@ -244,7 +244,6 @@ export default function PassationConsignesPage() {
     const reservesRows = reserves.map(r => `
       <tr>
         <td style="padding:4px 8px;border:1px solid #e5e7eb">${r.libelle}</td>
-        <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;font-family:monospace">${r.montant ? fmt(r.montant) + " MAD" : "—"}</td>
       </tr>`).join("");
 
     const justifRows = justifs.map(j => `
@@ -316,7 +315,7 @@ export default function PassationConsignesPage() {
   ${justifs.length > 0 ? `
   <h2>${sec++}. Justification des Écarts</h2>
   <table>
-    <thead><tr><th>Libellé</th><th style="text-align:right;width:120px">Montant</th></tr></thead>
+    <thead><tr><th>Libellé</th></tr></thead>
     <tbody>${justifRows}</tbody>
   </table>` : ""}
 
@@ -342,7 +341,7 @@ export default function PassationConsignesPage() {
   ${reserves.length > 0 ? `
   <h2>${sec++}. Réserves et Observations</h2>
   <table>
-    <thead><tr><th>Libellé</th><th style="text-align:right;width:120px">Montant</th></tr></thead>
+    <thead><tr><th>Libellé</th></tr></thead>
     <tbody>${reservesRows}</tbody>
   </table>` : ""}
 
@@ -670,27 +669,21 @@ export default function PassationConsignesPage() {
               {reserves.map(r => (
                 <div key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
                   <span className="text-sm text-slate-700 flex-1">{r.libelle}</span>
-                  {r.montant && <span className="text-xs font-mono font-semibold text-amber-700 shrink-0">{fmt(r.montant)} MAD</span>}
                   <button onClick={() => handleDeleteReserve(r.id)}
                     className="text-slate-300 hover:text-red-500 transition text-xs shrink-0">✕</button>
                 </div>
               ))}
             </div>
           )}
-          <div className="space-y-1.5">
+          <div className="flex gap-2 items-center">
             <input className={INPUT} placeholder="Libellé de la réserve…"
               value={newReserve.libelle}
               onChange={e => setNewReserve(r => ({ ...r, libelle: e.target.value }))}
               onKeyDown={e => e.key === "Enter" && handleAddReserve()} />
-            <div className="flex gap-2 items-center">
-              <input type="number" step="0.01" className={INPUT + " w-36"} placeholder="Montant (optionnel)"
-                value={newReserve.montant}
-                onChange={e => setNewReserve(r => ({ ...r, montant: e.target.value }))} />
-              <button onClick={handleAddReserve} disabled={addingRes || !newReserve.libelle.trim()}
-                className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition shrink-0">
-                + Ajouter
-              </button>
-            </div>
+            <button onClick={handleAddReserve} disabled={addingRes || !newReserve.libelle.trim()}
+              className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition shrink-0">
+              + Ajouter
+            </button>
           </div>
         </div>
 
