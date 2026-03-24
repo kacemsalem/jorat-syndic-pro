@@ -151,10 +151,16 @@ export default function ResolutionsVotePage() {
 
   return (
     <div className="max-w-7xl mx-auto pb-10">
-      <button onClick={() => navigate("/gouvernance/dashboard")}
-        className="text-sm text-slate-500 hover:text-slate-700 font-medium transition mb-4">
-        ← Gouvernance
-      </button>
+      <div className="flex items-center gap-4 mb-4">
+        <button onClick={() => navigate("/accueil")}
+          className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
+          ← Tableau de bord
+        </button>
+        <button onClick={() => navigate("/gouvernance/dashboard")}
+          className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
+          ← Gouvernance
+        </button>
+      </div>
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">

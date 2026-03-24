@@ -528,6 +528,9 @@ class ResolutionVoteSerializer(serializers.ModelSerializer):
     nb_notifies       = serializers.SerializerMethodField()
     type_vote_label   = serializers.SerializerMethodField()
     statut            = serializers.SerializerMethodField()
+    nb_oui            = serializers.SerializerMethodField()
+    nb_non            = serializers.SerializerMethodField()
+    nb_neutre         = serializers.SerializerMethodField()
 
     def get_assemblee_titre(self, obj):
         return str(obj.assemblee) if obj.assemblee else None
@@ -543,6 +546,15 @@ class ResolutionVoteSerializer(serializers.ModelSerializer):
 
     def get_statut(self, obj):
         return obj.statut_effectif
+
+    def get_nb_oui(self, obj):
+        return obj.votes.filter(choix="OUI").count()
+
+    def get_nb_non(self, obj):
+        return obj.votes.filter(choix="NON").count()
+
+    def get_nb_neutre(self, obj):
+        return obj.votes.filter(choix="NEUTRE").count()
 
     class Meta:
         model  = ResolutionVote
