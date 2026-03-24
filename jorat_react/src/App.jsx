@@ -45,6 +45,8 @@ import PassationConsignesPage from "./pages/PassationConsignesPage";
 import ResolutionsVotePage from "./pages/ResolutionsVotePage";
 import KanbanResolutionsPage from "./pages/KanbanResolutionsPage";
 import ResidentVotePage from "./pages/ResidentVotePage";
+import IAChatPage from "./pages/IAChatPage";
+import IASettingsPage from "./pages/IASettingsPage";
 import JournalPage    from "./pages/comptabilite/JournalPage";
 import GrandLivrePage from "./pages/comptabilite/GrandLivrePage";
 import BalancePage    from "./pages/comptabilite/BalancePage";
@@ -170,6 +172,8 @@ function AppLayout() {
               <Route path="/espace-resident/consultation"    element={<ConsultationPage />} />
               <Route path="/etat-mensuel"                  element={<EtatMensuelPage />} />
               <Route path="/passation-consignes"          element={<PassationConsignesPage />} />
+              <Route path="/ia/chat"                      element={<IAChatPage />} />
+              <Route path="/parametrage/ia"               element={<IASettingsPage />} />
               <Route path="/comptabilite/journal"    element={<JournalPage />} />
               <Route path="/comptabilite/grand-livre" element={<GrandLivrePage />} />
               <Route path="/comptabilite/balance"    element={<BalancePage />} />

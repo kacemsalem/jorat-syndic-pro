@@ -41,6 +41,7 @@ const ICONS = {
   balance:      <Icon><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></Icon>,
   cpc:          <Icon><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></Icon>,
   bilan:        <Icon><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></Icon>,
+  ai:           <Icon><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></Icon>,
 };
 
 // ── Nav groups definition ──────────────────────────────────
@@ -72,6 +73,14 @@ const BASE_NAV_GROUPS = [
       { label: "Résolutions / vote", path: "/gouvernance/resolutions-vote", icon: "resolutions" },
       { label: "Travaux",            path: "/gouvernance/travaux",          icon: "travaux" },
       { label: "Notifications",      path: "/gouvernance/notifications",    icon: "notif" },
+    ],
+  },
+  {
+    label: "IA",
+    collapsible: true,
+    items: [
+      { label: "Assistant IA",   path: "/ia/chat",       icon: "ai" },
+      { label: "Paramétrage IA", path: "/parametrage/ia", icon: "ai" },
     ],
   },
   {

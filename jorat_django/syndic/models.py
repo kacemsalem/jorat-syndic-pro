@@ -1532,4 +1532,36 @@ class NotificationVote(TimeStampedModel):
 
     class Meta:
         unique_together = ("resolution", "lot")
+
+
+# ============================================================
+# MODULE IA — documents et configuration
+# ============================================================
+
+class AIDocument(TimeStampedModel):
+    """Document PDF uploadé pour alimenter le contexte de l'IA."""
+    residence     = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="ai_documents")
+    nom           = models.CharField(max_length=255)
+    fichier       = models.FileField(upload_to="ai_docs/")
+    texte_extrait = models.TextField(blank=True)
+    actif         = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.nom
+
+
+class AIConfig(TimeStampedModel):
+    """Configuration IA par résidence : prompt système + paramètres API."""
+    residence     = models.OneToOneField("Residence", on_delete=models.CASCADE, related_name="ai_config")
+    system_prompt = models.TextField(blank=True, default="")
+    api_url       = models.CharField(max_length=500, blank=True,
+                        default="https://api.groq.com/openai/v1/chat/completions")
+    api_key       = models.CharField(max_length=500, blank=True)
+    model_name    = models.CharField(max_length=100, blank=True, default="llama-3.1-8b-instant")
+
+    def __str__(self):
+        return f"AIConfig — {self.residence}"
         ordering = ["lot__numero_lot"]

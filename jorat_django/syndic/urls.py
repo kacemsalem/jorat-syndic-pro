@@ -22,6 +22,7 @@ from .views_users import (
 from .views_init import init_complete
 from .views import passation_list_create, passation_detail, passation_refresh_caisse, passation_reserves, passation_situation_lots
 from .views_archive import archive_list, archive_create, archive_restore
+from .views_ai import ai_documents, ai_document_detail, ai_config_view, ai_chat
 from .views_vote import (
     resolution_vote_list_create, resolution_vote_detail,
     resolution_vote_envoyer_notifs, resolution_vote_resultats,
@@ -145,4 +146,10 @@ urlpatterns = [
     path("comptabilite/balance/pdf/",          balance_export_pdf,    name="compta-balance-pdf"),
     path("comptabilite/cpc/pdf/",              cpc_export_pdf,        name="compta-cpc-pdf"),
     path("comptabilite/bilan/pdf/",            bilan_export_pdf,      name="compta-bilan-pdf"),
+
+    # ── Module IA ────────────────────────────────────────────
+    path("ai/documents/",           ai_documents,       name="ai-documents"),
+    path("ai/documents/<int:pk>/",  ai_document_detail, name="ai-document-detail"),
+    path("ai/config/",              ai_config_view,     name="ai-config"),
+    path("ai/chat/",                ai_chat,            name="ai-chat"),
 ]
