@@ -197,13 +197,23 @@ export default function ResolutionsVotePage() {
                   {rv.assemblee_titre && (
                     <p className="text-[10px] text-indigo-500 mb-1.5">🏛 {rv.assemblee_titre}</p>
                   )}
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-1 mt-1">
                     <span className="text-[10px] text-slate-400">{rv.type_vote_label}</span>
-                    <div className="flex gap-2 text-[10px] text-slate-400">
+                    <div className="flex gap-1 text-[10px]">
                       <span>📨 {rv.nb_notifies}</span>
+                      <span className="text-slate-300">·</span>
                       <span>🗳 {rv.nb_votes}</span>
                     </div>
                   </div>
+                  {rv.nb_votes > 0 && (
+                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">✔ {rv.nb_oui} OUI</span>
+                      <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">✘ {rv.nb_non} NON</span>
+                      {rv.nb_neutre > 0 && (
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">— {rv.nb_neutre} Neutre</span>
+                      )}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
