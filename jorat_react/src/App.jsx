@@ -80,9 +80,23 @@ function AppLayout() {
       setAuthReady(true);
       return;
     }
+    // Superuser has no ResidenceMembership — redirect directly, don't fetch
+    const storedUser = JSON.parse(localStorage.getItem("syndic_user") || "null");
+    if (storedUser?.is_superuser) {
+      navigate("/superuser", { replace: true });
+      setAuthReady(true);
+      return;
+    }
     fetch("/api/residences/", { credentials: "include" })
       .then((r) => {
         if (r.status === 401) { handleUnauthorized(); return null; }
+        if (r.status === 403) {
+          // Could be a superuser whose localStorage was set after this effect ran
+          const u = JSON.parse(localStorage.getItem("syndic_user") || "null");
+          if (u?.is_superuser) navigate("/superuser", { replace: true });
+          else handleUnauthorized();
+          return null;
+        }
         return r.ok ? r.json() : null;
       })
       .then((data) => {
