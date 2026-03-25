@@ -7,6 +7,38 @@ function getCsrf() {
 
 const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 bg-white";
 
+function AppDocsButton({ onLoaded }) {
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg]         = useState(null);
+
+  const load = async () => {
+    setLoading(true); setMsg(null);
+    const r = await fetch("/api/ai/load-app-docs/", {
+      method: "POST", credentials: "include",
+      headers: { "X-CSRFToken": getCsrf() },
+    });
+    const d = await r.json();
+    setLoading(false);
+    setMsg({ ok: r.ok, text: d.detail + (d.taille_texte ? ` (${Math.round(d.taille_texte/1000)} k car.)` : "") });
+    if (r.ok && onLoaded) onLoaded();
+    setTimeout(() => setMsg(null), 4000);
+  };
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button onClick={load} disabled={loading}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-100 text-violet-700 rounded-xl text-xs font-semibold hover:bg-violet-200 disabled:opacity-50 transition">
+        {loading ? "Chargement…" : "⚡ Charger la doc de l'application"}
+      </button>
+      {msg && (
+        <span className={`text-[10px] font-medium ${msg.ok ? "text-emerald-600" : "text-red-500"}`}>
+          {msg.text}
+        </span>
+      )}
+    </div>
+  );
+}
+
 const MODELS_GROQ = [
   "llama-3.1-8b-instant",
   "llama-3.3-70b-versatile",
@@ -184,7 +216,10 @@ export default function IASettingsPage() {
 
       {/* ── Documents PDF ── */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Documents de référence (PDF)</h2>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Documents de référence (PDF)</h2>
+          <AppDocsButton onLoaded={load} />
+        </div>
         <p className="text-xs text-slate-500">
           Les documents actifs sont utilisés par l'IA pour répondre aux questions.
           Règlement de copropriété, lois, procédures, etc.

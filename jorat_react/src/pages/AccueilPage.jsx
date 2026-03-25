@@ -133,7 +133,7 @@ export default function AccueilPage() {
     fetch("/api/residences/", { credentials: "include" })
       .then(r => {
         if (r.status === 401 || r.status === 403) { navigate("/login"); return null; }
-        return r.ok ? r.json() : [];
+        return r.ok ? r.json() : null;  // null = server error, don't redirect
       })
       .then(data => {
         if (!data) return;

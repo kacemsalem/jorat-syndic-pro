@@ -106,6 +106,14 @@ def me_view(request):
     ).select_related("residence", "lot").first()
 
     if not membership:
+        if request.user.is_superuser:
+            return Response({
+                "id":           request.user.id,
+                "username":     request.user.username,
+                "email":        request.user.email,
+                "role":         "SUPERUSER",
+                "is_superuser": True,
+            })
         return Response({"detail": "Aucune résidence liée."}, status=400)
 
     return Response({

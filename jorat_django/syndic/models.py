@@ -1554,8 +1554,9 @@ class AIDocument(TimeStampedModel):
 
 
 class AIConfig(TimeStampedModel):
-    """Configuration IA par résidence : prompt système + paramètres API."""
-    residence     = models.OneToOneField("Residence", on_delete=models.CASCADE, related_name="ai_config")
+    """Configuration IA globale (unique, residence=None)."""
+    residence     = models.OneToOneField("Residence", on_delete=models.CASCADE,
+                        related_name="ai_config", null=True, blank=True)
     system_prompt = models.TextField(blank=True, default="")
     api_url       = models.CharField(max_length=500, blank=True,
                         default="https://api.groq.com/openai/v1/chat/completions")

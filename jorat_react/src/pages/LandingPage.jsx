@@ -201,7 +201,8 @@ export default function LandingApp() {
     const saved = localStorage.getItem("syndic_user");
     if (saved) {
       const u = JSON.parse(saved);
-      navigate(u.role === "RESIDENT" ? "/resident" : "/accueil", { replace: true });
+      const dest = u.is_superuser ? "/superuser" : u.role === "RESIDENT" ? "/resident" : "/accueil";
+      navigate(dest, { replace: true });
     }
   }, [navigate]);
 
@@ -211,7 +212,8 @@ export default function LandingApp() {
       if (res.ok) {
         const me = await res.json();
         localStorage.setItem("syndic_user", JSON.stringify(me));
-        navigate(me.role === "RESIDENT" ? "/resident" : "/accueil", { replace: true });
+        const dest = me.is_superuser ? "/superuser" : me.role === "RESIDENT" ? "/resident" : "/accueil";
+        navigate(dest, { replace: true });
       }
     } catch {}
   };

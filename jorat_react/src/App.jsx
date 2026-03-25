@@ -45,6 +45,7 @@ import PassationConsignesPage from "./pages/PassationConsignesPage";
 import ResolutionsVotePage from "./pages/ResolutionsVotePage";
 import KanbanResolutionsPage from "./pages/KanbanResolutionsPage";
 import ResidentVotePage from "./pages/ResidentVotePage";
+import SuperuserDashboardPage from "./pages/SuperuserDashboardPage";
 import IAChatPage from "./pages/IAChatPage";
 import IASettingsPage from "./pages/IASettingsPage";
 import JournalPage    from "./pages/comptabilite/JournalPage";
@@ -58,7 +59,7 @@ import AppHeader from "./components/AppHeader";
 import { ToastProvider } from "./components/Toast";
 
 // Pages that use their own full-screen layout (no sidebar/header)
-const PUBLIC_PATHS = ["/login", "/resident", "/change-password", "/espace-resident/votes"];
+const PUBLIC_PATHS = ["/login", "/resident", "/change-password", "/espace-resident/votes", "/superuser"];
 
 function AppLayout() {
   const location = useLocation();
@@ -82,7 +83,7 @@ function AppLayout() {
     fetch("/api/residences/", { credentials: "include" })
       .then((r) => {
         if (r.status === 401) { handleUnauthorized(); return null; }
-        return r.ok ? r.json() : [];
+        return r.ok ? r.json() : null;
       })
       .then((data) => {
         setAuthReady(true);
@@ -94,7 +95,7 @@ function AppLayout() {
         }
       })
       .catch(() => setAuthReady(true));
-  }, [location.pathname]);
+  }, [isPublic]); // re-fetch only when switching between public/private, not on every route change
 
   // Redirect to change-password if flag is set
   const storedUser = JSON.parse(localStorage.getItem("syndic_user") || "null");
@@ -120,6 +121,7 @@ function AppLayout() {
           <Route path="/change-password"        element={<ChangePasswordPage />} />
           <Route path="/resident"               element={<ResidentRoute><ResidentPortalPage /></ResidentRoute>} />
           <Route path="/espace-resident/votes"  element={<ResidentRoute><ResidentVotePage /></ResidentRoute>} />
+          <Route path="/superuser"              element={<SuperuserDashboardPage />} />
         </Routes>
       </div>
     );

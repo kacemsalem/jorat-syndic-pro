@@ -22,7 +22,8 @@ from .views_users import (
 from .views_init import init_complete
 from .views import passation_list_create, passation_detail, passation_refresh_caisse, passation_reserves, passation_situation_lots
 from .views_archive import archive_list, archive_create, archive_restore
-from .views_ai import ai_documents, ai_document_detail, ai_config_view, ai_chat
+from .views_ai import ai_documents, ai_document_detail, ai_config_view, ai_chat, ai_load_app_docs
+from .views_superuser import superuser_residences, superuser_set_password, superuser_ai_config
 from .views_vote import (
     resolution_vote_list_create, resolution_vote_detail,
     resolution_vote_envoyer_notifs, resolution_vote_resultats,
@@ -148,8 +149,14 @@ urlpatterns = [
     path("comptabilite/bilan/pdf/",            bilan_export_pdf,      name="compta-bilan-pdf"),
 
     # ── Module IA ────────────────────────────────────────────
-    path("ai/documents/",           ai_documents,       name="ai-documents"),
-    path("ai/documents/<int:pk>/",  ai_document_detail, name="ai-document-detail"),
-    path("ai/config/",              ai_config_view,     name="ai-config"),
-    path("ai/chat/",                ai_chat,            name="ai-chat"),
+    path("ai/documents/",           ai_documents,         name="ai-documents"),
+    path("ai/documents/<int:pk>/",  ai_document_detail,   name="ai-document-detail"),
+    path("ai/load-app-docs/",       ai_load_app_docs,     name="ai-load-app-docs"),
+    path("ai/config/",              ai_config_view,       name="ai-config"),
+    path("ai/chat/",                ai_chat,              name="ai-chat"),
+
+    # ── Superuser ─────────────────────────────────────────────
+    path("superuser/residences/",   superuser_residences,   name="su-residences"),
+    path("superuser/set-password/", superuser_set_password, name="su-set-password"),
+    path("superuser/ai-config/",    superuser_ai_config,    name="su-ai-config"),
 ]

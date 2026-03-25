@@ -30,10 +30,11 @@ def _extract_pdf_text(file_obj):
         return f"[Erreur extraction PDF : {e}]"
 
 
-def _get_config(residence):
+def _get_config():
+    """Retourne la configuration IA globale unique (residence=None)."""
     from .models import AIConfig
     cfg, _ = AIConfig.objects.get_or_create(
-        residence=residence,
+        residence=None,
         defaults={
             "api_url":    "https://api.groq.com/openai/v1/chat/completions",
             "model_name": "llama-3.1-8b-instant",
@@ -50,17 +51,29 @@ def _get_config(residence):
 
 
 def _build_business_context(message_lower, residence):
-    """Génère un résumé structuré des données métier selon la question posée."""
-    from .models import Lot, CaisseMouvement, Depense, Paiement
+    """Génère un résumé structuré des données réelles selon la question posée."""
+    from .models import Lot, CaisseMouvement, Depense
+    from django.db.models import Sum as S, Q as Qd
     parts = []
 
-    keywords_caisse   = ["caisse", "solde", "trésorerie", "trésorier", "balance"]
-    keywords_lots     = ["lot", "propriétaire", "copropriétaire", "impayé", "dette",
-                         "retard", "paiement", "doit", "situation"]
-    keywords_depenses = ["dépense", "fournisseur", "charge", "facture", "coût"]
+    keywords_caisse = [
+        "caisse", "solde", "trésorerie", "trésorier", "balance",
+        "argent", "fonds", "disponible", "encaisse",
+    ]
+    keywords_lots = [
+        "lot", "propriétaire", "copropriétaire", "impayé", "impayés",
+        "dette", "dettes", "retard", "retards", "paiement", "paiements",
+        "doit", "doivent", "situation", "arriéré", "arriérés",
+        "recouvrement", "relance", "qui n'a pas payé", "pas payé",
+        "en défaut", "solde lot", "reste à payer", "reste dû",
+    ]
+    keywords_depenses = [
+        "dépense", "dépenses", "fournisseur", "charge", "facture", "coût",
+        "frais", "dépensé", "sortie",
+    ]
 
+    # ── Caisse ──
     if any(k in message_lower for k in keywords_caisse):
-        from django.db.models import Sum as S, Q as Qd
         agg = CaisseMouvement.objects.filter(residence=residence).aggregate(
             entrees=S("montant", filter=Qd(sens="DEBIT")),
             sorties=S("montant", filter=Qd(sens="CREDIT")),
@@ -68,30 +81,45 @@ def _build_business_context(message_lower, residence):
         solde = float(agg["entrees"] or 0) - float(agg["sorties"] or 0)
         parts.append(f"SOLDE DE CAISSE ACTUEL : {solde:,.2f} MAD")
 
+    # ── Lots / paiements ──
     if any(k in message_lower for k in keywords_lots):
-        lots = Lot.objects.filter(residence=residence).select_related("proprietaire")[:50]
-        lines = ["SITUATION DES LOTS (50 premiers) :"]
+        lots = Lot.objects.filter(residence=residence).select_related("proprietaire", "groupe")
+        impayes, a_jour = [], []
         for lot in lots:
-            from django.db.models import Sum as S
-            total_du  = lot.details_appels.aggregate(s=S("montant"))["s"] or 0
-            total_pay = lot.paiements.aggregate(s=S("montant"))["s"] or 0
-            reste     = float(total_du) - float(total_pay)
+            total_du  = float(lot.details_appels.aggregate(s=S("montant"))["s"] or 0)
+            total_pay = float(lot.paiements.aggregate(s=S("montant"))["s"] or 0)
+            reste     = total_du - total_pay
             prop      = lot.proprietaire
-            nom_prop  = f"{prop.nom} {prop.prenom}" if prop else "—"
-            statut    = "IMPAYÉ" if reste > 0 else "À JOUR"
-            lines.append(
-                f"  Lot {lot.numero_lot} ({lot.groupe.nom_groupe if lot.groupe else ''}) "
-                f"— {nom_prop} — Dû: {float(total_du):,.0f} | Payé: {float(total_pay):,.0f} "
-                f"| Reste: {reste:,.0f} MAD — {statut}"
+            nom_prop  = f"{prop.nom} {prop.prenom}".strip() if prop else "Propriétaire inconnu"
+            groupe    = lot.groupe.nom_groupe if lot.groupe else ""
+            entry = (
+                f"  • Lot {lot.numero_lot}"
+                + (f" ({groupe})" if groupe else "")
+                + f" — {nom_prop}"
+                + f" — Dû : {total_du:,.0f} | Payé : {total_pay:,.0f} | Reste : {reste:,.0f} MAD"
             )
+            if reste > 0:
+                impayes.append(entry)
+            else:
+                a_jour.append(entry)
+
+        lines = [f"SITUATION DES LOTS — {residence.nom_residence} :"]
+        if impayes:
+            lines.append(f"\nLOTS AVEC IMPAYÉS ({len(impayes)}) :")
+            lines.extend(impayes)
+        else:
+            lines.append("\nAucun lot avec impayés.")
+        if a_jour:
+            lines.append(f"\nLOTS À JOUR ({len(a_jour)}) :")
+            lines.extend(a_jour)
         parts.append("\n".join(lines))
 
+    # ── Dépenses ──
     if any(k in message_lower for k in keywords_depenses):
-        from django.db.models import Sum as S
-        agg = Depense.objects.filter(residence=residence).aggregate(total=S("montant"))
+        agg   = Depense.objects.filter(residence=residence).aggregate(total=S("montant"))
         total = float(agg["total"] or 0)
         count = Depense.objects.filter(residence=residence).count()
-        parts.append(f"DÉPENSES : {count} dépenses enregistrées, total {total:,.2f} MAD")
+        parts.append(f"DÉPENSES : {count} dépenses enregistrées — total {total:,.2f} MAD")
 
     return "\n\n".join(parts)
 
@@ -142,7 +170,47 @@ def _call_llm(cfg, system_msg, user_msg, history=None):
         return f"Erreur de connexion : {e}"
 
 
+# ── Chemin documentation application ──────────────────────────────────────
+import os as _os
+_DOCS_PATH = _os.path.join(
+    _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))),
+    "docs", "documentation_jorat.md"
+)
+
 # ── Views ──────────────────────────────────────────────────────────────────
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def ai_load_app_docs(request):
+    """
+    Lit documentation_jorat.md depuis le serveur et le charge/met à jour
+    comme AIDocument actif pour la résidence courante.
+    """
+    from .models import AIDocument
+    residence = get_user_residence(request)
+    if not residence:
+        return Response({"detail": "Aucune résidence."}, status=400)
+
+    if not _os.path.exists(_DOCS_PATH):
+        return Response({"detail": f"Fichier documentation introuvable : {_DOCS_PATH}"}, status=404)
+
+    with open(_DOCS_PATH, "r", encoding="utf-8") as f:
+        texte = f.read()
+
+    NOM = "Documentation Syndic Pro — Guide complet"
+    # Met à jour si déjà existant, sinon crée
+    doc, created = AIDocument.objects.update_or_create(
+        residence=residence,
+        nom=NOM,
+        defaults={"texte_extrait": texte, "actif": True},
+    )
+    return Response({
+        "detail": "Documentation chargée avec succès." if created else "Documentation mise à jour.",
+        "id":           doc.id,
+        "taille_texte": len(texte),
+        "created":      created,
+    })
+
 
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
@@ -210,7 +278,7 @@ def ai_config_view(request):
     if not residence:
         return Response({"detail": "Aucune résidence."}, status=400)
 
-    cfg = _get_config(residence)
+    cfg = _get_config()
 
     if request.method == "GET":
         return Response({
@@ -251,7 +319,7 @@ def _ai_chat_inner(request):
     if not message:
         return Response({"detail": "Message vide."}, status=400)
 
-    cfg = _get_config(residence)
+    cfg = _get_config()
 
     # 1. Contexte documentaire (PDFs actifs)
     docs = AIDocument.objects.filter(residence=residence, actif=True)
@@ -278,7 +346,11 @@ def _ai_chat_inner(request):
         system += f"\n\n--- DONNÉES ACTUELLES DE LA RÉSIDENCE ---\n{business_ctx}"
     system += (
         "\n\nIMPORTANT : Tu ne dois jamais inventer de chiffres ou de faits. "
-        "Si tu n'as pas l'information, dis-le clairement."
+        "Si tu n'as pas l'information, dis-le clairement. "
+        "Quand des données sont fournies dans ce contexte (DONNÉES ACTUELLES), "
+        "utilise-les directement pour répondre. Ne mentionne jamais les APIs, "
+        "les URLs, la structure de base de données, ni comment les données ont été obtenues. "
+        "Présente simplement les informations comme si tu les connaissais naturellement."
     )
 
     # 4. Appel LLM
