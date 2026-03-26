@@ -15,7 +15,7 @@ const MOIS_OPTIONS = [
 ];
 
 const INPUT_BASE = "w-full border rounded-xl px-3 py-2 text-sm focus:outline-none transition";
-const INPUT_NORMAL = `${INPUT_BASE} border-slate-200 focus:border-amber-400`;
+const INPUT_NORMAL = `${INPUT_BASE} border-slate-200 focus:border-blue-400`;
 const INPUT_AUTO   = `${INPUT_BASE} border-blue-300 bg-blue-50 focus:border-blue-400`;
 
 const EMPTY_FORM = {
@@ -69,7 +69,7 @@ function SubFormFamille({ onBack, onCreated }) {
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <div className="flex justify-end gap-2">
         <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+        <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
           {saving ? "…" : "Créer"}
         </button>
       </div>
@@ -178,7 +178,7 @@ function SubFormModele({ familles: initialFamilles, comptes: initialComptes, fou
 
   const BtnPlus = ({ onClick }) => (
     <button type="button" onClick={onClick}
-      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
+      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-700 text-lg font-bold transition border border-slate-200">
       +
     </button>
   );
@@ -191,7 +191,7 @@ function SubFormModele({ familles: initialFamilles, comptes: initialComptes, fou
   const InlineActions = ({ onSave, saving, onCancel }) => (
     <>
       <button onClick={onSave} disabled={saving}
-        className="shrink-0 px-3 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+        className="shrink-0 px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
         {saving ? "…" : "Créer"}
       </button>
       <button onClick={onCancel}
@@ -272,7 +272,7 @@ function SubFormModele({ familles: initialFamilles, comptes: initialComptes, fou
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <div className="flex justify-end gap-2">
         <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+        <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
           {saving ? "…" : "Créer"}
         </button>
       </div>
@@ -320,7 +320,7 @@ function SubFormCompte({ onBack, onCreated }) {
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <div className="flex justify-end gap-2">
         <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+        <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
           {saving ? "…" : "Créer"}
         </button>
       </div>
@@ -372,7 +372,7 @@ function SubFormFournisseur({ onBack, onCreated }) {
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <div className="flex justify-end gap-2">
         <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+        <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
           {saving ? "…" : "Créer"}
         </button>
       </div>
@@ -777,7 +777,7 @@ export default function DepensesPage() {
                       </select>
                       <button type="button" onClick={() => setSubForm("modele")}
                         title="Nouveau modèle"
-                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-700 text-lg font-bold transition border border-slate-200">
+                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-700 text-lg font-bold transition border border-slate-200">
                         +
                       </button>
                       <button type="button" onClick={() => navigate("/modeles-depense", { state: { openForm: true } })}
@@ -860,7 +860,7 @@ export default function DepensesPage() {
                       Montant (DH) <span className="text-red-500">*</span>
                     </label>
                     <input type="number" min="0.01" step="0.01"
-                      className="w-full border-2 border-amber-300 bg-amber-50 rounded-xl px-3 py-2 text-sm font-semibold text-amber-900 focus:outline-none focus:border-amber-500 placeholder:text-amber-300 placeholder:font-normal transition"
+                      className="w-full border-2 border-blue-300 bg-blue-50 rounded-xl px-3 py-2 text-sm font-semibold text-blue-900 focus:outline-none focus:border-blue-500 placeholder:text-blue-300 placeholder:font-normal transition"
                       value={form.montant}
                       onChange={e => setForm(f => ({ ...f, montant: e.target.value }))}
                       placeholder="0.00"
@@ -931,7 +931,7 @@ export default function DepensesPage() {
                 <div className="flex justify-end gap-3 mt-4">
                   <button onClick={closeForm} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
                   <button onClick={handleSave} disabled={saving}
-                    className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+                    className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
                     {saving ? "Enregistrement…" : "Enregistrer"}
                   </button>
                 </div>

@@ -29,6 +29,10 @@ import ExportPage from "./pages/ExportPage";
 import ImportPage from "./pages/ImportPage";
 import ResidentPortalPage from "./pages/ResidentPortalPage";
 import AccueilPage from "./pages/AccueilPage";
+import GestionPage from "./pages/GestionPage";
+import GouvernancePage from "./pages/GouvernancePage";
+import ComptabiliteMenuPage from "./pages/ComptabiliteMenuPage";
+import OutilsPage from "./pages/OutilsPage";
 import GestionUtilisateursPage from "./pages/GestionUtilisateursPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import InitialisationPage from "./pages/InitialisationPage";
@@ -155,6 +159,10 @@ function AppLayout() {
           <AdminRoute>
             <Routes>
               <Route path="/accueil"            element={<AccueilPage />} />
+              <Route path="/gestion"            element={<GestionPage />} />
+              <Route path="/gouvernance"        element={<GouvernancePage />} />
+              <Route path="/comptabilite"       element={<ComptabiliteMenuPage />} />
+              <Route path="/outils"             element={<OutilsPage />} />
               <Route path="/residences"         element={<Residences />} />
               <Route path="/kanban"             element={<LotsKanban />} />
               <Route path="/groupes"            element={<GroupesPage />} />
