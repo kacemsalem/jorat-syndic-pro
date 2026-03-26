@@ -56,6 +56,7 @@ import BilanPage      from "./pages/comptabilite/BilanPage";
 import { AdminRoute, ResidentRoute } from "./components/ProtectedRoutes";
 import Sidebar from "./components/Sidebar";
 import AppHeader from "./components/AppHeader";
+import BottomNav from "./components/BottomNav";
 import { ToastProvider } from "./components/Toast";
 
 // Pages that use their own full-screen layout (no sidebar/header)
@@ -150,7 +151,7 @@ function AppLayout() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 overflow-auto p-3 sm:p-6">
+        <main className="flex-1 overflow-auto p-3 sm:p-6 pb-20">
           <AdminRoute>
             <Routes>
               <Route path="/accueil"            element={<AccueilPage />} />
@@ -207,6 +208,7 @@ function AppLayout() {
         </main>
       </div>
 
+      <BottomNav />
     </div>
   );
 }

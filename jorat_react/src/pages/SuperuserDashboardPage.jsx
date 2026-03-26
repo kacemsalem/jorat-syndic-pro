@@ -59,15 +59,23 @@ function AppDocsButton({ onLoaded }) {
 
   const load = async () => {
     setLoading(true); setMsg(null);
-    const r = await fetch("/api/ai/load-app-docs/", {
-      method: "POST", credentials: "include",
-      headers: { "X-CSRFToken": getCsrf() },
-    });
-    const d = await r.json();
-    setLoading(false);
-    setMsg({ ok: r.ok, text: d.detail + (d.taille_texte ? ` (${Math.round(d.taille_texte/1000)} k car.)` : "") });
-    if (r.ok && onLoaded) onLoaded();
-    setTimeout(() => setMsg(null), 4000);
+    try {
+      const r = await fetch("/api/ai/load-app-docs/", {
+        method: "POST", credentials: "include",
+        headers: { "X-CSRFToken": getCsrf() },
+      });
+      const d = await r.json().catch(() => ({}));
+      setLoading(false);
+      const text = (d.detail || (r.ok ? "Chargé avec succès." : "Erreur inconnue."))
+        + (d.taille_texte ? ` (${Math.round(d.taille_texte / 1000)} k car.)` : "");
+      setMsg({ ok: r.ok, text });
+      // Rafraîchir la liste APRÈS que le message soit visible (3 s)
+      setTimeout(() => { setMsg(null); if (r.ok && onLoaded) onLoaded(); }, 3000);
+    } catch (e) {
+      setLoading(false);
+      setMsg({ ok: false, text: "Erreur réseau : " + e.message });
+      setTimeout(() => setMsg(null), 4000);
+    }
   };
 
   return (
@@ -101,6 +109,7 @@ function AIConfigPanel() {
   const [saving,    setSaving]    = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saved,     setSaved]     = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const [nomDoc,    setNomDoc]    = useState("");
 
   const load = async () => {
@@ -152,14 +161,21 @@ function AIConfigPanel() {
   };
 
   const handleSave = async () => {
-    setSaving(true);
-    await fetch("/api/superuser/ai-config/", {
+    setSaving(true); setSaveError(null);
+    const r = await fetch("/api/superuser/ai-config/", {
       method: "PUT", credentials: "include",
       headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
       body: JSON.stringify(config),
     });
-    setSaving(false); setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(false);
+    if (r.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setSaveError(d.detail || `Erreur ${r.status}`);
+      setTimeout(() => setSaveError(null), 5000);
+    }
   };
 
   if (loading) return (
@@ -225,9 +241,14 @@ function AIConfigPanel() {
       </div>
 
       {/* Bouton sauvegarder */}
+      {saveError && (
+        <div className="px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-medium">
+          ✕ Erreur : {saveError}
+        </div>
+      )}
       <button onClick={handleSave} disabled={saving}
         className={`w-full py-2.5 rounded-xl text-sm font-semibold transition ${
-          saved ? "bg-emerald-500 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"
+          saved ? "bg-emerald-500 text-white" : saveError ? "bg-red-500 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"
         } disabled:opacity-50`}>
         {saving ? "Sauvegarde…" : saved ? "✓ Sauvegardé" : "Sauvegarder la configuration"}
       </button>

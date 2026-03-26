@@ -565,125 +565,165 @@ export default function DepensesPage() {
     setSubForm(null);
   };
 
+  const fmt = (n) => Number(n).toLocaleString("fr-MA", { minimumFractionDigits: 2 });
+  const isFiltered = filterAnnee || filterMois || filterFamille || filterFournisseur || filterAttente;
+
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Dépenses</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {filtered.length} dépense{filtered.length !== 1 ? "s" : ""} — Total :{" "}
-            <span className="font-semibold text-amber-600">
-              {totalFiltered.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
-            </span>
-          </p>
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6">
+
+      {/* ── En-tête bleu ──────────────────────────────────────── */}
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-4 pb-14">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Dépenses</p>
+            <p className="text-white/50 text-[10px]">
+              {filtered.length} dépense{filtered.length !== 1 ? "s" : ""} {isFiltered ? "filtrées" : "au total"}
+            </p>
+          </div>
+          <button onClick={openCreate}
+            className="w-10 h-10 bg-white/20 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition shadow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
         </div>
-        <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow self-start sm:self-auto">
-          + Nouvelle dépense
-        </button>
+        <p className="text-white/60 text-xs mb-1">Total dépenses</p>
+        <p className="text-4xl font-bold text-white leading-none mb-1">
+          {fmt(totalFiltered)}
+          <span className="text-base font-normal text-white/50 ml-2">MAD</span>
+        </p>
       </div>
 
-      {/* Filtres */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <select className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-amber-400"
-          value={filterAnnee} onChange={e => setFilterAnnee(e.target.value)}>
-          <option value="">Toutes années</option>
-          {annees.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
-        <select className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-amber-400"
-          value={filterMois} onChange={e => setFilterMois(e.target.value)}>
-          <option value="">Toutes périodes</option>
-          {MOIS_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-        </select>
-        <select className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-amber-400"
-          value={filterFamille} onChange={e => setFilterFamille(e.target.value)}>
-          <option value="">Toutes familles</option>
-          {famillesList.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
-        <select className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-amber-400"
-          value={filterFournisseur} onChange={e => setFilterFournisseur(e.target.value)}>
-          <option value="">Tous fournisseurs</option>
-          {fournisseursUsed.map(f => <option key={f.id} value={String(f.id)}>{f.nom_complet || f.nom}</option>)}
-        </select>
-        {nbAttente > 0 && (
-          <button onClick={() => setFilterAttente(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold border transition ${
-              filterAttente ? "bg-orange-500 text-white border-orange-500" : "bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100"
-            }`}>
-            ⚠ À affecter ({nbAttente})
-          </button>
+      {/* ── Contenu flottant ──────────────────────────────────── */}
+      <div className="px-4 -mt-6 space-y-4 pb-6">
+
+        {/* Filtres */}
+        <div className="bg-white rounded-2xl shadow-sm p-3">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Filtres</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <select value={filterAnnee} onChange={e => setFilterAnnee(e.target.value)}
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0">
+              <option value="">Toutes années</option>
+              {annees.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={filterMois} onChange={e => setFilterMois(e.target.value)}
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0">
+              <option value="">Tous mois</option>
+              {MOIS_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+            <select value={filterFamille} onChange={e => setFilterFamille(e.target.value)}
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0">
+              <option value="">Toutes catégories</option>
+              {famillesList.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <select value={filterFournisseur} onChange={e => setFilterFournisseur(e.target.value)}
+              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0">
+              <option value="">Tous fournisseurs</option>
+              {fournisseursUsed.map(f => <option key={f.id} value={String(f.id)}>{f.nom_complet || f.nom}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-3 mt-2.5 flex-wrap">
+            {nbAttente > 0 && (
+              <button onClick={() => setFilterAttente(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition ${
+                  filterAttente ? "bg-orange-500 text-white border-orange-500" : "bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100"
+                }`}>
+                ⚠ À affecter ({nbAttente})
+              </button>
+            )}
+            {isFiltered && (
+              <button onClick={() => { setFilterAnnee(""); setFilterMois(""); setFilterFamille(""); setFilterFournisseur(""); setFilterAttente(false); }}
+                className="text-[10px] text-blue-600 font-semibold hover:text-blue-700">
+                ✕ Réinitialiser
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Liste */}
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm py-16 text-center">
+            <p className="text-slate-300 text-sm">Aucune dépense</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dépenses</p>
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                {filtered.length}
+              </span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {filtered.map(dep => (
+                <div key={dep.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"
+                      strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                      <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{dep.libelle}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className="text-[10px] font-mono text-slate-400">{dep.date_depense}</span>
+                      {dep.mois && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          {dep.mois}
+                        </span>
+                      )}
+                      {(dep.modele_famille_nom || dep.categorie_famille) && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                          {dep.modele_famille_nom || dep.categorie_famille}
+                        </span>
+                      )}
+                      {dep.compte_code && (
+                        <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${dep.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-400"}`}>
+                          {dep.compte_code}{dep.compte_code === "000" ? " ⚠" : ""}
+                        </span>
+                      )}
+                    </div>
+                    {dep.fournisseur_nom && (
+                      <p className="text-[10px] text-slate-400 truncate">{dep.fournisseur_nom}</p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-red-600">−{fmt(dep.montant)}</p>
+                    <p className="text-[9px] text-slate-400">MAD</p>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button onClick={() => openEdit(dep)}
+                      className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                        strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                    <button onClick={() => handleDelete(dep)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                        strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                        <path d="M10 11v6"/><path d="M14 11v6"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Kanban */}
-      {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">Aucune dépense</div>
-      ) : (
-        <div className="space-y-1.5">
-          {filtered.map(dep => (
-            <div key={dep.id} className="bg-red-50 rounded-xl border border-red-200 shadow-sm px-3 py-2.5 flex items-center gap-3 relative">
-              {/* Date + badges */}
-              <div className="flex flex-col gap-0.5 w-24 shrink-0">
-                <span className="text-[11px] text-slate-500 font-mono">{dep.date_depense}</span>
-                <div className="flex items-center gap-1 flex-wrap">
-                  {dep.mois && <span className="text-[9px] font-semibold px-1 rounded bg-amber-100 text-amber-700">{dep.mois}</span>}
-                  {(dep.modele_famille_nom || dep.categorie_famille) && (
-                    <span className="text-[9px] px-1 rounded bg-slate-100 text-slate-500">{dep.modele_famille_nom || dep.categorie_famille}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Libellé + sous-infos */}
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-800 text-sm leading-tight truncate">{dep.libelle}</p>
-                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span className={`font-mono text-[10px] px-1 rounded ${dep.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
-                    {dep.compte_code}{dep.compte_code === "000" ? " ⚠" : ""}
-                  </span>
-                  {dep.fournisseur_nom   && <span className="text-[10px] text-slate-400">{dep.fournisseur_nom}</span>}
-                  {dep.facture_reference && <span className="text-[10px] text-slate-300">Réf: {dep.facture_reference}</span>}
-                </div>
-              </div>
-
-              {/* Montant */}
-              <span className="font-bold text-amber-700 text-sm shrink-0">
-                {parseFloat(dep.montant).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
-              </span>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => openEdit(dep)}
-                  className="p-1.5 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition" title="Modifier">
-                  ✏️
-                </button>
-                <button onClick={() => handleDelete(dep)}
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition" title="Supprimer">
-                  🗑️
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Total footer */}
-      {!loading && filtered.length > 0 && (
-        <div className="mt-4 flex justify-end">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-2.5 text-sm font-semibold text-amber-800">
-            Total : {totalFiltered.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
-          </div>
-        </div>
-      )}
-
-      {/* Modal formulaire */}
+      {/* ── Modal formulaire ──────────────────────────────────── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[96vh] overflow-y-auto">
-
-            {/* Sub-forms */}
             {subForm === "famille" && (
               <SubFormFamille onBack={() => setSubForm(null)} onCreated={onFamilleCreated} />
             )}

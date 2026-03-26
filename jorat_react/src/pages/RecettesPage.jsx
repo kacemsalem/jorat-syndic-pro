@@ -14,7 +14,8 @@ const MOIS_OPTIONS = [
   { value: "NOV", label: "Novembre" },{ value: "DEC", label: "Décembre" },
 ];
 
-const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-400 transition";
+const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 transition";
+const SEL   = "border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0";
 
 const EMPTY_FORM = {
   compte: "",
@@ -46,7 +47,6 @@ export default function RecettesPage() {
   const [filterCompte,  setFilterCompte]  = useState("");
   const [filterAttente, setFilterAttente] = useState(false);
 
-  // Quick-add compte
   const [quickOpen,       setQuickOpen]       = useState(false);
   const [quickCompteForm, setQuickCompteForm] = useState({ code: "", libelle: "" });
   const [savingQuick,     setSavingQuick]     = useState(false);
@@ -61,7 +61,6 @@ export default function RecettesPage() {
       setRecettes(Array.isArray(rec) ? rec : (rec.results ?? []));
       const cptList = Array.isArray(cpt) ? cpt : (cpt.results ?? []);
       setComptes(cptList);
-      // Pré-sélectionner le compte 000 par défaut
       const compte000 = cptList.find(c => c.code === "000");
       if (compte000) setDefaultCompte(String(compte000.id));
       setLoading(false);
@@ -159,125 +158,157 @@ export default function RecettesPage() {
   };
 
   const fmt = (n) => Number(n).toLocaleString("fr-MA", { minimumFractionDigits: 2 });
+  const isFiltered = filterAnnee || filterMois || filterCompte || filterAttente;
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6">
 
-      {/* Header avec ← Retour */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-        <div>
-          <button onClick={() => navigate("/caisse")}
-            className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium mb-1">
-            ← Retour à la Caisse
+      {/* ── En-tête bleu ──────────────────────────────────────── */}
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-4 pb-14">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Recettes</p>
+            <p className="text-white/50 text-[10px]">
+              {filtered.length} recette{filtered.length !== 1 ? "s" : ""} {isFiltered ? "filtrées" : "au total"}
+            </p>
+          </div>
+          <button onClick={openCreate}
+            className="w-10 h-10 bg-white/20 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition shadow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
           </button>
-          <h1 className="text-2xl font-bold text-slate-800">Recettes</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Encaissements exceptionnels hors paiements copropriétaires</p>
         </div>
-        <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition shadow self-start sm:self-auto">
-          + Nouvelle recette
-        </button>
+        <p className="text-white/60 text-xs mb-1">Total recettes</p>
+        <p className="text-4xl font-bold text-white leading-none mb-1">
+          {fmt(totalRecettes)}
+          <span className="text-base font-normal text-white/50 ml-2">MAD</span>
+        </p>
       </div>
 
-      {/* KPI compact */}
-      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 mb-4">
-        <span className="text-xs text-slate-500 uppercase tracking-wide">Total ({filtered.length})</span>
-        <span className="text-lg font-bold text-emerald-700">{fmt(totalRecettes)} MAD</span>
-      </div>
+      {/* ── Contenu flottant ──────────────────────────────────── */}
+      <div className="px-4 -mt-6 space-y-4 pb-6">
 
-      {/* Filtres */}
-      <div className="flex gap-2 flex-wrap mb-4">
-        <select value={filterAnnee} onChange={e => setFilterAnnee(e.target.value)}
-          className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-400">
-          <option value="">Toutes années</option>
-          {annees.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
-        <select value={filterMois} onChange={e => setFilterMois(e.target.value)}
-          className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-400">
-          <option value="">Toutes périodes</option>
-          {MOIS_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-        </select>
-        <select value={filterCompte} onChange={e => setFilterCompte(e.target.value)}
-          className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-400">
-          <option value="">Tous comptes</option>
-          {comptesUsed.map(c => <option key={c.id} value={String(c.id)}>{c.code} — {c.libelle}</option>)}
-        </select>
-        {nbAttente > 0 && (
-          <button onClick={() => setFilterAttente(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold border transition ${
-              filterAttente ? "bg-orange-500 text-white border-orange-500" : "bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100"
-            }`}>
-            ⚠ À affecter ({nbAttente})
-          </button>
+        {/* Filtres */}
+        <div className="bg-white rounded-2xl shadow-sm p-3">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Filtres</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <select value={filterAnnee} onChange={e => setFilterAnnee(e.target.value)} className={SEL}>
+              <option value="">Toutes années</option>
+              {annees.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={filterMois} onChange={e => setFilterMois(e.target.value)} className={SEL}>
+              <option value="">Tous mois</option>
+              {MOIS_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+            <select value={filterCompte} onChange={e => setFilterCompte(e.target.value)} className={SEL}>
+              <option value="">Tous comptes</option>
+              {comptesUsed.map(c => <option key={c.id} value={String(c.id)}>{c.code} — {c.libelle}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-3 mt-2.5 flex-wrap">
+            {nbAttente > 0 && (
+              <button onClick={() => setFilterAttente(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition ${
+                  filterAttente ? "bg-orange-500 text-white border-orange-500" : "bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100"
+                }`}>
+                ⚠ À affecter ({nbAttente})
+              </button>
+            )}
+            {isFiltered && (
+              <button onClick={() => { setFilterAnnee(""); setFilterMois(""); setFilterCompte(""); setFilterAttente(false); }}
+                className="text-[10px] text-blue-600 font-semibold hover:text-blue-700">
+                ✕ Réinitialiser
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Liste */}
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm py-16 text-center">
+            <p className="text-slate-300 text-sm">Aucune recette</p>
+          </div>
+        ) : (
+          <div ref={menuRef} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recettes</p>
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                {filtered.length}
+              </span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {filtered.map(r => (
+                <div key={r.id} className="flex items-center gap-3 px-4 py-3">
+
+                  {/* Icône cercle vert */}
+                  <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5"
+                      strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                      <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+                    </svg>
+                  </div>
+
+                  {/* Infos */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{r.libelle}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className="text-[10px] font-mono text-slate-400">{r.date_recette}</span>
+                      {r.mois && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                          {r.mois}
+                        </span>
+                      )}
+                      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${
+                        r.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-400"
+                      }`}>
+                        {r.compte_code}{r.compte_code === "000" ? " ⚠" : ""}
+                      </span>
+                    </div>
+                    {r.source && <p className="text-[10px] text-slate-400 truncate">{r.source}</p>}
+                    {r.compte_libelle && r.compte_code !== "000" && (
+                      <p className="text-[10px] text-indigo-400 truncate">{r.compte_libelle}</p>
+                    )}
+                  </div>
+
+                  {/* Montant */}
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-emerald-600">+{fmt(r.montant)}</p>
+                    <p className="text-[9px] text-slate-400">MAD</p>
+                  </div>
+
+                  {/* Menu 3 points */}
+                  <div className="relative shrink-0">
+                    <button onClick={() => setOpenMenu(openMenu === r.id ? null : r.id)}
+                      className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                        <circle cx="10" cy="4"  r="1.5"/>
+                        <circle cx="10" cy="10" r="1.5"/>
+                        <circle cx="10" cy="16" r="1.5"/>
+                      </svg>
+                    </button>
+                    {openMenu === r.id && (
+                      <div className="absolute right-0 top-7 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
+                        <button onClick={() => { openEdit(r); setOpenMenu(null); }}
+                          className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
+                        <button onClick={() => { handleDelete(r.id); setOpenMenu(null); }}
+                          className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50">Supprimer</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Kanban */}
-      {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">Aucune recette</div>
-      ) : (
-        <div ref={menuRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map(r => (
-            <div key={r.id} className="bg-white rounded-xl border border-emerald-100 shadow-sm px-3 py-2 flex flex-col gap-1 relative">
-              {/* Ligne 1 : date · mois · compte · menu */}
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1 flex-wrap min-w-0">
-                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{r.date_recette}</span>
-                  {r.mois && <span className="text-[10px] font-semibold px-1 rounded bg-emerald-100 text-emerald-700">{r.mois}</span>}
-                  <span className={`text-[10px] px-1 rounded font-mono ${r.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}>
-                    {r.compte_code}{r.compte_code === "000" ? " ⚠" : ""}
-                  </span>
-                </div>
-                <div className="relative shrink-0">
-                  <button onClick={() => setOpenMenu(openMenu === r.id ? null : r.id)}
-                    className="p-0.5 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                      <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
-                    </svg>
-                  </button>
-                  {openMenu === r.id && (
-                    <div className="absolute right-0 top-5 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-28">
-                      <button onClick={() => { openEdit(r); setOpenMenu(null); }}
-                        className="w-full text-left px-3 py-1 text-xs text-slate-700 hover:bg-slate-50">Modifier</button>
-                      <button onClick={() => { handleDelete(r.id); setOpenMenu(null); }}
-                        className="w-full text-left px-3 py-1 text-xs text-red-600 hover:bg-red-50">Supprimer</button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Ligne 2 : libellé + montant */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-slate-800 text-[13px] leading-tight truncate">{r.libelle}</span>
-                <span className="font-bold text-emerald-700 text-[13px] shrink-0">+{fmt(r.montant)}</span>
-              </div>
-
-              {/* Ligne 3 : source + compte libellé */}
-              {(r.source || r.compte_libelle) && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {r.source        && <span className="text-[10px] text-slate-400 truncate">{r.source}</span>}
-                  {r.compte_libelle && r.compte_code !== "000" && (
-                    <span className="text-[10px] text-indigo-400 truncate">{r.compte_libelle}</span>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Total footer */}
-      {!loading && filtered.length > 0 && (
-        <div className="mt-4 flex justify-end">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-2.5 text-sm font-semibold text-emerald-800">
-            Total : {fmt(totalRecettes)} MAD
-          </div>
-        </div>
-      )}
-
-      {/* Modal formulaire */}
+      {/* ── Modal formulaire ──────────────────────────────────── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[94vh] overflow-y-auto">
@@ -290,21 +321,16 @@ export default function RecettesPage() {
             )}
 
             <div className="space-y-3">
-              {/* Libellé */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Libellé <span className="text-red-500">*</span></label>
                 <input type="text" value={form.libelle} onChange={e => setForm(f => ({ ...f, libelle: e.target.value }))}
                   placeholder="Ex: Location salle commune" className={INPUT} />
               </div>
-
-              {/* Source */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Source</label>
                 <input type="text" value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
                   placeholder="Ex: Mairie, assurance, subvention…" className={INPUT} />
               </div>
-
-              {/* Date | Période */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Date <span className="text-red-500">*</span></label>
@@ -318,18 +344,14 @@ export default function RecettesPage() {
                   </select>
                 </div>
               </div>
-
-              {/* Montant */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Montant (MAD) <span className="text-red-500">*</span></label>
                 <input type="number" min="0.01" step="0.01" value={form.montant}
                   onChange={e => setForm(f => ({ ...f, montant: e.target.value }))}
                   placeholder="0.00"
-                  className="w-full border-2 border-emerald-300 bg-emerald-50 rounded-xl px-3 py-2 text-sm font-semibold text-emerald-900 focus:outline-none focus:border-emerald-500 placeholder:text-emerald-300 placeholder:font-normal transition"
+                  className="w-full border-2 border-blue-300 bg-blue-50 rounded-xl px-3 py-2 text-sm font-semibold text-blue-900 focus:outline-none focus:border-blue-500 placeholder:text-blue-300 placeholder:font-normal transition"
                 />
               </div>
-
-              {/* Compte comptable */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
                   Compte comptable <span className="font-normal text-slate-400">(optionnel — 000 par défaut)</span>
@@ -342,13 +364,13 @@ export default function RecettesPage() {
                     ))}
                   </select>
                   <button type="button" onClick={() => { setQuickError(""); setQuickOpen(q => !q); }}
-                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700 text-lg font-bold transition border border-slate-200">
+                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-700 text-lg font-bold transition border border-slate-200">
                     +
                   </button>
                 </div>
                 {quickOpen && (
-                  <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
-                    <p className="text-xs font-semibold text-emerald-700">Nouveau compte produit</p>
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+                    <p className="text-xs font-semibold text-blue-700">Nouveau compte produit</p>
                     {quickError && <p className="text-red-500 text-xs">{quickError}</p>}
                     <div className="flex gap-2">
                       <input placeholder="Code (ex: 702)" value={quickCompteForm.code}
@@ -362,15 +384,13 @@ export default function RecettesPage() {
                       <button onClick={() => setQuickOpen(false)}
                         className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50">Annuler</button>
                       <button onClick={handleQuickCompteSave} disabled={savingQuick}
-                        className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-60">
+                        className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 disabled:opacity-60">
                         {savingQuick ? "…" : "Créer"}
                       </button>
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* Commentaire */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Commentaire</label>
                 <textarea value={form.commentaire} onChange={e => setForm(f => ({ ...f, commentaire: e.target.value }))}
@@ -382,7 +402,7 @@ export default function RecettesPage() {
               <button onClick={closeForm}
                 className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
               <button onClick={handleSubmit} disabled={saving}
-                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60">
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
                 {saving ? "Enregistrement…" : "Enregistrer"}
               </button>
             </div>
