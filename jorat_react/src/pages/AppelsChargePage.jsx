@@ -203,17 +203,20 @@ export default function AppelsChargePage() {
   }, []);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-4 pb-12">
+        <h1 className="text-white font-bold text-lg">
+          {filtre === "FOND" ? "Appels de fond" : "Appels de charge"}
+        </h1>
+        <p className="text-white/60 text-[11px] mt-0.5">
+          {filtre === "FOND" ? "Gestion des fonds de réserve" : "Gestion des charges communes"}
+        </p>
+      </div>
+      <div className="px-4 -mt-6 pb-6 max-w-5xl mx-auto">
 
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-2 transition">← Tableau de bord</button>
-          <h1 className="text-xl font-bold text-slate-800">
-            {filtre === "FOND" ? "Appels de fond" : "Appels de charge"}
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">{appelsFiltres.length} appel{appelsFiltres.length > 1 ? "s" : ""}</p>
-        </div>
+      {/* ── Header actions ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <p className="text-xs text-slate-400 mt-0.5">{appelsFiltres.length} appel{appelsFiltres.length > 1 ? "s" : ""}</p>
         <div className="flex flex-wrap gap-2">
           {!residenceId && (
             <span className="text-xs text-red-500 self-center">⚠️ Sélectionnez une résidence</span>
@@ -314,6 +317,7 @@ export default function AppelsChargePage() {
 
       {/* ── Modal create/edit ── */}
       {showModal && (
+
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
             <h2 className="font-bold text-slate-800 text-base">
@@ -421,6 +425,7 @@ export default function AppelsChargePage() {
         </div>
       )}
 
+      </div>
     </div>
   );
 

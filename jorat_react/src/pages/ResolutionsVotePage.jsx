@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -38,7 +38,6 @@ function Badge({ statut }) {
 }
 
 export default function ResolutionsVotePage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [resolutions, setResolutions] = useState([]);
   const [assemblees,  setAssemblees]  = useState([]);
@@ -156,50 +155,44 @@ export default function ResolutionsVotePage() {
   const pct   = (n) => total > 0 ? Math.round((n / total) * 100) : 0;
 
   return (
-    <div className="max-w-7xl mx-auto pb-10">
-      <div className="mb-4">
-        <button onClick={() => navigate("/gouvernance/kanban-resolutions")}
-          className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
-          ← Résolutions
-        </button>
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">Résolutions par vote en ligne</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Gérez les résolutions soumises au vote en ligne des copropriétaires</p>
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gouvernance</p>
+            <h1 className="text-white font-bold text-lg leading-tight">Votes en ligne</h1>
+          </div>
+          {!(showForm || selected) && (
+            <button onClick={openCreate}
+              className="bg-white text-indigo-700 text-xs px-4 py-2 rounded-xl font-semibold hover:bg-indigo-50 transition">
+              + Nouvelle résolution
+            </button>
+          )}
         </div>
-        <button onClick={openCreate}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition">
-          + Nouvelle résolution
-        </button>
+        <p className="text-white/50 text-[10px] mt-1">{resolutions.length} résolution{resolutions.length !== 1 ? "s" : ""}</p>
       </div>
-
-      <div className="flex gap-5 items-start">
+      <div className="px-4 -mt-5 space-y-4">
 
         {/* ── Liste résolutions ── */}
-        {!(showForm || selected) && <div className="flex-1 min-w-0">
-          {loading ? (
-            <div className="text-center py-16 text-slate-400 text-sm">Chargement…</div>
+        {!(showForm || selected) && (
+          loading ? (
+            <div className="bg-white rounded-2xl shadow-sm text-center py-12 text-slate-400">Chargement…</div>
           ) : resolutions.length === 0 ? (
-            <div className="text-center py-16 text-slate-300 text-sm border-2 border-dashed border-slate-200 rounded-2xl">
-              Aucune résolution
-            </div>
+            <div className="bg-white rounded-2xl shadow-sm text-center py-16 text-slate-400">Aucune résolution</div>
           ) : (
-            <div className="space-y-2">
+            <div className="flex flex-col gap-3">
               {resolutions.map(rv => (
                 <button key={rv.id} onClick={() => handleSelect(rv)}
-                  className={`w-full text-left bg-white rounded-xl border-2 px-3 py-3 hover:shadow-md transition ${selected?.id === rv.id ? "border-indigo-400 shadow-md" : "border-slate-100"}`}>
-                  <div className="flex items-start justify-between gap-2 mb-1">
+                  className="w-full text-left bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-3 flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-semibold text-slate-800 leading-snug">{rv.intitule}</p>
                     <Badge statut={rv.statut} />
                   </div>
-                  <p className="text-[11px] text-slate-400 mb-1.5">{rv.date_resolution}</p>
+                  <p className="text-[11px] text-slate-400">{rv.date_resolution}</p>
                   {rv.assemblee_titre && (
-                    <p className="text-[10px] text-indigo-500 mb-1.5">🏛 {rv.assemblee_titre}</p>
+                    <p className="text-[10px] text-indigo-500">🏛 {rv.assemblee_titre}</p>
                   )}
-                  <div className="flex items-center justify-between flex-wrap gap-1 mt-1">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
                     <span className="text-[10px] text-slate-400">{rv.type_vote_label}</span>
                     <div className="flex gap-1 text-[10px]">
                       <span>📨 {rv.nb_notifies}</span>
@@ -208,7 +201,7 @@ export default function ResolutionsVotePage() {
                     </div>
                   </div>
                   {rv.nb_votes > 0 && (
-                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                    <div className="flex gap-1.5 flex-wrap">
                       <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">✔ {rv.nb_oui} OUI</span>
                       <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">✘ {rv.nb_non} NON</span>
                       {rv.nb_neutre > 0 && (
@@ -219,13 +212,12 @@ export default function ResolutionsVotePage() {
                 </button>
               ))}
             </div>
-          )}
-        </div>}
+          )
+        )}
 
         {/* ── Panneau détail / formulaire ── */}
         {(showForm || selected) && (
-          <div className="flex-1 min-w-0 max-w-2xl mx-auto space-y-4">
-
+          <div className="space-y-4">
             <button onClick={() => { setShowForm(false); setSelected(null); setResultats(null); }}
               className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
               ← Liste des résolutions
@@ -233,7 +225,7 @@ export default function ResolutionsVotePage() {
 
             {/* Formulaire */}
             {showForm && (
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
+              <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-bold text-slate-700">{editItem ? "Modifier" : "Nouvelle résolution"}</h2>
                   <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
@@ -242,23 +234,23 @@ export default function ResolutionsVotePage() {
                 {error && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5">{error}</p>}
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Intitulé *</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Intitulé *</label>
                   <input className={INPUT} value={form.intitule}
                     onChange={e => setForm(f => ({ ...f, intitule: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Description</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Description</label>
                   <textarea rows={3} className={INPUT + " resize-none"} value={form.description}
                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">Date *</label>
                     <input type="date" className={INPUT} value={form.date_resolution}
                       onChange={e => setForm(f => ({ ...f, date_resolution: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Statut</label>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">Statut</label>
                     <select className={SELECT_CLS} value={form.statut}
                       onChange={e => setForm(f => ({ ...f, statut: e.target.value }))}>
                       {STATUT_COLS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
@@ -266,29 +258,21 @@ export default function ResolutionsVotePage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Type de vote</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Type de vote</label>
                   <select className={SELECT_CLS} value={form.type_vote}
                     onChange={e => setForm(f => ({ ...f, type_vote: e.target.value }))}>
                     {TYPE_VOTE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Début du vote</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Début du vote</label>
                   <input type="datetime-local" className={INPUT} value={form.date_debut_vote}
                     onChange={e => setForm(f => ({ ...f, date_debut_vote: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Clôture du vote</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Clôture du vote</label>
                   <input type="datetime-local" className={INPUT} value={form.date_cloture_vote}
                     onChange={e => setForm(f => ({ ...f, date_cloture_vote: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Assemblée générale (optionnel)</label>
-                  <select className={SELECT_CLS} value={form.assemblee}
-                    onChange={e => setForm(f => ({ ...f, assemblee: e.target.value }))}>
-                    <option value="">— Aucune —</option>
-                    {assemblees.map(a => <option key={a.id} value={a.id}>{a.titre || a.date_ag || a.id}</option>)}
-                  </select>
                 </div>
                 <div className="flex gap-2 pt-1">
                   <button onClick={handleSave} disabled={saving}
@@ -306,7 +290,7 @@ export default function ResolutionsVotePage() {
             {/* Détail résolution sélectionnée */}
             {selected && !showForm && (
               <div className="space-y-3">
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <div className="bg-white rounded-2xl shadow-sm p-5">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div>
                       <Badge statut={selected.statut} />
@@ -340,11 +324,10 @@ export default function ResolutionsVotePage() {
 
                 {/* Résultats */}
                 {resLoading ? (
-                  <div className="text-center py-8 text-slate-400 text-xs">Chargement résultats…</div>
+                  <div className="bg-white rounded-2xl shadow-sm text-center py-8 text-slate-400 text-xs">Chargement résultats…</div>
                 ) : resultats && (
                   <>
-                    {/* Comptage */}
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-sm p-4">
                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Résultats</h3>
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         {[
@@ -372,8 +355,7 @@ export default function ResolutionsVotePage() {
                       </div>
                     </div>
 
-                    {/* Tableau par lot */}
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                       <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
                         <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Suivi par lot</span>
                       </div>

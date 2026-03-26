@@ -59,6 +59,7 @@ const Modal = ({ children }) => (
 // ── Lot list (step 1) ──────────────────────────────────────────
 function LotPicker({ lots, groupes, onSelect }) {
   const [search, setSearch] = useState("");
+  const [groupeFilter, setGroupeFilter] = useState("");
 
   const groupeMap = useMemo(() => {
     const m = {};
@@ -68,12 +69,14 @@ function LotPicker({ lots, groupes, onSelect }) {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return lots;
-    return lots.filter(l => {
+    let result = lots;
+    if (q) result = result.filter(l => {
       const owner = l.representant ? `${l.representant.nom ?? ""} ${l.representant.prenom ?? ""}`.toLowerCase() : "";
       return l.numero_lot.toLowerCase().includes(q) || owner.includes(q);
     });
-  }, [lots, search]);
+    if (groupeFilter) result = result.filter(l => String(l.groupe ?? "NONE") === groupeFilter);
+    return result;
+  }, [lots, search, groupeFilter]);
 
   // Group by groupe, sorted by groupe name then lot number
   const grouped = useMemo(() => {
@@ -113,6 +116,18 @@ function LotPicker({ lots, groupes, onSelect }) {
 
   return (
     <div className="space-y-4">
+      {groupes.length > 1 && (
+        <select
+          value={groupeFilter}
+          onChange={e => setGroupeFilter(e.target.value)}
+          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+        >
+          <option value="">Tous les groupes</option>
+          {[...groupes].sort((a,b) => a.nom_groupe.localeCompare(b.nom_groupe,"fr")).map(g => (
+            <option key={g.id} value={String(g.id)}>{g.nom_groupe}</option>
+          ))}
+        </select>
+      )}
       <div className="relative">
         <svg className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -136,7 +151,7 @@ function LotPicker({ lots, groupes, onSelect }) {
                 {groupeId === "NONE" ? "Sans groupe" : (groupeMap[groupeId] ?? `Groupe #${groupeId}`)}
                 <span className="ml-1.5 font-normal normal-case">({groupLots.length})</span>
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
                 {groupLots.map(l => <LotCard key={l.id} l={l} />)}
               </div>
             </div>
@@ -363,14 +378,12 @@ export default function PaiementPage() {
     : null;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">Saisie de paiement</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Enregistrer et ventiler un paiement sur les charges dues</p>
-        </div>
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-4 pb-12">
+        <h1 className="text-white font-bold text-lg">Saisie de paiement</h1>
+        <p className="text-white/60 text-[11px] mt-0.5">Enregistrer et ventiler un paiement</p>
       </div>
+      <div className="px-4 -mt-6 space-y-4 pb-6 max-w-5xl mx-auto">
 
       {/* ── Step 1 : lot picker ─────────────────────────────── */}
       {!selectedLot ? (
@@ -399,7 +412,7 @@ export default function PaiementPage() {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
               </svg>
-              Lots
+              Retour liste lots
             </button>
           </div>
 
@@ -621,6 +634,8 @@ export default function PaiementPage() {
           </div>
         </div>
       )}
+
+      </div>{/* end max-w-5xl */}
 
       {/* ── Modal confirmation enregistrement paiement ── */}
       {showSaveConfirm && (

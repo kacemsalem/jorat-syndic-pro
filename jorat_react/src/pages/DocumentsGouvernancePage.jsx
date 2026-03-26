@@ -101,28 +101,30 @@ export default function DocumentsGouvernancePage() {
     : items;
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-4 transition">← Tableau de bord</button>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Documents</h1>
-          <p className="text-sm text-slate-500 mt-1">{items.length} document{items.length !== 1 ? "s" : ""}</p>
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gouvernance</p>
+            <h1 className="text-white font-bold text-lg leading-tight">Documents</h1>
+          </div>
+          <button onClick={openCreate} className="bg-white text-indigo-700 text-xs px-4 py-2 rounded-xl font-semibold hover:bg-indigo-50 transition">
+            + Nouveau document
+          </button>
         </div>
-        <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow">
-          + Nouveau document
-        </button>
+        <p className="text-white/50 text-[10px] mt-1">{items.length} document{items.length !== 1 ? "s" : ""}</p>
       </div>
+      <div className="px-4 -mt-5 space-y-4">
 
-      <div className="mb-4">
-        <input className="w-full max-w-xs border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
+      <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
+        <input className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
           placeholder="Rechercher par titre…" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="bg-white rounded-2xl shadow-sm text-center py-12 text-slate-400">Chargement…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">Aucun document</div>
+        <div className="bg-white rounded-2xl shadow-sm text-center py-16 text-slate-400">Aucun document</div>
       ) : (
         <div ref={menuRef} className="flex flex-col gap-3">
           {filtered.map(item => (
@@ -179,27 +181,27 @@ export default function DocumentsGouvernancePage() {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Titre *</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">Titre *</label>
                 <input className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                   placeholder="Nom du document"
                   value={form.titre} onChange={e => setForm(f => ({ ...f, titre: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Type</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Type</label>
                   <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                     value={form.type_document} onChange={e => setForm(f => ({ ...f, type_document: e.target.value }))}>
                     {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Date *</label>
                   <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                     value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Fichier</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">Fichier</label>
                 <input type="file" className="w-full text-sm text-slate-600"
                   onChange={e => setFichier(e.target.files[0] || null)} />
                 {editItem?.fichier && !fichier && (
@@ -207,20 +209,21 @@ export default function DocumentsGouvernancePage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="visible_res" checked={form.visible_resident} onChange={e => setForm(f => ({ ...f, visible_resident: e.target.checked }))} className="w-4 h-4 accent-amber-500" />
+                <input type="checkbox" id="visible_res" checked={form.visible_resident} onChange={e => setForm(f => ({ ...f, visible_resident: e.target.checked }))} className="w-4 h-4 accent-indigo-600" />
                 <label htmlFor="visible_res" className="text-sm text-slate-700">Visible par les résidents</label>
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={closeForm} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-              <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+              <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60">
                 {saving ? "Enregistrement…" : "Enregistrer"}
               </button>
             </div>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

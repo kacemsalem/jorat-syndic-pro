@@ -382,48 +382,47 @@ export default function SynthesePage() {
   );
 
   return (
-    <div className="space-y-3">
-      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
-
-      {/* En-tête + PDF */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-base font-bold text-slate-800">Synthèse des charges</h1>
-          <p className="text-xs text-slate-400">
-            {typeAppel === "FOND" ? "Appels de fond" : "Appels de charge"} — toutes périodes
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Toggle CHARGE / FOND */}
-          <div className="flex rounded-xl overflow-hidden border border-slate-200 text-xs">
-            {[
-              { value: "CHARGE", label: "Appel de charge" },
-              { value: "FOND",   label: "Appel de fond"   },
-            ].map(({ value, label }) => (
-              <button key={value} onClick={() => setTypeAppel(value)}
-                className={`px-3 py-1.5 font-semibold transition ${
-                  typeAppel === value ? "bg-indigo-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
-                }`}>
-                {label}
-              </button>
-            ))}
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gestion</p>
+            <h1 className="text-white font-bold text-lg leading-tight">Suivi des paiements</h1>
           </div>
-          <button
-            onClick={handleGeneratePdf}
-            disabled={pdfLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-60 whitespace-nowrap"
-          >
-            {pdfLoading ? (
-              <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Génération…</>
-            ) : (
-              <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-              </svg>PDF</>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Toggle CHARGE / FOND */}
+            <div className="flex rounded-xl overflow-hidden border border-white/30 text-xs">
+              {[
+                { value: "CHARGE", label: "Charge" },
+                { value: "FOND",   label: "Fond"   },
+              ].map(({ value, label }) => (
+                <button key={value} onClick={() => setTypeAppel(value)}
+                  className={`px-3 py-1.5 font-semibold transition ${
+                    typeAppel === value ? "bg-white text-blue-700" : "text-white/80 hover:bg-white/10"
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleGeneratePdf}
+              disabled={pdfLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 text-white text-xs font-semibold hover:bg-white/30 active:scale-95 transition-all disabled:opacity-60 whitespace-nowrap border border-white/30"
+            >
+              {pdfLoading ? (
+                <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Génération…</>
+              ) : (
+                <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                </svg>PDF</>
+              )}
+            </button>
+          </div>
         </div>
+        <p className="text-white/50 text-[10px] mt-1">Situation par lot — charges et fonds</p>
       </div>
+      <div className="px-4 -mt-5 pb-6 max-w-5xl mx-auto space-y-4">
 
       {/* Cartes résumé */}
       <div className="grid grid-cols-3 gap-2">
@@ -481,7 +480,7 @@ export default function SynthesePage() {
             const barCls    = statut === "SOLDE" ? "bg-emerald-500"     : statut === "PARTIEL" ? "bg-amber-400"     : "bg-red-400";
             const statBg    = statut === "SOLDE" ? "bg-emerald-100 text-emerald-700" : statut === "PARTIEL" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-600";
             return (
-              <div key={lot.id} className={`bg-white rounded-xl border-2 ${borderCls} p-3 space-y-2.5 hover:shadow-sm transition`}>
+              <div key={lot.id} className={`bg-white rounded-xl border ${borderCls} shadow-sm p-3 space-y-2.5 hover:shadow-md transition`}>
 
                 {/* Ligne 1 : lot + groupe + badge + boutons */}
                 <div className="flex items-center gap-2 flex-wrap">
@@ -599,7 +598,7 @@ export default function SynthesePage() {
         </div>
       )}
 
-
+      </div>
     </div>
   );
 }

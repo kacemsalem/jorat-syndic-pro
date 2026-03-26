@@ -15,12 +15,12 @@ const emptyLot = {
   representant:  "",
 };
 
-const inputCls  = "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white";
+const inputCls  = "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition bg-white";
 const selectCls = inputCls;
 
 const Field = ({ label, required, children }) => (
   <div>
-    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+    <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
       {label}{required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
     {children}
@@ -28,9 +28,9 @@ const Field = ({ label, required, children }) => (
 );
 
 const STATUT_CONFIG = {
-  A_JOUR:    { label: "À jour",    cls: "bg-emerald-100 text-emerald-700" },
-  EN_RETARD: { label: "En retard", cls: "bg-amber-100 text-amber-700"    },
-  REFUS:     { label: "Refus",     cls: "bg-red-100 text-red-600"        },
+  A_JOUR:    { label: "À jour",    cls: "bg-blue-100 text-blue-700"   },
+  EN_RETARD: { label: "En retard", cls: "bg-amber-100 text-amber-700" },
+  REFUS:     { label: "Refus",     cls: "bg-red-100 text-red-600"     },
 };
 
 const TYPE_LOT_OPTIONS = [
@@ -154,181 +154,179 @@ export default function LotsPage() {
   );
 
   if (loading) return (
-    <div className="text-center mt-10 text-slate-400 text-sm">Chargement…</div>
+    <div className="flex items-center justify-center h-64">
+      <div className="w-7 h-7 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    </div>
   );
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
 
-      <button onClick={() => navigate("/kanban")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition mb-4">← Retour Lots</button>
-
-      {/* En-tête */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">
-            {isEdit ? form.numero_lot : "Nouveau lot"}
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {isEdit ? "Modifier les informations du lot" : "Créer un nouveau lot"}
-          </p>
+      {/* ── Header ──────────────────────────────────────────── */}
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-5 pb-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8"
+              strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+            </svg>
+          </div>
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Lot</p>
+            <h1 className="text-white font-bold text-lg leading-tight">
+              {isEdit ? form.numero_lot || "Modifier le lot" : "Nouveau lot"}
+            </h1>
+          </div>
+          {isEdit && (
+            <span className={`ml-auto text-[10px] px-2.5 py-1 rounded-full font-semibold ${STATUT_CONFIG[form.statut_lot]?.cls}`}>
+              {STATUT_CONFIG[form.statut_lot]?.label}
+            </span>
+          )}
         </div>
-        {isEdit && (
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUT_CONFIG[form.statut_lot]?.cls}`}>
-            {STATUT_CONFIG[form.statut_lot]?.label}
-          </span>
-        )}
+        <p className="text-white/50 text-[10px] mt-2">
+          {isEdit ? "Modifier les informations du lot" : "Créer un nouveau lot"}
+        </p>
       </div>
 
-      {error && (
-        <div className="mb-4 text-xs rounded-xl border border-red-200 bg-red-50 text-red-700 px-3 py-2">
-          ⚠️ {error}
-        </div>
-      )}
+      {/* ── Contenu ─────────────────────────────────────────── */}
+      <div className="px-4 -mt-5 space-y-4">
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-
-        {/* ── Bloc 1 : Identification ── */}
-        <div className="bg-white rounded-2xl shadow p-5 space-y-4">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-            Identification
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Numéro du lot" required>
-              <input
-                className={inputCls}
-                placeholder="ex : A-101"
-                value={form.numero_lot}
-                onChange={(e) => setForm({ ...form, numero_lot: e.target.value })}
-                required
-              />
-            </Field>
-
-            <Field label="Type de lot">
-              <select
-                className={selectCls}
-                value={form.type_lot}
-                onChange={(e) => setForm({ ...form, type_lot: e.target.value })}
-              >
-                {TYPE_LOT_OPTIONS.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-            </Field>
+        {error && (
+          <div className="text-xs rounded-xl border border-red-200 bg-red-50 text-red-700 px-3 py-2">
+            ⚠️ {error}
           </div>
+        )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Surface (m²)">
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                className={inputCls}
-                placeholder="0.00"
-                value={form.surface_lot}
-                onChange={(e) => setForm({ ...form, surface_lot: e.target.value })}
-              />
-            </Field>
+        <form onSubmit={handleSubmit} className="space-y-4">
 
-            <Field label="Étage">
-              <input
-                className={inputCls}
-                placeholder="ex : 2"
-                value={form.etage_lot}
-                onChange={(e) => setForm({ ...form, etage_lot: e.target.value })}
-              />
-            </Field>
+          {/* ── Bloc 1 : Identification ── */}
+          <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identification</p>
 
-            <Field label="Montant réf. (MAD)">
-              <div className="relative">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Numéro du lot" required>
                 <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  className={`${inputCls} pr-14`}
-                  placeholder="0.00"
-                  value={form.montant_ref}
-                  onChange={(e) => setForm({ ...form, montant_ref: e.target.value })}
+                  className={inputCls}
+                  placeholder="ex : A-101"
+                  value={form.numero_lot}
+                  onChange={(e) => setForm({ ...form, numero_lot: e.target.value })}
+                  required
                 />
-                <span className="absolute right-3 top-2 text-xs text-slate-400">MAD</span>
+              </Field>
+              <Field label="Type de lot">
+                <select
+                  className={selectCls}
+                  value={form.type_lot}
+                  onChange={(e) => setForm({ ...form, type_lot: e.target.value })}
+                >
+                  {TYPE_LOT_OPTIONS.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Surface (m²)">
+                <input
+                  type="number" min={0} step="0.01"
+                  className={inputCls} placeholder="0.00"
+                  value={form.surface_lot}
+                  onChange={(e) => setForm({ ...form, surface_lot: e.target.value })}
+                />
+              </Field>
+              <Field label="Étage">
+                <input
+                  className={inputCls} placeholder="ex : 2"
+                  value={form.etage_lot}
+                  onChange={(e) => setForm({ ...form, etage_lot: e.target.value })}
+                />
+              </Field>
+              <Field label="Montant réf. (MAD)">
+                <div className="relative">
+                  <input
+                    type="number" min={0} step="0.01"
+                    className={`${inputCls} pr-14`} placeholder="0.00"
+                    value={form.montant_ref}
+                    onChange={(e) => setForm({ ...form, montant_ref: e.target.value })}
+                  />
+                  <span className="absolute right-3 top-2 text-xs text-slate-400">MAD</span>
+                </div>
+              </Field>
+            </div>
+
+            <Field label="Groupe">
+              <div className="flex gap-2">
+                <select
+                  className={selectCls}
+                  value={form.groupe}
+                  onChange={(e) => setForm({ ...form, groupe: e.target.value })}
+                >
+                  <option value="">— Sans groupe —</option>
+                  {groupes.map((g) => (
+                    <option key={g.id} value={g.id}>{g.nom_groupe}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/groupes?residence=${residenceId}`)}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 transition"
+                  title="Gérer les groupes"
+                >
+                  +
+                </button>
               </div>
             </Field>
           </div>
 
-          <Field label="Groupe">
-            <div className="flex gap-2">
-              <select
-                className={selectCls}
-                value={form.groupe}
-                onChange={(e) => setForm({ ...form, groupe: e.target.value })}
-              >
-                <option value="">— Sans groupe —</option>
-                {groupes.map((g) => (
-                  <option key={g.id} value={g.id}>{g.nom_groupe}</option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => navigate(`/groupes?residence=${residenceId}`)}
-                className="px-3 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700 transition"
-                title="Gérer les groupes"
-              >
-                +
-              </button>
+          {/* ── Bloc 2 : Contact + Remarque ── */}
+          <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contact &amp; Notes</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Représentant / Contact">
+                <div className="flex gap-2">
+                  <select
+                    className={selectCls}
+                    value={form.representant}
+                    onChange={(e) => setForm({ ...form, representant: e.target.value })}
+                  >
+                    <option value="">— Aucun —</option>
+                    {personnes.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nom} {p.prenom || ""}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/personnes?residence=${residenceId}`)}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 transition"
+                    title="Gérer les contacts"
+                  >
+                    +
+                  </button>
+                </div>
+              </Field>
+
+              <Field label="Remarque">
+                <textarea
+                  className={`${inputCls} resize-none`}
+                  rows={3}
+                  placeholder="Observations, notes particulières…"
+                  value={form.remarque_lot}
+                  onChange={(e) => setForm({ ...form, remarque_lot: e.target.value })}
+                />
+              </Field>
             </div>
-          </Field>
-        </div>
+          </div>
 
-        {/* ── Bloc 2 : Contact ── */}
-        {/* ── Bloc 2 : Contact + Remarque ── */}
-<div className="bg-white rounded-2xl shadow p-5 space-y-4">
-  
-  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-    {/* Contact */}
-    <Field label="Représentant / Contact">
-      <div className="flex gap-2">
-        <select
-          className={selectCls}
-          value={form.representant}
-          onChange={(e) => setForm({ ...form, representant: e.target.value })}
-        >
-          <option value="">— Aucun —</option>
-          {personnes.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nom} {p.prenom || ""}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={() => navigate(`/personnes?residence=${residenceId}`)}
-          className="px-3 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700 transition"
-          title="Gérer les contacts"
-        >
-          +
-        </button>
-      </div>
-    </Field>
-
-    {/* Remarque */}
-    <Field label="Remarque">
-      <textarea
-        className={`${inputCls} resize-none`}
-        rows={3}
-        placeholder="Observations, notes particulières…"
-        value={form.remarque_lot}
-        onChange={(e) => setForm({ ...form, remarque_lot: e.target.value })}
-      />
-    </Field>
-
-        </div>
-      </div>
-
-        {/* ── Actions ── */}
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex gap-3">
+          {/* ── Actions ── */}
+          <div className="flex items-center gap-3 pt-1">
             {isEdit && (
               <button
                 type="button"
@@ -338,6 +336,7 @@ export default function LotsPage() {
                 🗑️ Supprimer
               </button>
             )}
+            <div className="flex-1" />
             <button
               type="button"
               onClick={() => navigate(`/kanban?residence=${residenceId}`)}
@@ -348,14 +347,14 @@ export default function LotsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
+              className="px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50"
             >
               {saving ? "Enregistrement…" : isEdit ? "Enregistrer" : "Créer le lot"}
             </button>
           </div>
-        </div>
 
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

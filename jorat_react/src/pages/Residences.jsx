@@ -30,7 +30,7 @@ async function fetchJson(url, options = {}) {
 
 const Field = ({ label, children }) => (
   <div>
-    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+    <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
       {label}
     </label>
     {children}
@@ -51,7 +51,7 @@ export default function Residences() {
   const [logoPreview, setLogoPreview] = useState(null);
   const [showPwd, setShowPwd]     = useState(false);
 
-  const inputCls  = "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white";
+  const inputCls  = "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition bg-white";
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -133,7 +133,7 @@ export default function Residences() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-7 h-7 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="w-7 h-7 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -145,135 +145,139 @@ export default function Residences() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5">
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
 
-      {/* Retour */}
-      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">
-        ← Tableau de bord
-      </button>
-
-      {/* Header */}
-      <div className="bg-emerald-50 rounded-2xl shadow-sm border border-emerald-100 p-5 flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">{residence.nom_residence}</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {residence.ville_residence}{residence.code_postal_residence ? ` — ${residence.code_postal_residence}` : ""}
-            {" · "}{residence.nombre_lots ?? 0} lot{(residence.nombre_lots ?? 0) > 1 ? "s" : ""}
-          </p>
+      {/* ── Header ──────────────────────────────────────────── */}
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-5 pb-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8"
+              strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Résidence</p>
+            <h1 className="text-white font-bold text-lg leading-tight">{residence.nom_residence}</h1>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-<span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-            residence.statut_residence === "ACTIF" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
-          }`}>
-            {residence.statut_residence}
-          </span>
-        </div>
+        <p className="text-white/50 text-[10px] mt-2">
+          {residence.ville_residence}{residence.code_postal_residence ? ` ${residence.code_postal_residence}` : ""}
+          {" · "}{residence.nombre_lots ?? 0} lot{(residence.nombre_lots ?? 0) > 1 ? "s" : ""}
+        </p>
       </div>
 
-      {/* Edit form */}
-      <div className="bg-emerald-50 rounded-2xl shadow-sm border border-emerald-100 p-6">
-        <h2 className="font-bold text-slate-800 mb-5">Modifier la résidence</h2>
+      {/* ── Contenu ─────────────────────────────────────────── */}
+      <div className="px-4 -mt-5 space-y-4">
 
         {error && (
-          <div className="mb-4 text-xs rounded-xl border border-red-200 bg-red-50 text-red-700 px-3 py-2">
+          <div className="text-xs rounded-xl border border-red-200 bg-red-50 text-red-700 px-3 py-2">
             ⚠️ {error}
           </div>
         )}
         {info && (
-          <div className="mb-4 text-xs rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 px-3 py-2">
+          <div className="text-xs rounded-xl border border-blue-200 bg-blue-50 text-blue-700 px-3 py-2">
             {info}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Edit form */}
+        <div className="bg-white rounded-2xl shadow-sm p-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
 
-          {/* Ligne 1 : Nom */}
-          <Field label="Nom de la résidence *">
-            <input className={inputCls} value={form.nom_residence}
-              onChange={set("nom_residence")} required
-              placeholder="ex : Résidence Les Oliviers" />
-          </Field>
+            {/* Nom */}
+            <Field label="Nom de la résidence *">
+              <input className={inputCls} value={form.nom_residence}
+                onChange={set("nom_residence")} required
+                placeholder="ex : Résidence Les Oliviers" />
+            </Field>
 
-          {/* Ligne 2 : Adresse + Ville + CP */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div className="sm:col-span-2">
-              <Field label="Adresse">
-                <input className={inputCls} value={form.adresse_residence}
-                  onChange={set("adresse_residence")} placeholder="123 rue des Fleurs" />
+            {/* Adresse */}
+            <Field label="Adresse">
+              <input className={inputCls} value={form.adresse_residence}
+                onChange={set("adresse_residence")} placeholder="123 rue des Fleurs" />
+            </Field>
+
+            {/* Ville + CP sur une ligne */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Ville *">
+                <input className={inputCls} value={form.ville_residence}
+                  onChange={set("ville_residence")} required placeholder="Casablanca" />
+              </Field>
+              <Field label="Code postal">
+                <input className={inputCls} value={form.code_postal_residence}
+                  onChange={set("code_postal_residence")} placeholder="20000" />
               </Field>
             </div>
-            <Field label="Ville *">
-              <input className={inputCls} value={form.ville_residence}
-                onChange={set("ville_residence")} required placeholder="Casablanca" />
-            </Field>
-            <Field label="Code postal">
-              <input className={inputCls} value={form.code_postal_residence}
-                onChange={set("code_postal_residence")} placeholder="20000" />
-            </Field>
-            <Field label="Email expéditeur">
-              <input type="email" className={inputCls} value={form.email}
-                onChange={set("email")} placeholder="contact@residence.ma" />
-            </Field>
-            <Field label="Mot de passe SMTP">
-              <div className="relative">
-                <input
-                  type={showPwd ? "text" : "password"}
-                  className={`${inputCls} pr-9`}
-                  value={form.email_password}
-                  onChange={set("email_password")}
-                  placeholder="Mot de passe d'application Gmail…"
-                  autoComplete="new-password"
-                />
-                <button type="button" onClick={() => setShowPwd(v => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition">
-                  {showPwd
-                    ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                    : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  }
-                </button>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-1">Gmail : Compte → Sécurité → Mots de passe des applications</p>
-            </Field>
-          </div>
 
-          {/* Ligne 3 : Description + Logo côte à côte */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Description">
-              <textarea className={`${inputCls} resize-none`} rows={2}
-                value={form.description} onChange={set("description")}
-                placeholder="Informations complémentaires…" />
-            </Field>
-            <Field label="Logo">
-              <div className="flex items-center gap-3 h-full">
-                {(logoPreview || residence?.logo) && (
-                  <img
-                    src={logoPreview ?? residence.logo}
-                    alt="logo"
-                    className="h-12 w-12 rounded-xl object-contain border border-slate-200 bg-slate-50 p-1 flex-shrink-0"
+            {/* Email + SMTP sur une ligne */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Email expéditeur">
+                <input type="email" className={inputCls} value={form.email}
+                  onChange={set("email")} placeholder="contact@residence.ma" />
+              </Field>
+              <Field label="Mot de passe SMTP">
+                <div className="relative">
+                  <input
+                    type={showPwd ? "text" : "password"}
+                    className={`${inputCls} pr-9`}
+                    value={form.email_password}
+                    onChange={set("email_password")}
+                    placeholder="Mot de passe d'application Gmail…"
+                    autoComplete="new-password"
                   />
-                )}
-                <label className="flex-1 flex items-center gap-2 cursor-pointer border border-dashed border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-500 hover:bg-slate-50 transition">
-                  <span>📷</span>
-                  <span className="truncate">{logoFile ? logoFile.name : "Choisir une image…"}</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
-                </label>
-              </div>
-            </Field>
-          </div>
+                  <button type="button" onClick={() => setShowPwd(v => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition">
+                    {showPwd
+                      ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    }
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Gmail : Compte → Sécurité → Mots de passe des applications</p>
+              </Field>
+            </div>
 
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => load()}
-              className="px-5 py-2.5 rounded-xl font-semibold text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition">
-              Annuler
-            </button>
-            <button type="submit" disabled={saving}
-              className="px-6 py-2.5 rounded-xl font-semibold text-sm bg-indigo-600 hover:bg-indigo-700 text-white transition disabled:opacity-50">
-              {saving ? "Enregistrement…" : "Enregistrer"}
-            </button>
-          </div>
-        </form>
+            {/* Description + Logo */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Description">
+                <textarea className={`${inputCls} resize-none`} rows={2}
+                  value={form.description} onChange={set("description")}
+                  placeholder="Informations complémentaires…" />
+              </Field>
+              <Field label="Logo">
+                <div className="flex items-center gap-3 h-full">
+                  {(logoPreview || residence?.logo) && (
+                    <img
+                      src={logoPreview ?? residence.logo}
+                      alt="logo"
+                      className="h-12 w-12 rounded-xl object-contain border border-slate-200 bg-slate-50 p-1 flex-shrink-0"
+                    />
+                  )}
+                  <label className="flex-1 flex items-center gap-2 cursor-pointer border border-dashed border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-500 hover:bg-slate-50 transition">
+                    <span>📷</span>
+                    <span className="truncate">{logoFile ? logoFile.name : "Choisir une image…"}</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                  </label>
+                </div>
+              </Field>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-1">
+              <button type="button" onClick={() => load()}
+                className="px-5 py-2.5 rounded-xl font-semibold text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving}
+                className="px-6 py-2.5 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50">
+                {saving ? "Enregistrement…" : "Enregistrer"}
+              </button>
+            </div>
+          </form>
+        </div>
+
       </div>
-
     </div>
   );
 }

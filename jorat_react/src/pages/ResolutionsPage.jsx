@@ -106,36 +106,39 @@ export default function ResolutionsPage() {
     value={form[f]} onChange={e => setForm(prev => ({ ...prev, [f]: e.target.value }))} />;
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="mb-2">
-            <button onClick={() => navigate("/gouvernance/kanban-resolutions")}
-              className="text-sm text-slate-500 hover:text-slate-700 font-medium transition">
-              ← Résolutions
-            </button>
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gouvernance</p>
+            <h1 className="text-white font-bold text-lg leading-tight">Résolutions</h1>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">Résolutions</h1>
-          <p className="text-sm text-slate-500 mt-1">{items.length} résolution{items.length !== 1 ? "s" : ""}</p>
+          <button onClick={openCreate} className="bg-white text-indigo-700 text-xs px-4 py-2 rounded-xl font-semibold hover:bg-indigo-50 transition">
+            + Nouvelle résolution
+          </button>
         </div>
-        <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow">
-          + Nouvelle résolution
-        </button>
+        <p className="text-white/50 text-[10px] mt-1">{items.length} résolution{items.length !== 1 ? "s" : ""}</p>
       </div>
+      <div className="px-4 -mt-5 space-y-4">
 
-      <div className="mb-4">
-        <select className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400 min-w-[260px]"
-          value={filterAg} onChange={e => handleFilterChange(e.target.value)}>
-          <option value="">Toutes les assemblées</option>
-          {assemblees.map(a => <option key={a.id} value={a.id}>AG {a.type_ag_label} — {a.date_ag}</option>)}
-        </select>
+      <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
+        {agIdParam ? (
+          <div className="text-sm font-semibold text-slate-700">
+            {(() => { const a = assemblees.find(a => String(a.id) === agIdParam); return a ? `AG ${a.type_ag_label} — ${a.date_ag}` : "Assemblée…"; })()}
+          </div>
+        ) : (
+          <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            value={filterAg} onChange={e => handleFilterChange(e.target.value)}>
+            <option value="">Toutes les assemblées</option>
+            {assemblees.map(a => <option key={a.id} value={a.id}>AG {a.type_ag_label} — {a.date_ag}</option>)}
+          </select>
+        )}
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="bg-white rounded-2xl shadow-sm text-center py-12 text-slate-400">Chargement…</div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">Aucune résolution</div>
+        <div className="bg-white rounded-2xl shadow-sm text-center py-16 text-slate-400">Aucune résolution</div>
       ) : (
         <div ref={menuRef} className="flex flex-col gap-3">
           {items.map(item => (
@@ -189,7 +192,7 @@ export default function ResolutionsPage() {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Assemblée Générale *</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">Assemblée Générale *</label>
                 <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                   value={form.assemblee_generale} onChange={e => setForm(f => ({ ...f, assemblee_generale: e.target.value }))}>
                   <option value="">— Sélectionner —</option>
@@ -198,12 +201,12 @@ export default function ResolutionsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Numéro *</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Numéro *</label>
                   <input type="number" min="1" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                     value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Résultat</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Résultat</label>
                   <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                     value={form.resultat} onChange={e => setForm(f => ({ ...f, resultat: e.target.value }))}>
                     {RESULTATS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
@@ -211,32 +214,33 @@ export default function ResolutionsPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Titre *</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">Titre *</label>
                 <input className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                   placeholder="Intitulé de la résolution"
                   value={form.titre} onChange={e => setForm(f => ({ ...f, titre: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Description</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">Description</label>
                 <textarea rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400 resize-none"
                   value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className="block text-xs font-semibold text-slate-600 mb-1">Voix pour</label>{int("voix_pour")}</div>
-                <div><label className="block text-xs font-semibold text-slate-600 mb-1">Voix contre</label>{int("voix_contre")}</div>
-                <div><label className="block text-xs font-semibold text-slate-600 mb-1">Abstentions</label>{int("abstention")}</div>
+                <div><label className="block text-[10px] font-semibold text-slate-400 mb-1">Voix pour</label>{int("voix_pour")}</div>
+                <div><label className="block text-[10px] font-semibold text-slate-400 mb-1">Voix contre</label>{int("voix_contre")}</div>
+                <div><label className="block text-[10px] font-semibold text-slate-400 mb-1">Abstentions</label>{int("abstention")}</div>
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={closeForm} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-              <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+              <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60">
                 {saving ? "Enregistrement…" : "Enregistrer"}
               </button>
             </div>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

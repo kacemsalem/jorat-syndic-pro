@@ -306,23 +306,25 @@ export default function AssembleesPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-4 transition">← Tableau de bord</button>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Assemblées Générales</h1>
-          <p className="text-sm text-slate-500 mt-1">{items.length} assemblée{items.length !== 1 ? "s" : ""}</p>
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gouvernance</p>
+            <h1 className="text-white font-bold text-lg leading-tight">Assemblées Générales</h1>
+          </div>
+          <button onClick={openCreate} className="bg-white text-indigo-700 text-xs px-4 py-2 rounded-xl font-semibold hover:bg-indigo-50 transition">
+            + Nouvelle AG
+          </button>
         </div>
-        <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow">
-          + Nouvelle AG
-        </button>
+        <p className="text-white/50 text-[10px] mt-1">{items.length} assemblée{items.length !== 1 ? "s" : ""}</p>
       </div>
+      <div className="px-4 -mt-5 space-y-4">
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="bg-white rounded-2xl shadow-sm text-center py-12 text-slate-400">Chargement…</div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">Aucune assemblée générale</div>
+        <div className="bg-white rounded-2xl shadow-sm text-center py-16 text-slate-400">Aucune assemblée générale</div>
       ) : (
         <div ref={menuRef} className="flex flex-col gap-3">
           {items.map(item => {
@@ -413,20 +415,20 @@ export default function AssembleesPage() {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">Date *</label>
                 <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                   value={form.date_ag} onChange={e => setForm(f => ({ ...f, date_ag: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Type</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Type</label>
                   <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                     value={form.type_ag} onChange={e => setForm(f => ({ ...f, type_ag: e.target.value }))}>
                     {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Statut</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Statut</label>
                   <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
                     value={form.statut} onChange={e => setForm(f => ({ ...f, statut: e.target.value }))}>
                     {STATUTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -434,13 +436,13 @@ export default function AssembleesPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Ordre du jour</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">Ordre du jour</label>
                 <textarea rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400 resize-none"
                   placeholder="Points à l'ordre du jour…"
                   value={form.ordre_du_jour} onChange={e => setForm(f => ({ ...f, ordre_du_jour: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">PV (document)</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">PV (document)</label>
                 <input type="file" accept=".pdf,.doc,.docx"
                   className="w-full text-sm text-slate-600"
                   onChange={e => setPvFile(e.target.files[0] || null)} />
@@ -452,13 +454,14 @@ export default function AssembleesPage() {
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={closeForm} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-              <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+              <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60">
                 {saving ? "Enregistrement…" : "Enregistrer"}
               </button>
             </div>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

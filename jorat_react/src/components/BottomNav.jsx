@@ -27,7 +27,7 @@ const SECTIONS = [
     label: "Gouvernance",
     icon:  IC.users,
     path:  "/gouvernance",
-    test:  p => p === "/gouvernance" || p.startsWith("/gouvernance/") || p.startsWith("/passation"),
+    test:  p => p === "/gouvernance" || p.startsWith("/gouvernance/") || p.startsWith("/passation") || p.startsWith("/espace-resident"),
   },
   // null = bouton Home central
   {

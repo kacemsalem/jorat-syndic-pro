@@ -129,69 +129,52 @@ export default function RapportFinancierPage() {
   const balance = data ? parseFloat(data.balance) : 0;
 
   return (
-    <div className="max-w-5xl mx-auto">
-
-      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium mb-4 transition">← Tableau de bord</button>
-
-      {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
-        <div className="flex items-center gap-3">
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3 mb-3">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Rapport Financier</h1>
-            {data && <p className="text-xs text-slate-500 mt-0.5">{data.residence}</p>}
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gestion</p>
+            <h1 className="text-white font-bold text-lg leading-tight">Rapport financier</h1>
+          </div>
+          {/* Exports */}
+          <div className="flex gap-2">
+            <a href={exportUrl("excel")}
+              className="flex items-center gap-1 px-3 py-1.5 bg-white/20 border border-white/30 text-white rounded-xl text-xs font-semibold hover:bg-white/30 transition no-underline"
+            >↓ Excel</a>
+            <a href={exportUrl("pdf")}
+              className="flex items-center gap-1 px-3 py-1.5 bg-white/20 border border-white/30 text-white rounded-xl text-xs font-semibold hover:bg-white/30 transition no-underline"
+            >↓ PDF</a>
           </div>
         </div>
-
-        {/* Exports */}
-        <div className="flex flex-wrap gap-2">
-          <a href={exportUrl("excel")}
-            className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition no-underline"
-          >
-            ↓ Excel
-          </a>
-          <a href={exportUrl("pdf")}
-            className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition no-underline"
-          >
-            ↓ PDF
-          </a>
-        </div>
-      </div>
-
-      {/* ── Filtres ────────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-xl px-5 py-4 mb-6 flex flex-wrap items-end gap-4">
-        <div>
-          <label className="block text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wide">Date début</label>
+        {/* Filtres dates + raccourcis */}
+        <div className="flex flex-wrap items-center gap-2">
           <input type="date" value={dateDeb} onChange={e => setDateDeb(e.target.value)}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-        </div>
-        <div>
-          <label className="block text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wide">Date fin</label>
+            className="text-xs border border-white/30 rounded-xl px-3 py-1.5 bg-white/20 text-white focus:outline-none [color-scheme:dark]" />
           <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-        </div>
-        <button
-          onClick={loadData}
-          disabled={loading}
-          className={`px-5 py-2 rounded-xl text-sm font-bold text-white transition ${loading ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-700"}`}
-        >
-          {loading ? "Chargement…" : "Actualiser"}
-        </button>
-
-        {/* Raccourcis période */}
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { label: "Tout",           d: "",                  f: "" },
-            { label: "Cette année",   d: `${ANNEE}-01-01`,    f: `${ANNEE}-12-31` },
-            { label: "Année passée",  d: `${ANNEE-1}-01-01`,  f: `${ANNEE-1}-12-31` },
-            { label: "6 derniers mois", d: (() => { const dt = new Date(); dt.setMonth(dt.getMonth()-6); return dt.toISOString().slice(0,10); })(), f: new Date().toISOString().slice(0,10) },
-          ].map(({ label, d, f }) => (
-            <button key={label}
-              onClick={() => { setDateDeb(d); setDateFin(f); loadData(d, f); }}
-              className="px-3 py-1.5 border border-slate-200 bg-slate-50 rounded-lg text-xs text-slate-600 hover:bg-slate-100 transition"
-            >{label}</button>
-          ))}
+            className="text-xs border border-white/30 rounded-xl px-3 py-1.5 bg-white/20 text-white focus:outline-none [color-scheme:dark]" />
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-white/20 border border-white/30 hover:bg-white/30 transition disabled:opacity-50"
+          >
+            {loading ? "Chargement…" : "Actualiser"}
+          </button>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { label: "Tout",             d: "",                  f: "" },
+              { label: "Cette année",      d: `${ANNEE}-01-01`,    f: `${ANNEE}-12-31` },
+              { label: "Année passée",     d: `${ANNEE-1}-01-01`,  f: `${ANNEE-1}-12-31` },
+              { label: "6 mois",           d: (() => { const dt = new Date(); dt.setMonth(dt.getMonth()-6); return dt.toISOString().slice(0,10); })(), f: new Date().toISOString().slice(0,10) },
+            ].map(({ label, d, f }) => (
+              <button key={label}
+                onClick={() => { setDateDeb(d); setDateFin(f); loadData(d, f); }}
+                className="px-2.5 py-1.5 border border-white/30 rounded-xl text-xs text-white/80 hover:bg-white/10 transition"
+              >{label}</button>
+            ))}
+          </div>
         </div>
       </div>
+      <div className="px-4 -mt-5 pb-6 max-w-5xl mx-auto space-y-4">
 
       {error && (
         <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "12px 20px", marginBottom: 16, color: "#dc2626", fontSize: 13 }}>
@@ -265,6 +248,8 @@ export default function RapportFinancierPage() {
           </Section>
         </>
       )}
+
+      </div>
     </div>
   );
 }

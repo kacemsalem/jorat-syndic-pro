@@ -77,15 +77,15 @@ export default function MessagesResidentPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
-      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
-
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-800">Messages des résidents</h1>
-        <p className="text-xs text-slate-400 mt-0.5">Réclamations et demandes envoyées depuis l'espace résident</p>
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-8">
+        <div>
+          <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gouvernance</p>
+          <h1 className="text-white font-bold text-lg leading-tight">Messages des résidents</h1>
+        </div>
+        <p className="text-white/50 text-[10px] mt-1">Réclamations et demandes envoyées depuis l'espace résident</p>
       </div>
-
+      <div className="px-4 -mt-5 space-y-4">
       {/* KPIs / filtres */}
       <div className="grid grid-cols-3 gap-3">
         {[
@@ -217,6 +217,7 @@ export default function MessagesResidentPage() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

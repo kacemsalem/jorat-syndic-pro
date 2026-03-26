@@ -39,38 +39,6 @@ const DATASET_GROUPS = [
     label: "Finances",
     datasets: [
       {
-        key: "appel-charge",
-        label: "Appels de charges",
-        desc: "Appels de fonds et de charges",
-        columns: ["type_charge", "exercice", "periode", "nom_fond", "description_appel", "date_emission"],
-        required: ["type_charge", "exercice"],
-        note: "type_charge: CHARGE ou FOND. periode: 1–12. Le code fond est généré automatiquement.",
-      },
-      {
-        key: "detail-appel",
-        label: "Détails appels",
-        desc: "Montants par lot pour chaque appel",
-        columns: ["code_appel", "numero_lot", "montant"],
-        required: ["code_appel", "numero_lot", "montant"],
-        note: "code_appel: code_fond de l'appel existant (ex: JAN_2024). numero_lot doit exister.",
-      },
-      {
-        key: "paiements",
-        label: "Paiements",
-        desc: "Règlements reçus des copropriétaires",
-        columns: ["numero_lot", "date_paiement", "montant", "reference", "mois", "mode_paiement"],
-        required: ["numero_lot", "montant"],
-        note: "Met à jour la caisse automatiquement. mois: JAN-DEC. mode_paiement: ESPECES, VIREMENT ou CHEQUE.",
-      },
-      {
-        key: "affectation-paiement",
-        label: "Affectations",
-        desc: "Affectation des paiements aux appels",
-        columns: ["reference_paiement", "numero_lot", "code_appel", "montant_affecte"],
-        required: ["reference_paiement", "numero_lot", "code_appel", "montant_affecte"],
-        note: "Identifie le paiement par (reference, numero_lot). Met à jour le statut de chaque détail.",
-      },
-      {
         key: "recettes",
         label: "Recettes",
         desc: "Produits et recettes diverses",

@@ -211,7 +211,7 @@ function NouveauMandatForm({ assemblees, personnes, onSave, onCancel }) {
       {/* AG + Dates */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Assemblée Générale</label>
+          <label className="block text-[10px] font-semibold text-slate-400 mb-1">Assemblée Générale</label>
           <select
             value={agId} onChange={e => setAgId(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
@@ -222,12 +222,12 @@ function NouveauMandatForm({ assemblees, personnes, onSave, onCancel }) {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Date début *</label>
+          <label className="block text-[10px] font-semibold text-slate-400 mb-1">Date début *</label>
           <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Date fin</label>
+          <label className="block text-[10px] font-semibold text-slate-400 mb-1">Date fin</label>
           <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400" />
         </div>
@@ -235,7 +235,7 @@ function NouveauMandatForm({ assemblees, personnes, onSave, onCancel }) {
 
       {/* Add member row */}
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-2">Membres</label>
+        <label className="block text-[10px] font-semibold text-slate-400 mb-2">Membres</label>
         <div className="flex gap-2">
           <select value={newP} onChange={e => setNewP(e.target.value)}
             className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
@@ -275,7 +275,7 @@ function NouveauMandatForm({ assemblees, personnes, onSave, onCancel }) {
           Annuler
         </button>
         <button onClick={handleSave} disabled={saving}
-          className="px-5 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60 transition shadow">
+          className="px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 transition shadow">
           {saving ? "Enregistrement…" : "Créer le mandat"}
         </button>
       </div>
@@ -325,44 +325,45 @@ export default function BureauSyndicalPage() {
   const handleFormSave = () => { setShowForm(false); fetchMandats(); };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Bureau Syndical</h1>
-            <p className="text-sm text-slate-500 mt-1">Mandats élus en Assemblée Générale</p>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gouvernance</p>
+            <h1 className="text-white font-bold text-lg leading-tight">Bureau Syndical</h1>
           </div>
+          {!showForm && !activeMandat && (
+            <button onClick={() => setShowForm(true)}
+              className="bg-white text-indigo-700 text-xs px-4 py-2 rounded-xl font-semibold hover:bg-indigo-50 transition">
+              + Nouveau mandat
+            </button>
+          )}
         </div>
-        {!showForm && !activeMandat && (
-          <button onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 transition shadow">
-            + Créer un nouveau mandat
-          </button>
-        )}
+        <p className="text-white/50 text-[10px] mt-1">Mandats élus en Assemblée Générale</p>
       </div>
+      <div className="px-4 -mt-5 space-y-4">
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
-      {/* New mandate form */}
-      {showForm && (
-        <NouveauMandatForm
-          assemblees={assemblees}
-          personnes={personnes}
-          onSave={handleFormSave}
-          onCancel={() => setShowForm(false)}
-        />
-      )}
-
-      {/* Active mandate */}
+      {/* Active mandate + form */}
       {loading ? (
-        <div className="text-center py-12 text-slate-400">Chargement…</div>
+        <div className="bg-white rounded-2xl shadow-sm text-center py-12 text-slate-400">Chargement…</div>
       ) : (
         <>
           <ActiveMandatCard
             mandat={activeMandat}
             onDelete={handleDelete}
           />
+
+          {/* New mandate form — below active card */}
+          {showForm && (
+            <NouveauMandatForm
+              assemblees={assemblees}
+              personnes={personnes}
+              onSave={handleFormSave}
+              onCancel={() => setShowForm(false)}
+            />
+          )}
 
           {/* Historical mandates */}
           {historicalMandats.length > 0 && (
@@ -379,6 +380,7 @@ export default function BureauSyndicalPage() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

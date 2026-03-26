@@ -133,22 +133,23 @@ export default function TravauxPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Événements</h1>
-          <p className="text-sm text-slate-500 mt-1">Suivi des travaux et événements de la résidence</p>
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gouvernance</p>
+            <h1 className="text-white font-bold text-lg leading-tight">Événements</h1>
+          </div>
+          <button
+            onClick={handleNew}
+            className="bg-white text-indigo-700 text-xs px-4 py-2 rounded-xl font-semibold hover:bg-indigo-50 transition"
+          >
+            + Nouvel événement
+          </button>
         </div>
-        <button
-          onClick={handleNew}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl font-semibold text-sm hover:bg-emerald-600 transition shadow"
-        >
-          + Nouvel événement
-        </button>
+        <p className="text-white/50 text-[10px] mt-1">Suivi des travaux et événements de la résidence</p>
       </div>
+      <div className="px-4 -mt-5 space-y-4">
 
       {/* Formulaire modal */}
       {showForm && (
@@ -160,14 +161,14 @@ export default function TravauxPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Date *</label>
                   <input type="date" value={form.date_travaux}
                     onChange={e => setForm(f => ({ ...f, date_travaux: e.target.value }))}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Nature *</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Nature *</label>
                   <input type="text" value={form.nature} placeholder="ex: Ravalement façade, plomberie…"
                     onChange={e => setForm(f => ({ ...f, nature: e.target.value }))}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -175,7 +176,7 @@ export default function TravauxPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Description</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">Description</label>
                 <textarea value={form.description} rows={2} placeholder="Détails complémentaires…"
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
@@ -183,7 +184,7 @@ export default function TravauxPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Statut</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Statut</label>
                   <select value={form.statut}
                     onChange={e => setForm(f => ({ ...f, statut: e.target.value }))}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -194,7 +195,7 @@ export default function TravauxPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Prestataire</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">Prestataire</label>
                   <select value={form.fournisseur}
                     onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -209,7 +210,7 @@ export default function TravauxPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Commentaire</label>
+                <label className="block text-[10px] font-semibold text-slate-400 mb-1">Commentaire</label>
                 <textarea value={form.commentaire} rows={2} placeholder="Observations…"
                   onChange={e => setForm(f => ({ ...f, commentaire: e.target.value }))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
@@ -222,7 +223,7 @@ export default function TravauxPage() {
                   Annuler
                 </button>
                 <button type="submit" disabled={saving}
-                  className="px-5 py-2 bg-emerald-500 text-white rounded-xl font-semibold text-sm hover:bg-emerald-600 disabled:opacity-50 transition">
+                  className="px-5 py-2 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 disabled:opacity-50 transition">
                   {saving ? "Enregistrement…" : (editId ? "Modifier" : "Enregistrer")}
                 </button>
               </div>
@@ -248,9 +249,9 @@ export default function TravauxPage() {
 
       {/* Kanban */}
       {loading ? (
-        <div className="text-center py-10 text-slate-400 text-sm">Chargement…</div>
+        <div className="bg-white rounded-2xl shadow-sm text-center py-10 text-slate-400 text-sm">Chargement…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">Aucune réalisation enregistrée.</div>
+        <div className="bg-white rounded-2xl shadow-sm text-center py-16 text-slate-400">Aucune réalisation enregistrée.</div>
       ) : (
         <div ref={menuRef} className="flex flex-col gap-3">
           {filtered.map(t => {
@@ -300,6 +301,7 @@ export default function TravauxPage() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

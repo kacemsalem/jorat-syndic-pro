@@ -64,26 +64,27 @@ export default function EtatMensuelPage() {
   for (let y = now.getFullYear() - 3; y <= now.getFullYear() + 1; y++) yearOptions.push(y);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
-      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
-
-      {/* Header + filters */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">État mensuel</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Paiements reçus / Dépenses du mois · Suivi avancement annuel</p>
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gestion</p>
+            <h1 className="text-white font-bold text-lg leading-tight">État mensuel</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <select value={year} onChange={e => setYear(Number(e.target.value))}
+              className="text-xs border border-white/30 rounded-xl px-3 py-1.5 bg-white/20 text-white focus:outline-none">
+              {yearOptions.map(y => <option key={y} value={y} className="text-slate-800">{y}</option>)}
+            </select>
+            <select value={month} onChange={e => setMonth(Number(e.target.value))}
+              className="text-xs border border-white/30 rounded-xl px-3 py-1.5 bg-white/20 text-white focus:outline-none">
+              {MOIS_FULL.map((m, i) => <option key={i} value={i} className="text-slate-800">{m}</option>)}
+            </select>
+          </div>
         </div>
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <select value={year} onChange={e => setYear(Number(e.target.value))}
-            className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-700 focus:outline-none">
-            {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-          <select value={month} onChange={e => setMonth(Number(e.target.value))}
-            className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-700 focus:outline-none">
-            {MOIS_FULL.map((m, i) => <option key={i} value={i}>{m}</option>)}
-          </select>
-        </div>
+        <p className="text-white/50 text-[10px] mt-1">Paiements reçus · Dépenses du mois</p>
       </div>
+      <div className="px-4 -mt-5 pb-6 max-w-5xl mx-auto space-y-4">
 
       {loading && (
         <div className="flex items-center justify-center py-12">
@@ -223,6 +224,8 @@ export default function EtatMensuelPage() {
           </div>
         </div>
       )}
+
+      </div>
     </div>
   );
 }

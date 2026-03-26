@@ -162,56 +162,24 @@ export default function SituationPaiementsPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
-      <button onClick={() => navigate("/accueil")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 font-medium transition">← Tableau de bord</button>
-
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">Analyse des Paiements</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Couverture mensuelle par lot — exercice {year} —{" "}
-            <span className={typeCharge === "CHARGE" ? "text-indigo-600 font-semibold" : "text-amber-600 font-semibold"}>
-              {typeCharge === "CHARGE" ? "Appel de charge" : "Appel de fond"}
-            </span>
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search */}
-          <div className="relative">
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="Lot ou nom…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-7 pr-3 py-1.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 w-36"
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            )}
+    <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-5 pb-8">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gestion</p>
+            <h1 className="text-white font-bold text-lg leading-tight">Timeline des paiements</h1>
           </div>
-
-          {/* Type selector */}
-          <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white">
+          {/* Type CHARGE / FOND */}
+          <div className="flex rounded-xl border border-white/30 overflow-hidden text-xs">
             {[
-              { key: "CHARGE", label: "Appel de charge" },
-              { key: "FOND",   label: "Appel de fond"   },
+              { key: "CHARGE", label: "Charge" },
+              { key: "FOND",   label: "Fond"   },
             ].map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setTypeCharge(key)}
-                className={`px-3 py-1.5 text-xs font-semibold transition ${
-                  typeCharge === key
-                    ? key === "CHARGE"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-amber-500 text-white"
-                    : "text-slate-600 hover:bg-slate-50"
+                className={`px-3 py-1.5 font-semibold transition ${
+                  typeCharge === key ? "bg-white text-blue-700" : "text-white/80 hover:bg-white/10"
                 }`}
               >
                 {label}
@@ -219,33 +187,54 @@ export default function SituationPaiementsPage() {
             ))}
           </div>
 
+        </div>
+        {/* Ligne 2 : année + filtre statut + recherche */}
+        <div className="flex flex-wrap items-center gap-2 mt-2">
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
-            className="text-sm border border-slate-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="text-xs border border-white/30 rounded-xl px-3 py-1.5 bg-white/20 text-white focus:outline-none"
           >
-            {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+            {yearOptions.map((y) => <option key={y} value={y} className="text-slate-800">{y}</option>)}
           </select>
 
           {[
-            { key: "TOUS",    label: "Tous"     },
-            { key: "IMPAYES", label: "Impayés"  },
-            { key: "SOLDES",  label: "Soldés"   },
+            { key: "TOUS",    label: "Tous"    },
+            { key: "IMPAYES", label: "Impayés" },
+            { key: "SOLDES",  label: "Soldés"  },
           ].map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                filter === key
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+                filter === key ? "bg-white text-blue-700" : "text-white/80 border border-white/30 hover:bg-white/10"
               }`}
             >
               {label}
             </button>
           ))}
+
+          {/* Search */}
+          <div className="relative ml-auto">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/60" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="Lot ou nom…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-7 pr-3 py-1.5 text-xs border border-white/30 rounded-xl bg-white/20 text-white placeholder:text-white/50 focus:outline-none w-32"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/60 hover:text-white">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            )}
+          </div>
         </div>
       </div>
+      <div className="px-4 -mt-5 pb-6 max-w-5xl mx-auto space-y-4">
 
       {/* ── Stats ── */}
       {!loading && lots.length > 0 && (
@@ -311,6 +300,7 @@ export default function SituationPaiementsPage() {
         </div>
       )}
 
+      </div>
     </div>
   );
 }
