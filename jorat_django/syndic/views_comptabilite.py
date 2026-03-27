@@ -1164,3 +1164,198 @@ def bilan_export_pdf(request):
     resp  = HttpResponse(buf.read(), content_type="application/pdf")
     resp["Content-Disposition"] = f'attachment; filename="bilan_{slug}_{today}.pdf"'
     return resp
+
+
+# ============================================================
+# Grand Livre — exports Excel & PDF
+# ============================================================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def grand_livre_export_excel(request):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+    from collections import OrderedDict
+
+    residence = get_user_residence(request)
+    if not residence:
+        return Response({"detail": "Aucune résidence."}, status=400)
+    date_debut    = request.query_params.get("date_debut") or None
+    date_fin      = request.query_params.get("date_fin")   or None
+    filter_compte = request.query_params.get("compte")     or None
+    entries       = _build_entries(residence, date_debut, date_fin)
+
+    thin   = Side(style="thin", color="E2E8F0")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    # Group by compte
+    comptes = OrderedDict()
+    for e in entries:
+        key = (e["compte_code"], e["compte_libelle"])
+        if key not in comptes:
+            comptes[key] = []
+        comptes[key].append(e)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Grand Livre"
+    for col, w in zip("ABCDEFGH", [12, 14, 14, 36, 14, 14, 14, 14]):
+        ws.column_dimensions[col].width = w
+
+    row = 1
+    ws.cell(row, 1, "GRAND LIVRE").font = Font(bold=True, size=13)
+    ws.cell(row, 3, f"Période : {date_debut or '—'} → {date_fin or '—'}").font = Font(size=9, color="64748B")
+    row += 2
+
+    for (code, libelle), lines in sorted(comptes.items()):
+        if filter_compte and filter_compte.lower() not in code.lower() and filter_compte.lower() not in libelle.lower():
+            continue
+        # Compte header
+        for col in range(1, 9):
+            c = ws.cell(row, col)
+            c.fill = PatternFill("solid", fgColor="0F172A")
+            c.font = Font(bold=True, color="FFFFFF", size=10)
+        ws.cell(row, 1, code)
+        ws.cell(row, 2, libelle).font = Font(bold=True, color="FFFFFF", size=10)
+        row += 1
+        # Column headers
+        for col, h in enumerate(["Date", "Type", "Pièce", "Libellé", "Débit", "Crédit", "Solde"], 1):
+            c = ws.cell(row, col, h)
+            c.fill = PatternFill("solid", fgColor="334155")
+            c.font = Font(bold=True, color="FFFFFF", size=9)
+            c.border = border
+        row += 1
+        # Entries
+        total_d = Decimal("0")
+        total_c = Decimal("0")
+        for e in lines:
+            total_d += e["debit"]
+            total_c += e["credit"]
+            for col, val in enumerate([
+                str(e["date"]), e["type"], e["piece"] or "",
+                (e["libelle"] or "")[:50],
+                float(e["debit"]) or None, float(e["credit"]) or None,
+                float(total_d - total_c),
+            ], 1):
+                c = ws.cell(row, col, val)
+                c.border = border
+                if col in (5, 6, 7) and val is not None:
+                    c.number_format = "#,##0.00"
+            row += 1
+        # Compte total
+        ws.cell(row, 4, "Solde du compte").font = Font(bold=True)
+        c5 = ws.cell(row, 5, float(total_d)); c5.number_format = "#,##0.00"; c5.font = Font(bold=True)
+        c6 = ws.cell(row, 6, float(total_c)); c6.number_format = "#,##0.00"; c6.font = Font(bold=True)
+        c7 = ws.cell(row, 7, float(total_d - total_c)); c7.number_format = "#,##0.00"; c7.font = Font(bold=True)
+        row += 2
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    slug  = re.sub(r"[^a-z0-9]", "_", residence.nom_residence.lower())
+    today = datetime.date.today().strftime("%Y%m%d")
+    resp  = HttpResponse(buf.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    resp["Content-Disposition"] = f'attachment; filename="grand_livre_{slug}_{today}.xlsx"'
+    return resp
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def grand_livre_export_pdf(request):
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from collections import OrderedDict
+
+    residence = get_user_residence(request)
+    if not residence:
+        return Response({"detail": "Aucune résidence."}, status=400)
+    date_debut    = request.query_params.get("date_debut") or None
+    date_fin      = request.query_params.get("date_fin")   or None
+    filter_compte = request.query_params.get("compte")     or None
+    entries       = _build_entries(residence, date_debut, date_fin)
+
+    # Group by compte
+    comptes = OrderedDict()
+    for e in entries:
+        key = (e["compte_code"], e["compte_libelle"])
+        if key not in comptes:
+            comptes[key] = []
+        comptes[key].append(e)
+
+    DARK  = colors.HexColor("#0F172A")
+    MID   = colors.HexColor("#334155")
+    LIGHT = colors.HexColor("#F8FAFC")
+
+    def money(v):
+        fv = float(v)
+        return f"{fv:,.2f}" if fv else ""
+
+    styles = getSampleStyleSheet()
+    title_s = ParagraphStyle("T", parent=styles["Normal"], fontSize=14, fontName="Helvetica-Bold", spaceAfter=4)
+    sub_s   = ParagraphStyle("S", parent=styles["Normal"], fontSize=9, textColor=colors.HexColor("#64748B"), spaceAfter=8)
+    acct_s  = ParagraphStyle("A", parent=styles["Normal"], fontSize=10, fontName="Helvetica-Bold", spaceAfter=2)
+
+    periode = f"{date_debut or '—'} → {date_fin or '—'}"
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
+        leftMargin=1.5*cm, rightMargin=1.5*cm, topMargin=1.8*cm, bottomMargin=1.8*cm)
+
+    entry_ts = TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, 0), MID),
+        ("TEXTCOLOR",     (0, 0), (-1, 0), colors.white),
+        ("FONTNAME",      (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE",      (0, 0), (-1, -1), 8),
+        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [LIGHT, colors.white]),
+        ("GRID",          (0, 0), (-1, -1), 0.4, colors.HexColor("#E2E8F0")),
+        ("ALIGN",         (4, 0), (-1, -1), "RIGHT"),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+        ("TOPPADDING",    (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ])
+
+    elems = [
+        Paragraph("Grand Livre", title_s),
+        Paragraph(f"{residence.nom_residence} · Période : {periode}", sub_s),
+    ]
+
+    for (code, libelle), lines in sorted(comptes.items()):
+        if filter_compte and filter_compte.lower() not in code.lower() and filter_compte.lower() not in libelle.lower():
+            continue
+        if len(lines) > 100:
+            lines = lines[:100]
+
+        total_d = Decimal("0")
+        total_c = Decimal("0")
+        rows = [["Date", "Type", "Pièce", "Libellé", "Débit", "Crédit", "Solde"]]
+        for e in lines:
+            total_d += e["debit"]
+            total_c += e["credit"]
+            rows.append([
+                str(e["date"]), e["type"], (e["piece"] or "")[:10],
+                (e["libelle"] or "")[:38],
+                money(e["debit"]), money(e["credit"]),
+                money(total_d - total_c),
+            ])
+        rows.append(["", "", "", "Solde",
+                     money(total_d), money(total_c), money(total_d - total_c)])
+
+        ts2 = TableStyle(list(entry_ts._cmds))
+        ts2.add("FONTNAME", (0, len(rows)-1), (-1, len(rows)-1), "Helvetica-Bold")
+        t = Table(rows, colWidths=[2.2*cm, 2*cm, 2.2*cm, 6*cm, 2.6*cm, 2.6*cm, 2.6*cm])
+        t.setStyle(ts2)
+
+        elems.append(Paragraph(f"{code} — {libelle}", acct_s))
+        elems.append(t)
+        elems.append(Spacer(1, 10))
+
+    doc.build(elems)
+    buf.seek(0)
+    slug  = re.sub(r"[^a-z0-9]", "_", residence.nom_residence.lower())
+    today = datetime.date.today().strftime("%Y%m%d")
+    resp  = HttpResponse(buf.read(), content_type="application/pdf")
+    resp["Content-Disposition"] = f'attachment; filename="grand_livre_{slug}_{today}.pdf"'
+    return resp

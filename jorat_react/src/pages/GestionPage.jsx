@@ -66,16 +66,8 @@ export default function GestionPage() {
               icon={<><path d="M12 5v14M19 12l-7 7-7-7"/></>} />
             <NavCard onClick={() => navigate("/paiements")} label="Cotisations"
               icon={<><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></>} />
-            <button className="flex flex-col items-center gap-2 p-3 bg-white/50 rounded-2xl shadow-sm w-full opacity-50 cursor-not-allowed">
-              <div className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                  <path d="M9 12h6M9 16h6M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
-                </svg>
-              </div>
-              <span className="text-[10px] font-semibold text-slate-400 text-center leading-tight">
-                Contrats<br/><span className="text-[9px] text-slate-300">(bientôt)</span>
-              </span>
-            </button>
+            <NavCard onClick={() => navigate("/contrats")} label="Contrats"
+              icon={<><path d="M9 12h6M9 16h6M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></>} />
           </div>
         </Section>
 

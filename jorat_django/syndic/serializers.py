@@ -25,6 +25,7 @@ from .models import (
     Notification,
     FamilleDepense,
     ModeleDepense,
+    Contrat,
 )
 
 
@@ -203,6 +204,7 @@ class DetailAppelChargeSerializer(serializers.ModelSerializer):
     appel_exercice    = serializers.IntegerField(source="appel.exercice", read_only=True)
     appel_periode     = serializers.CharField(source="appel.periode",     read_only=True)
     appel_type_charge = serializers.CharField(source="appel.type_charge", read_only=True)
+    appel_libelle     = serializers.CharField(source="appel.libelle",     read_only=True)
 
     class Meta:
         model  = DetailAppelCharge
@@ -569,3 +571,29 @@ class VoteResidentSerializer(serializers.ModelSerializer):
     class Meta:
         model  = VoteResident
         fields = "__all__"
+
+
+# -------------------------------------------------
+# Contrat
+# -------------------------------------------------
+class ContratSerializer(serializers.ModelSerializer):
+    type_contrat_label  = serializers.CharField(source="get_type_contrat_display",  read_only=True)
+    periodicite_label   = serializers.CharField(source="get_periodicite_display",   read_only=True)
+    fournisseur_nom     = serializers.SerializerMethodField()
+    compte_code         = serializers.CharField(source="compte_comptable.code",    read_only=True, allow_null=True)
+    compte_libelle      = serializers.CharField(source="compte_comptable.libelle", read_only=True, allow_null=True)
+    famille_nom         = serializers.CharField(source="famille_depense.nom",      read_only=True, allow_null=True)
+
+    def get_fournisseur_nom(self, obj):
+        if not obj.fournisseur:
+            return None
+        f = obj.fournisseur
+        contact = " ".join(p for p in [f.genre, f.nom, f.prenom] if p)
+        if f.nom_societe and contact:
+            return f"{f.nom_societe} — {contact}"
+        return f.nom_societe or contact or f.nom
+
+    class Meta:
+        model  = Contrat
+        fields = "__all__"
+        extra_kwargs = {"residence": {"read_only": True}}

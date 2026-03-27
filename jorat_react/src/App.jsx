@@ -42,6 +42,7 @@ import TravauxPage from "./pages/TravauxPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import FamillesDepensePage from "./pages/FamillesDepensePage";
 import ModelesDepensePage from "./pages/ModelesDepensePage";
+import ContratPage from "./pages/ContratPage";
 import MessagesResidentPage from "./pages/MessagesResidentPage";
 import ConsultationPage from "./pages/ConsultationPage";
 import EtatMensuelPage from "./pages/EtatMensuelPage";
@@ -178,6 +179,7 @@ function AppLayout() {
               <Route path="/categories-depense" element={<CategoriesDepensePage />} />
               <Route path="/familles-depense"   element={<FamillesDepensePage />} />
               <Route path="/modeles-depense"    element={<ModelesDepensePage />} />
+              <Route path="/contrats"           element={<ContratPage />} />
               <Route path="/fournisseurs"       element={<FournisseursPage />} />
               <Route path="/comptes-comptables" element={<ComptesComptablesPage />} />
               <Route path="/depenses"           element={<DepensesPage />} />

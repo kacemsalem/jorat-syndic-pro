@@ -287,8 +287,8 @@ function ChargesSection({ details, typeLabel, accent = "indigo" }) {
           <div key={d.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
             <div className="w-28 shrink-0">
               <span className="text-xs font-semibold text-slate-700 block">{d.appel_exercice ?? "—"}</span>
-              {isFond && d.appel_code && (
-                <span className="text-[10px] text-slate-400 block leading-tight">{d.appel_code}</span>
+              {isFond && (d.appel_libelle || d.appel_code) && (
+                <span className="text-[10px] text-slate-400 block leading-tight">{d.appel_libelle || d.appel_code}</span>
               )}
             </div>
             <div className="flex-1 flex items-center gap-2 min-w-0">

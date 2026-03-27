@@ -129,18 +129,11 @@ export default function ModelesDepensePage() {
 
       {/* Filtre famille */}
       {familles.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => setFilterFamille("")}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${!filterFamille ? "bg-amber-500 text-white" : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
-            Toutes
-          </button>
-          {familles.map(f => (
-            <button key={f.id} onClick={() => setFilterFamille(String(f.id))}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${filterFamille === String(f.id) ? "bg-amber-500 text-white" : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
-              {f.nom}
-            </button>
-          ))}
-        </div>
+        <select value={filterFamille} onChange={e => setFilterFamille(e.target.value)}
+          className="w-full sm:w-56 border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400 text-slate-600">
+          <option value="">Toutes les familles</option>
+          {familles.map(f => <option key={f.id} value={String(f.id)}>{f.nom}</option>)}
+        </select>
       )}
 
       {/* Form */}

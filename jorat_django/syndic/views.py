@@ -36,6 +36,7 @@ from .models import (
     Notification,
     FamilleDepense,
     ModeleDepense,
+    Contrat,
 )
 from .serializers import (
     ResidenceSerializer,
@@ -63,6 +64,7 @@ from .serializers import (
     NotificationSerializer,
     FamilleDepenseSerializer,
     ModeleDepenseSerializer,
+    ContratSerializer,
 )
 
 
@@ -688,6 +690,65 @@ class ModeleDepenseViewSet(ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Aucune résidence associée.")
         serializer.save(residence=residence)
+
+
+# ============================================================
+# Contrat
+# ============================================================
+class ContratViewSet(ModelViewSet):
+    serializer_class = ContratSerializer
+    pagination_class = None
+    queryset         = Contrat.objects.all()
+
+    def get_queryset(self):
+        residence = get_user_residence(self.request)
+        if not residence:
+            return Contrat.objects.none()
+        qs = Contrat.objects.select_related(
+            "fournisseur", "compte_comptable", "famille_depense"
+        ).filter(residence=residence)
+        actif = self.request.query_params.get("actif")
+        if actif is not None:
+            qs = qs.filter(actif=(actif.lower() == "true"))
+        return qs
+
+    def perform_create(self, serializer):
+        residence = get_user_residence(self.request)
+        if not residence:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Aucune résidence associée.")
+        serializer.save(residence=residence)
+
+    @action(detail=True, methods=["post"], url_path="generer-depense")
+    def generer_depense(self, request, pk=None):
+        """Injecte un paiement de contrat dans les dépenses."""
+        contrat   = self.get_object()
+        residence = get_user_residence(request)
+
+        date_str  = request.data.get("date_depense") or str(timezone.now().date())
+        mois_val  = request.data.get("mois") or None
+        ref       = request.data.get("facture_reference") or ""
+
+        # Compte : du contrat, ou 000
+        compte = contrat.compte_comptable or _get_or_create_attente_compte(residence)
+
+        depense = Depense.objects.create(
+            residence         = residence,
+            compte            = compte,
+            fournisseur       = contrat.fournisseur,
+            date_depense      = date_str,
+            montant           = contrat.montant,
+            libelle           = contrat.libelle,
+            mois              = mois_val,
+            facture_reference = ref,
+            detail            = f"Contrat : {contrat.get_type_contrat_display()}\nPériodicité : {contrat.get_periodicite_display()}",
+        )
+        return Response({
+            "depense_id": depense.id,
+            "libelle":    depense.libelle,
+            "montant":    str(depense.montant),
+            "date":       str(depense.date_depense),
+        })
 
 
 # ============================================================

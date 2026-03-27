@@ -8,6 +8,7 @@ from .views_rapport import (
 from .views_comptabilite import (
     journal_view, grand_livre_view, balance_view, cpc_view, bilan_view,
     journal_export_excel, balance_export_excel, cpc_export_excel, bilan_export_excel,
+    grand_livre_export_excel, grand_livre_export_pdf,
     journal_export_pdf, balance_export_pdf, cpc_export_pdf, bilan_export_pdf,
 )
 from .views_export import export_excel
@@ -50,6 +51,7 @@ from .views import (
     DepenseViewSet,
     FamilleDepenseViewSet,
     ModeleDepenseViewSet,
+    ContratViewSet,
     CaisseMouvementViewSet,
     RecetteViewSet,
     me_view,
@@ -71,6 +73,7 @@ router.register(r"details-appel",           DetailAppelChargeViewSet,   basename
 router.register(r"categories-depense",      CategorieDepenseViewSet,    basename="categorie-depense")
 router.register(r"familles-depense",        FamilleDepenseViewSet,      basename="famille-depense")
 router.register(r"modeles-depense",         ModeleDepenseViewSet,       basename="modele-depense")
+router.register(r"contrats",               ContratViewSet,             basename="contrat")
 router.register(r"fournisseurs",            FournisseurViewSet,         basename="fournisseur")
 router.register(r"comptes-comptables",      CompteComptableViewSet,     basename="compte-comptable")
 router.register(r"depenses",                DepenseViewSet,             basename="depense")
@@ -135,7 +138,9 @@ urlpatterns = [
 
     # ── Comptabilité ─────────────────────────────────────────
     path("comptabilite/journal/",              journal_view,          name="compta-journal"),
-    path("comptabilite/grand-livre/",          grand_livre_view,      name="compta-grand-livre"),
+    path("comptabilite/grand-livre/",          grand_livre_view,          name="compta-grand-livre"),
+    path("comptabilite/grand-livre/excel/",    grand_livre_export_excel,  name="compta-grand-livre-excel"),
+    path("comptabilite/grand-livre/pdf/",      grand_livre_export_pdf,    name="compta-grand-livre-pdf"),
     path("comptabilite/balance/",              balance_view,          name="compta-balance"),
     path("comptabilite/cpc/",                  cpc_view,              name="compta-cpc"),
     path("comptabilite/bilan/",                bilan_view,            name="compta-bilan"),

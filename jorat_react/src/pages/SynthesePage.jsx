@@ -585,8 +585,8 @@ export default function SynthesePage() {
                       <div key={col.id} className="flex items-center justify-between text-xs gap-2">
                         <span className="text-slate-500 truncate flex items-baseline gap-1">
                           <span>{col.exercice}</span>
-                          {col.type_charge === "FOND" && col.code_fond && (
-                            <span className="text-[10px] text-slate-400">{col.code_fond}</span>
+                          {col.type_charge === "FOND" && (col.libelle || col.code_fond) && (
+                            <span className="text-[10px] text-slate-400">{col.libelle || col.code_fond}</span>
                           )}
                         </span>
                         <div className={`flex items-center gap-1 font-mono rounded-md px-1.5 py-0.5 ${s.bg} shrink-0`}>

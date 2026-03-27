@@ -468,6 +468,8 @@ class AppelCharge(TimeStampedModel):
 
     date_emission = models.DateField(default=timezone.now)
 
+    libelle = models.CharField(max_length=200, blank=True, help_text="Nom descriptif de l'appel (ex: Travaux ravalement 2026)")
+
     # Archivage : si non-null, cet appel est archivé dans cette ArchiveComptable.
     # SET_NULL au moment de la restauration (archive.delete()) = restauration automatique.
     archive_comptable = models.ForeignKey(
@@ -948,6 +950,53 @@ class Depense(TimeStampedModel):
 
     def __str__(self):
         return f"{self.libelle} — {self.montant} ({self.date_depense})"
+
+
+# ============================================================
+# CONTRATS — contrats récurrents (sécurité, entretien, eau…)
+# ============================================================
+
+class Contrat(TimeStampedModel):
+
+    TYPE_CHOICES = [
+        ("SECURITE",    "Sécurité"),
+        ("ENTRETIEN",   "Entretien"),
+        ("JARDINAGE",   "Jardinage"),
+        ("EAU",         "Eau"),
+        ("ELECTRICITE", "Électricité"),
+        ("ASCENSEUR",   "Ascenseur"),
+        ("ASSURANCE",   "Assurance"),
+        ("INTERNET",    "Internet / Télécom"),
+        ("NETTOYAGE",   "Nettoyage"),
+        ("AUTRE",       "Autre"),
+    ]
+
+    PERIODICITE_CHOICES = [
+        ("MENSUEL",     "Mensuel"),
+        ("BIMESTRIEL",  "Bimestriel (2 mois)"),
+        ("TRIMESTRIEL", "Trimestriel (3 mois)"),
+        ("SEMESTRIEL",  "Semestriel (6 mois)"),
+        ("ANNUEL",      "Annuel"),
+    ]
+
+    residence        = models.ForeignKey("Residence",        on_delete=models.CASCADE,  related_name="contrats")
+    type_contrat     = models.CharField(max_length=20,  choices=TYPE_CHOICES)
+    libelle          = models.CharField(max_length=255, help_text="Description du contrat")
+    fournisseur      = models.ForeignKey("Fournisseur",      on_delete=models.PROTECT,  null=True, blank=True, related_name="contrats")
+    periodicite      = models.CharField(max_length=20,  choices=PERIODICITE_CHOICES, default="MENSUEL")
+    montant          = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
+    date_debut       = models.DateField()
+    date_fin         = models.DateField(null=True, blank=True)
+    actif            = models.BooleanField(default=True)
+    notes            = models.TextField(blank=True)
+    compte_comptable = models.ForeignKey("CompteComptable", on_delete=models.PROTECT, null=True, blank=True, related_name="contrats")
+    famille_depense  = models.ForeignKey("FamilleDepense",  on_delete=models.PROTECT, null=True, blank=True, related_name="contrats")
+
+    class Meta:
+        ordering = ["type_contrat", "libelle"]
+
+    def __str__(self):
+        return f"{self.libelle} ({self.get_type_contrat_display()})"
 
 
 # ============================================================

@@ -580,13 +580,19 @@ export default function DepensesPage() {
               {filtered.length} dépense{filtered.length !== 1 ? "s" : ""} {isFiltered ? "filtrées" : "au total"}
             </p>
           </div>
-          <button onClick={openCreate}
-            className="w-10 h-10 bg-white/20 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition shadow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"
-              strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate("/contrats")}
+              className="px-2.5 py-1.5 bg-white/15 border border-white/20 rounded-xl text-[10px] font-bold text-white/80 hover:bg-white/25 transition">
+              Contrats
+            </button>
+            <button onClick={openCreate}
+              className="w-10 h-10 bg-white/20 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition shadow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <p className="text-white/60 text-xs mb-1">Total dépenses</p>
         <p className="text-4xl font-bold text-white leading-none mb-1">

@@ -104,6 +104,13 @@ def _build_business_context(message_lower, residence):
             "passation", "passation de consigne", "consigne",
             "syndic sortant", "syndic entrant", "remise",
         ],
+        "loi": [
+            "loi", "article", "légal", "légalement", "juridique", "droit",
+            "18-00", "1800", "copropriété", "statut", "règlement",
+            "parties communes", "parties privatives", "quote-part",
+            "tantième", "assemblée générale obligatoire", "convocation légale",
+            "charges légales", "syndicat", "règles", "obligations", "droits",
+        ],
         "rapport": [
             "rapport", "rapport financier", "taux de recouvrement",
             "bilan", "kpi", "résumé financier", "global",
@@ -457,12 +464,29 @@ def _call_llm(cfg, system_msg, user_msg, history=None):
         return f"Erreur de connexion : {e}"
 
 
-# ── Chemin documentation application ──────────────────────────────────────
+# ── Dossier documentation application ─────────────────────────────────────
 import os as _os
-_DOCS_PATH = _os.path.join(
+_DOCS_DIR = _os.path.join(
     _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))),
-    "docs", "documentation_jorat_ia.md"
+    "docs"
 )
+
+# Nom lisible pour chaque fichier .md (fallback : stem title-cased)
+_DOC_NAMES = {
+    "documentation_jorat_ia": "Documentation Syndic Pro — Guide complet",
+    "loi1800":                 "Loi n°18-00 — Statut de la copropriété (Maroc)",
+}
+
+
+def _md_files():
+    """Retourne la liste des fichiers .md dans _DOCS_DIR."""
+    if not _os.path.isdir(_DOCS_DIR):
+        return []
+    return [
+        f for f in _os.listdir(_DOCS_DIR)
+        if f.endswith(".md") and _os.path.isfile(_os.path.join(_DOCS_DIR, f))
+    ]
+
 
 # ── Views ──────────────────────────────────────────────────────────────────
 
@@ -470,40 +494,55 @@ _DOCS_PATH = _os.path.join(
 @permission_classes([IsAuthenticated])
 def ai_load_app_docs(request):
     """
-    Lit documentation_jorat_ia.md depuis le serveur et le charge/met à jour
-    comme AIDocument actif.
+    Lit tous les fichiers .md du dossier docs/ et les charge comme AIDocuments actifs.
     - Superuser → charge pour TOUTES les résidences
     - Admin normal → charge pour sa résidence uniquement
     """
     from .models import AIDocument, Residence
 
-    if not _os.path.exists(_DOCS_PATH):
-        return Response({"detail": f"Fichier documentation introuvable : {_DOCS_PATH}"}, status=404)
+    fichiers = _md_files()
+    if not fichiers:
+        return Response({"detail": f"Aucun fichier .md trouvé dans : {_DOCS_DIR}"}, status=404)
 
-    with open(_DOCS_PATH, "r", encoding="utf-8") as f:
-        texte = f.read()
+    # Lire tous les fichiers
+    docs_data = []
+    for fname in fichiers:
+        stem = fname[:-3]  # retirer .md
+        nom  = _DOC_NAMES.get(stem) or stem.replace("_", " ").replace("-", " ").title()
+        path = _os.path.join(_DOCS_DIR, fname)
+        with open(path, "r", encoding="utf-8") as f:
+            texte = f.read()
+        docs_data.append({"nom": nom, "texte": texte, "fichier": fname})
 
-    NOM = "Documentation Syndic Pro — Guide complet"
+    def _upsert_docs(residence):
+        nb_created = nb_updated = 0
+        for d in docs_data:
+            _, created = AIDocument.objects.update_or_create(
+                residence=residence,
+                nom=d["nom"],
+                defaults={"texte_extrait": d["texte"], "actif": True},
+            )
+            if created:
+                nb_created += 1
+            else:
+                nb_updated += 1
+        return nb_created, nb_updated
 
     # Superuser : charger pour toutes les résidences
     if request.user.is_superuser:
         residences = list(Residence.objects.all())
         if not residences:
             return Response({"detail": "Aucune résidence dans la base."}, status=400)
-        nb_created = nb_updated = 0
+        total_created = total_updated = 0
         for res in residences:
-            _, created = AIDocument.objects.update_or_create(
-                residence=res,
-                nom=NOM,
-                defaults={"texte_extrait": texte, "actif": True},
-            )
-            if created:
-                nb_created += 1
-            else:
-                nb_updated += 1
+            c, u = _upsert_docs(res)
+            total_created += c; total_updated += u
         return Response({
-            "detail": f"Documentation chargée pour {len(residences)} résidence(s) ({nb_created} créées, {nb_updated} mises à jour).",
-            "taille_texte": len(texte),
+            "detail": (
+                f"{len(docs_data)} fichier(s) chargé(s) pour {len(residences)} résidence(s) "
+                f"({total_created} créés, {total_updated} mis à jour)."
+            ),
+            "fichiers": [d["fichier"] for d in docs_data],
         })
 
     # Admin normal : charger pour sa résidence
@@ -511,16 +550,12 @@ def ai_load_app_docs(request):
     if not residence:
         return Response({"detail": "Aucune résidence assignée à ce compte."}, status=400)
 
-    doc, created = AIDocument.objects.update_or_create(
-        residence=residence,
-        nom=NOM,
-        defaults={"texte_extrait": texte, "actif": True},
-    )
+    nb_created, nb_updated = _upsert_docs(residence)
     return Response({
-        "detail": "Documentation chargée avec succès." if created else "Documentation mise à jour.",
-        "id":           doc.id,
-        "taille_texte": len(texte),
-        "created":      created,
+        "detail": f"{len(docs_data)} fichier(s) chargé(s) ({nb_created} créés, {nb_updated} mis à jour).",
+        "fichiers": [d["fichier"] for d in docs_data],
+        "nb_created": nb_created,
+        "nb_updated": nb_updated,
     })
 
 
@@ -656,9 +691,12 @@ def _select_doc_chunks(doc_text, user_words, budget, max_chunks=5):
     note chaque section selon la pertinence, retourne les meilleures
     sections dans la limite du budget (chars).
     """
-    # Découpe prioritaire sur les titres markdown, sinon sur paragraphes
+    # Découpe prioritaire : titres markdown, puis articles de loi, puis paragraphes
     import re
     raw = re.split(r'\n(?=#{1,3} )', doc_text)
+    if len(raw) == 1:
+        # Tente le découpage par "Article X :" (lois, règlements)
+        raw = re.split(r'(?=\bArticle\s+\d+\s*:)', doc_text)
     if len(raw) == 1:
         raw = [c.strip() for c in doc_text.split("\n\n") if c.strip()]
 
