@@ -779,11 +779,6 @@ export default function DepensesPage() {
                           <option key={m.id} value={m.id}>{m.nom}</option>
                         ))}
                       </select>
-                      <button type="button" onClick={() => setSubForm("modele")}
-                        title="Nouveau modèle"
-                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-700 text-lg font-bold transition border border-slate-200">
-                        +
-                      </button>
                       <button type="button" onClick={() => navigate("/modeles-depense", { state: { openForm: true } })}
                         title="Gérer les modèles de dépense"
                         className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">

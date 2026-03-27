@@ -728,6 +728,9 @@ class ContratViewSet(ModelViewSet):
         date_str  = request.data.get("date_depense") or str(timezone.now().date())
         mois_val  = request.data.get("mois") or None
         ref       = request.data.get("facture_reference") or ""
+        montant   = request.data.get("montant") or contrat.montant
+        if not montant:
+            return Response({"detail": "Montant obligatoire."}, status=400)
 
         # Compte : du contrat, ou 000
         compte = contrat.compte_comptable or _get_or_create_attente_compte(residence)
@@ -737,7 +740,7 @@ class ContratViewSet(ModelViewSet):
             compte            = compte,
             fournisseur       = contrat.fournisseur,
             date_depense      = date_str,
-            montant           = contrat.montant,
+            montant           = montant,
             libelle           = contrat.libelle,
             mois              = mois_val,
             facture_reference = ref,
