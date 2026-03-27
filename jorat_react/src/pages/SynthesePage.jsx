@@ -583,7 +583,12 @@ export default function SynthesePage() {
                     const s = cellStyle(recu, mont);
                     return (
                       <div key={col.id} className="flex items-center justify-between text-xs gap-2">
-                        <span className="text-slate-500 truncate">{col.code_fond ?? col.periode} {col.exercice}</span>
+                        <span className="text-slate-500 truncate flex items-baseline gap-1">
+                          <span>{col.exercice}</span>
+                          {col.type_charge === "FOND" && col.code_fond && (
+                            <span className="text-[10px] text-slate-400">{col.code_fond}</span>
+                          )}
+                        </span>
                         <div className={`flex items-center gap-1 font-mono rounded-md px-1.5 py-0.5 ${s.bg} shrink-0`}>
                           <span className={`font-semibold ${s.text}`}>{fmt(recu)}</span>
                           <span className="text-slate-400 text-[10px]">/{fmt(mont)}</span>

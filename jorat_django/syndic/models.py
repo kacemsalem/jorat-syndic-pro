@@ -1086,12 +1086,13 @@ class AssembleeGenerale(TimeStampedModel):
         ("ANNULEE",   "Annulée"),
     ]
 
-    residence     = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="assemblees")
-    date_ag       = models.DateField()
-    type_ag       = models.CharField(max_length=20, choices=TYPE_CHOICES, default="ORDINAIRE")
-    statut        = models.CharField(max_length=20, choices=STATUT_CHOICES, default="PLANIFIEE")
-    ordre_du_jour = models.TextField(blank=True)
-    pv_document   = models.FileField(upload_to="gouvernance/pv/", blank=True, null=True)
+    residence              = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="assemblees")
+    date_ag                = models.DateField()
+    type_ag                = models.CharField(max_length=20, choices=TYPE_CHOICES, default="ORDINAIRE")
+    statut                 = models.CharField(max_length=20, choices=STATUT_CHOICES, default="PLANIFIEE")
+    ordre_du_jour          = models.TextField(blank=True)
+    pv_document            = models.FileField(upload_to="gouvernance/pv/", blank=True, null=True)
+    convocation_envoyee_le = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-date_ag"]

@@ -235,16 +235,17 @@ function BureauModal({ ag, onClose }) {
 
 export default function AssembleesPage() {
   const navigate = useNavigate();
-  const [items,    setItems]    = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [form,     setForm]     = useState(EMPTY);
-  const [pvFile,   setPvFile]   = useState(null);
-  const [saving,   setSaving]   = useState(false);
-  const [openMenu, setOpenMenu] = useState(null);
-  const [bureauAg, setBureauAg] = useState(null); // AG sélectionnée pour le modal bureau
+  const [items,          setItems]          = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState("");
+  const [showForm,       setShowForm]       = useState(false);
+  const [editItem,       setEditItem]       = useState(null);
+  const [form,           setForm]           = useState(EMPTY);
+  const [pvFile,         setPvFile]         = useState(null);
+  const [saving,         setSaving]         = useState(false);
+  const [openMenu,       setOpenMenu]       = useState(null);
+  const [bureauAg,       setBureauAg]       = useState(null);
+  const [sendingConvoc,  setSendingConvoc]  = useState(null); // ag.id en cours d'envoi
   const menuRef = useRef(null);
 
   const fetchItems = () => {
@@ -303,6 +304,35 @@ export default function AssembleesPage() {
     if (!window.confirm(`Supprimer cette assemblée générale ?`)) return;
     await fetch(`/api/assemblees/${item.id}/`, { method: "DELETE", credentials: "include", headers: { "X-CSRFToken": getCsrf() } });
     fetchItems();
+  };
+
+  const handleConvocation = async (item) => {
+    const dateFormatted = item.date_ag
+      ? new Date(item.date_ag).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })
+      : item.date_ag;
+    let msg = `Envoyer la convocation aux résidents pour :\n\nAG du ${dateFormatted}\n`;
+    if (item.ordre_du_jour) msg += `\nOrdre du jour :\n${item.ordre_du_jour}\n`;
+    if (item.convocation_envoyee_le) {
+      const envDate = new Date(item.convocation_envoyee_le).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+      msg += `\n⚠ Attention : une convocation a déjà été envoyée le ${envDate}.\nConfirmer l'envoi d'une nouvelle convocation ?`;
+    } else {
+      msg += "\nConfirmer l'envoi ?";
+    }
+    if (!window.confirm(msg)) return;
+    setSendingConvoc(item.id);
+    try {
+      const res = await fetch(`/api/assemblees/${item.id}/envoyer-convocation/`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(Object.values(d).flat().join(" ") || "Erreur lors de l'envoi.");
+      } else {
+        fetchItems();
+      }
+    } catch { alert("Erreur réseau."); }
+    finally { setSendingConvoc(null); }
   };
 
   return (
@@ -388,6 +418,33 @@ export default function AssembleesPage() {
                   className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-semibold hover:bg-emerald-200 transition">
                   Passation de consignes
                 </button>
+                {/* Convocation */}
+                {item.statut === "PLANIFIEE" ? (
+                  <button
+                    onClick={() => handleConvocation(item)}
+                    disabled={sendingConvoc === item.id}
+                    className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold transition disabled:opacity-60 ${
+                      item.convocation_envoyee_le
+                        ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                        : "bg-teal-100 text-teal-700 hover:bg-teal-200"
+                    }`}
+                  >
+                    {sendingConvoc === item.id ? "Envoi…" : (
+                      item.convocation_envoyee_le
+                        ? `✉ Convocation (renvoi)`
+                        : "✉ Convoquer"
+                    )}
+                  </button>
+                ) : (
+                  <span className="px-3 py-1 rounded-lg bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed" title="Disponible uniquement pour les assemblées planifiées">
+                    ✉ Convoquer
+                  </span>
+                )}
+                {item.convocation_envoyee_le && (
+                  <span className="text-[9px] text-amber-600 font-medium">
+                    envoyée le {new Date(item.convocation_envoyee_le).toLocaleDateString("fr-FR")}
+                  </span>
+                )}
                 {item.pv_document && (
                   <a href={item.pv_document} target="_blank" rel="noreferrer"
                     className="px-3 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-semibold hover:bg-blue-200 transition">

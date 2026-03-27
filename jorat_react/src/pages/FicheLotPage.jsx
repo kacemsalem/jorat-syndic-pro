@@ -264,69 +264,46 @@ function buildPdfHtml({ lot, residence, detailsCharge, detailsFond, paiements })
 
 // ── Charges section ───────────────────────────────────────────────────────────
 function ChargesSection({ details, typeLabel, accent = "indigo" }) {
-  const detailsParExercice = useMemo(() => {
-    const map = {};
-    details.forEach(d => {
-      const exo = d.appel_exercice ?? "?";
-      if (!map[exo]) map[exo] = [];
-      map[exo].push(d);
-    });
-    return Object.entries(map)
-      .sort(([a], [b]) => parseInt(b) - parseInt(a))
-      .map(([exo, items]) => ({ exo, items }));
-  }, [details]);
+  const sortedDetails = useMemo(() =>
+    [...details].sort((a, b) => parseInt(b.appel_exercice ?? 0) - parseInt(a.appel_exercice ?? 0)),
+  [details]);
 
   if (details.length === 0) return (
     <p className="text-xs text-slate-400 text-center py-4">Aucun appel de {typeLabel} enregistré.</p>
   );
 
   const trackCls = accent === "amber" ? "bg-amber-100" : "bg-indigo-100";
+  const isFond = accent === "amber";
 
   return (
-    <div className="space-y-4">
-      {detailsParExercice.map(({ exo, items }) => {
-        const exoM = items.reduce((s, d) => s + parseFloat(d.montant ?? 0), 0);
-        const exoR = items.reduce((s, d) => s + parseFloat(d.montant_recu ?? 0), 0);
-        const pct  = exoM > 0 ? Math.round((exoR / exoM) * 100) : 0;
+    <div className="space-y-1.5">
+      {sortedDetails.map(d => {
+        const m      = parseFloat(d.montant ?? 0);
+        const r      = parseFloat(d.montant_recu ?? 0);
+        const s      = m - r;
+        const p      = m > 0 ? Math.min(100, Math.round((r / m) * 100)) : 0;
+        const statut = d.statut ?? "NON_PAYE";
         return (
-          <div key={exo}>
-            {/* Exercice header */}
-            <div className="flex items-center justify-between mb-2 px-1">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Exercice {exo}</span>
-              <div className="flex items-center gap-3 text-[11px]">
-                <span className="text-slate-400">Appelé <span className="font-mono font-semibold text-slate-600">{fmt(exoM)}</span></span>
-                <span className="text-emerald-600">Reçu <span className="font-mono font-semibold">{fmt(exoR)}</span></span>
-                <span className={`font-mono font-bold ${exoM - exoR > 0 ? "text-red-500" : "text-emerald-600"}`}>{pct}%</span>
+          <div key={d.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
+            <div className="w-28 shrink-0">
+              <span className="text-xs font-semibold text-slate-700 block">{d.appel_exercice ?? "—"}</span>
+              {isFond && d.appel_code && (
+                <span className="text-[10px] text-slate-400 block leading-tight">{d.appel_code}</span>
+              )}
+            </div>
+            <div className="flex-1 flex items-center gap-2 min-w-0">
+              <div className={`flex-1 h-2 rounded-full overflow-hidden ${trackCls}`}>
+                <div className={`h-full rounded-full ${p >= 100 ? "bg-emerald-500" : p > 0 ? "bg-amber-400" : "bg-red-300"}`}
+                  style={{ width: `${p}%` }} />
               </div>
+              <span className="text-[11px] text-slate-400 w-8 shrink-0 text-right">{p}%</span>
             </div>
-            {/* Kanban cards — 1 par ligne */}
-            <div className="space-y-1.5">
-              {items.map(d => {
-                const m      = parseFloat(d.montant ?? 0);
-                const r      = parseFloat(d.montant_recu ?? 0);
-                const s      = m - r;
-                const p      = m > 0 ? Math.min(100, Math.round((r / m) * 100)) : 0;
-                const statut = d.statut ?? "NON_PAYE";
-                return (
-                  <div key={d.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
-                    <span className="text-xs font-semibold text-slate-700 w-28 shrink-0">{d.appel_code ?? d.appel_periode ?? "—"}</span>
-                    <div className="flex-1 flex items-center gap-2 min-w-0">
-                      <div className={`flex-1 h-2 rounded-full overflow-hidden ${trackCls}`}>
-                        <div className={`h-full rounded-full ${p >= 100 ? "bg-emerald-500" : p > 0 ? "bg-amber-400" : "bg-red-300"}`}
-                          style={{ width: `${p}%` }} />
-                      </div>
-                      <span className="text-[11px] text-slate-400 w-8 shrink-0 text-right">{p}%</span>
-                    </div>
-                    <span className="text-[11px] font-mono text-slate-500 w-20 text-right shrink-0">{fmt(m)}</span>
-                    <span className="text-[11px] font-mono font-semibold text-emerald-600 w-20 text-right shrink-0">{fmt(r)}</span>
-                    <span className={`text-[11px] font-mono font-bold w-20 text-right shrink-0 ${s > 0 ? "text-red-500" : "text-emerald-600"}`}>{fmt(s)}</span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${DETAIL_STATUT_CLS[statut] ?? ""}`}>
-                      {DETAIL_STATUT_LABEL[statut] ?? statut}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            <span className="text-[11px] font-mono text-slate-500 w-20 text-right shrink-0">{fmt(m)}</span>
+            <span className="text-[11px] font-mono font-semibold text-emerald-600 w-20 text-right shrink-0">{fmt(r)}</span>
+            <span className={`text-[11px] font-mono font-bold w-20 text-right shrink-0 ${s > 0 ? "text-red-500" : "text-emerald-600"}`}>{fmt(s)}</span>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${DETAIL_STATUT_CLS[statut] ?? ""}`}>
+              {DETAIL_STATUT_LABEL[statut] ?? statut}
+            </span>
           </div>
         );
       })}

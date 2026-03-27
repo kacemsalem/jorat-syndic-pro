@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from django.db import transaction
 from django.db.models import Count, Sum
 from rest_framework.decorators import action, api_view, permission_classes
@@ -831,6 +832,32 @@ class AssembleeGeneraleViewSet(ModelViewSet):
         if not residence:
             raise ValidationError("Aucune résidence associée.")
         serializer.save(residence=residence)
+
+    @action(detail=True, methods=["post"], url_path="envoyer-convocation")
+    def envoyer_convocation(self, request, pk=None):
+        ag = self.get_object()
+        if ag.statut != "PLANIFIEE":
+            return Response({"detail": "La convocation ne peut être envoyée que pour une assemblée planifiée."}, status=400)
+        ag.convocation_envoyee_le = timezone.now()
+        ag.save(update_fields=["convocation_envoyee_le"])
+        # Enregistrement d'une notification pour chaque lot de la résidence
+        from .models import Lot, Notification
+        lots = Lot.objects.filter(residence=ag.residence)
+        nb_sent = 0
+        for lot in lots:
+            try:
+                Notification.objects.create(
+                    residence=ag.residence,
+                    lot=lot,
+                    type_notification="SYSTEM",
+                    titre=f"Convocation AG du {ag.date_ag}",
+                    message=f"Vous êtes convoqué(e) à l'Assemblée Générale du {ag.date_ag}.\n\nOrdre du jour :\n{ag.ordre_du_jour or '(à préciser)'}",
+                    statut="ENVOYE",
+                )
+                nb_sent += 1
+            except Exception:
+                pass
+        return Response({"sent": nb_sent, "convocation_envoyee_le": ag.convocation_envoyee_le})
 
 
 # ============================================================

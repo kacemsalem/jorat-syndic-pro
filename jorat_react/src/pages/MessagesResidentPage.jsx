@@ -191,7 +191,7 @@ export default function MessagesResidentPage() {
                     {/* Textarea réponse */}
                     <textarea
                       rows={3}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 resize-none"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 resize-none"
                       placeholder="Rédigez votre réponse au résident…"
                       value={r.reponse}
                       onChange={e => setReply(m.id, { reponse: e.target.value })}

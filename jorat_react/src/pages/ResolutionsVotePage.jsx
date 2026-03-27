@@ -27,6 +27,43 @@ const EMPTY_FORM = {
   statut: "EN_PREPARATION", assemblee: "",
 };
 
+function computeStatutFromDates(dateDebut, dateCloture) {
+  const now = new Date();
+  if (dateCloture && new Date(dateCloture) < now) return "CLOTURE";
+  if (dateDebut && new Date(dateDebut) <= now) return "EN_COURS";
+  return "EN_PREPARATION";
+}
+
+function resultText(rv, resultats) {
+  if (!resultats) return null;
+  const nbOui    = resultats.counts?.OUI    ?? 0;
+  const nbNon    = resultats.counts?.NON    ?? 0;
+  const nbNeutre = resultats.counts?.NEUTRE ?? 0;
+  const totalVotes = nbOui + nbNon + nbNeutre;
+  const totalLots  = resultats.total_notifies ?? 0;
+
+  let adopte = false;
+  let condition = "";
+
+  if (rv.type_vote === "MAJORITE_SIMPLE") {
+    adopte = totalVotes > 0 && nbOui > totalVotes / 2;
+    condition = `${nbOui}/${totalVotes} votants (> 50 % des votants)`;
+  } else if (rv.type_vote === "MAJORITE_ABSOLUE") {
+    adopte = totalLots > 0 && nbOui > totalLots / 2;
+    condition = `${nbOui}/${totalLots} lots (> 50 % des copropriétaires)`;
+  } else if (rv.type_vote === "UNANIMITE") {
+    adopte = totalVotes > 0 && nbNon === 0 && nbNeutre === 0;
+    condition = `${nbOui}/${totalLots} lots (unanimité requise)`;
+  } else if (rv.type_vote === "DOUBLE_MAJORITE") {
+    const majoriteVotants = totalVotes > 0 && nbOui > totalVotes / 2;
+    const majoriteLots    = totalLots > 0 && nbOui > totalLots / 3;
+    adopte = majoriteVotants && majoriteLots;
+    condition = `${nbOui}/${totalVotes} votants et ${nbOui}/${totalLots} lots`;
+  }
+
+  return { adopte, condition };
+}
+
 function Badge({ statut }) {
   const col = STATUT_COLS.find(c => c.key === statut);
   return (
@@ -99,8 +136,10 @@ export default function ResolutionsVotePage() {
   const handleSave = async () => {
     if (!form.intitule.trim() || !form.date_resolution) { setError("Intitulé et date requis."); return; }
     setSaving(true); setError("");
+    const autoStatut = computeStatutFromDates(form.date_debut_vote, form.date_cloture_vote);
     const payload = {
       ...form,
+      statut:            autoStatut,
       assemblee:         form.assemblee || null,
       date_debut_vote:   form.date_debut_vote   || null,
       date_cloture_vote: form.date_cloture_vote || null,
@@ -250,11 +289,10 @@ export default function ResolutionsVotePage() {
                       onChange={e => setForm(f => ({ ...f, date_resolution: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">Statut</label>
-                    <select className={SELECT_CLS} value={form.statut}
-                      onChange={e => setForm(f => ({ ...f, statut: e.target.value }))}>
-                      {STATUT_COLS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-                    </select>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">Statut (calculé)</label>
+                    <div className="flex items-center h-9 px-3">
+                      <Badge statut={computeStatutFromDates(form.date_debut_vote, form.date_cloture_vote)} />
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -308,10 +346,12 @@ export default function ResolutionsVotePage() {
                       className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-200 transition">
                       ✎ Modifier
                     </button>
-                    <button onClick={() => handleEnvoyerNotifs(selected.id)}
-                      className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition">
-                      📨 Envoyer notifications
-                    </button>
+                    {selected.statut !== "CLOTURE" && (
+                      <button onClick={() => handleEnvoyerNotifs(selected.id)}
+                        className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition">
+                        📨 Envoyer notifications
+                      </button>
+                    )}
                     <button onClick={() => handleDelete(selected.id)}
                       className="px-3 py-1.5 bg-red-100 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-200 transition">
                       Supprimer
@@ -320,6 +360,19 @@ export default function ResolutionsVotePage() {
                   {notifInfo && (
                     <p className="mt-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">{notifInfo}</p>
                   )}
+                  {/* Résultat si clôturé */}
+                  {selected.statut === "CLOTURE" && resultats && (() => {
+                    const r = resultText(selected, resultats);
+                    if (!r) return null;
+                    return (
+                      <div className={`mt-3 rounded-xl px-4 py-3 border ${r.adopte ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+                        <div className={`text-sm font-bold ${r.adopte ? "text-emerald-700" : "text-red-700"}`}>
+                          {r.adopte ? "✔ Résolution ADOPTÉE" : "✘ Résolution REJETÉE"}
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">{r.condition}</div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Résultats */}

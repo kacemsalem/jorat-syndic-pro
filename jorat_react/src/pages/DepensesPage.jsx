@@ -601,24 +601,24 @@ export default function DepensesPage() {
         {/* Filtres */}
         <div className="bg-white rounded-2xl shadow-sm p-3">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Filtres</p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="grid grid-cols-2 gap-2">
             <select value={filterAnnee} onChange={e => setFilterAnnee(e.target.value)}
-              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0">
+              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600">
               <option value="">Toutes années</option>
               {annees.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
             <select value={filterMois} onChange={e => setFilterMois(e.target.value)}
-              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0">
+              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600">
               <option value="">Tous mois</option>
               {MOIS_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
             <select value={filterFamille} onChange={e => setFilterFamille(e.target.value)}
-              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0">
+              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600">
               <option value="">Toutes catégories</option>
               {famillesList.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
             <select value={filterFournisseur} onChange={e => setFilterFournisseur(e.target.value)}
-              className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0">
+              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600">
               <option value="">Tous fournisseurs</option>
               {fournisseursUsed.map(f => <option key={f.id} value={String(f.id)}>{f.nom_complet || f.nom}</option>)}
             </select>
@@ -769,10 +769,8 @@ export default function DepensesPage() {
                         onChange={e => handleModeleChange(e.target.value)}
                       >
                         <option value="">— Choisir un modèle —</option>
-                        {modelesByFamille.map(([familleNom, items]) => (
-                          <optgroup key={familleNom} label={familleNom}>
-                            {items.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
-                          </optgroup>
+                        {[...modeles].sort((a, b) => a.nom.localeCompare(b.nom)).map(m => (
+                          <option key={m.id} value={m.id}>{m.nom}</option>
                         ))}
                       </select>
                       <button type="button" onClick={() => setSubForm("modele")}

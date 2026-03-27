@@ -143,7 +143,7 @@ function HistoricalMandat({ mandat }) {
 }
 
 // ── New Mandate Form ────────────────────────────────────────
-function NouveauMandatForm({ assemblees, personnes, onSave, onCancel }) {
+function NouveauMandatForm({ assemblees, personnes, allMandats, onSave, onCancel }) {
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin,   setDateFin]   = useState("");
   const [agId,      setAgId]      = useState("");
@@ -172,6 +172,29 @@ function NouveauMandatForm({ assemblees, personnes, onSave, onCancel }) {
   const handleSave = async () => {
     if (!dateDebut) { setError("La date de début est obligatoire."); return; }
     if (membres.length === 0) { setError("Ajoutez au moins un membre."); return; }
+
+    // Vérifier qu'aucun bureau n'est actif
+    const active = allMandats.find(m => m.actif);
+    if (active) {
+      setError("Un bureau est déjà actif. Clôturez-le avant d'en créer un nouveau.");
+      return;
+    }
+
+    // Vérifier les chevauchements de dates avec les mandats existants
+    const debut = new Date(dateDebut);
+    const fin   = dateFin ? new Date(dateFin) : null;
+    for (const m of allMandats) {
+      const mDebut = new Date(m.date_debut);
+      const mFin   = m.date_fin ? new Date(m.date_fin) : null;
+      // Chevauchement : nouveau debut < mFin ET (pas de fin nouveau OU fin nouveau > mDebut)
+      const overlap = debut < (mFin || new Date("9999-12-31")) && (!fin || fin > mDebut);
+      if (overlap) {
+        const label = `${m.date_debut}${m.date_fin ? ` → ${m.date_fin}` : " (sans date de fin)"}`;
+        setError(`Chevauchement avec le mandat du ${label}. Les mandats ne peuvent pas se chevaucher.`);
+        return;
+      }
+    }
+
     setSaving(true); setError("");
     try {
       // 1) Create mandate
@@ -360,6 +383,7 @@ export default function BureauSyndicalPage() {
             <NouveauMandatForm
               assemblees={assemblees}
               personnes={personnes}
+              allMandats={mandats}
               onSave={handleFormSave}
               onCancel={() => setShowForm(false)}
             />

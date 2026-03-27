@@ -410,7 +410,7 @@ class BureauSyndicalSerializer(serializers.ModelSerializer):
 class AssembleeGeneraleSerializer(serializers.ModelSerializer):
     type_ag_label  = serializers.CharField(source="get_type_ag_display",  read_only=True)
     statut_label   = serializers.CharField(source="get_statut_display",   read_only=True)
-    nb_resolutions = serializers.IntegerField(read_only=True)
+    nb_resolutions = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model  = AssembleeGenerale
