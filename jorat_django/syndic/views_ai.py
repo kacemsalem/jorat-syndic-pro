@@ -466,10 +466,8 @@ def _call_llm(cfg, system_msg, user_msg, history=None):
 
 # ── Dossier documentation application ─────────────────────────────────────
 import os as _os
-_DOCS_DIR = _os.path.join(
-    _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))),
-    "docs"
-)
+from django.conf import settings as _settings
+_DOCS_DIR = _os.path.join(str(_settings.BASE_DIR), "docs")
 
 # Nom lisible pour chaque fichier .md (fallback : stem title-cased)
 _DOC_NAMES = {
