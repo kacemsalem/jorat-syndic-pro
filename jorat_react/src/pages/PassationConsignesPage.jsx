@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -25,6 +25,7 @@ function toLocalInput(iso) {
 export default function PassationConsignesPage() {
   const [params] = useSearchParams();
   const assembleeId = params.get("assemblee");
+  const navigate = useNavigate();
 
   const [passation,  setPassation]  = useState(null);
   const [situation,  setSituation]  = useState([]);
@@ -445,6 +446,15 @@ export default function PassationConsignesPage() {
   return (
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-8">
+        {assembleeId && (
+          <button onClick={() => navigate("/gouvernance/assemblees")}
+            className="flex items-center gap-1 text-white/70 hover:text-white text-[10px] font-semibold mb-3 transition">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{width:12,height:12}}>
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Retour AG
+          </button>
+        )}
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gouvernance</p>

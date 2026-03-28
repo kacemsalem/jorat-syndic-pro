@@ -7,7 +7,13 @@ import {
 const MM = { "01":"Jan","02":"Fév","03":"Mar","04":"Avr","05":"Mai","06":"Jun",
              "07":"Jul","08":"Aoû","09":"Sep","10":"Oct","11":"Nov","12":"Déc" };
 
-const fmtNum = (v) => Number(v).toLocaleString("fr-MA", { minimumFractionDigits: 0 });
+const fmtNum  = (v) => Number(v).toLocaleString("fr-MA", { minimumFractionDigits: 0 });
+const fmtAxis = (v) => {
+  const n = Number(v);
+  if (Math.abs(n) >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(".0","") + "M";
+  if (Math.abs(n) >= 1_000)     return (n / 1_000).toFixed(1).replace(".0","") + "k";
+  return String(n);
+};
 
 export default function ChartDepenses({ depenses }) {
   const [filterCat, setFilterCat] = useState("");
@@ -69,7 +75,7 @@ export default function ChartDepenses({ depenses }) {
         <BarChart data={data} margin={{ top: 5, right: 8, left: 0, bottom: 0 }} barGap={2} barSize={filterCat ? 10 : 18}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 9, fill: "#94a3b8" }} tickLine={false} />
-          <YAxis tickFormatter={fmtNum} tick={{ fontSize: 9, fill: "#94a3b8" }} width={62} tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 9, fill: "#94a3b8" }} width={44} tickLine={false} axisLine={false} />
           <Tooltip
             formatter={(v, name) => [fmtNum(v) + " MAD", name === "total" ? "Total" : (filterCat || "Catégorie")]}
             contentStyle={{ borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 11, padding: "6px 10px" }}

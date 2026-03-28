@@ -1,8 +1,28 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ChartPaiements from "../components/ChartPaiements";
 
 export default function GraphePaiementsPage() {
   const navigate = useNavigate();
+  const [years,       setYears]       = useState([]);
+  const [year,        setYear]        = useState(new Date().getFullYear());
+  const [loadingYears, setLoadingYears] = useState(true);
+
+  // Fetch available years from either type (CHARGE is most common)
+  useEffect(() => {
+    fetch("/api/situation-paiements/?type_charge=CHARGE", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        const yrs = d.years || [];
+        if (yrs.length > 0) {
+          setYears(yrs);
+          const cur = new Date().getFullYear();
+          setYear(yrs.includes(cur) ? cur : yrs[yrs.length - 1]);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingYears(false));
+  }, []);
 
   return (
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
@@ -11,7 +31,11 @@ export default function GraphePaiementsPage() {
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-10">
         <button onClick={() => navigate("/analyse")}
           className="flex items-center gap-1 text-white/70 text-[10px] font-semibold mb-3 hover:text-white transition">
-          ← Retour Analyse
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10 }}>
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Retour Analyse
         </button>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center">
@@ -27,15 +51,44 @@ export default function GraphePaiementsPage() {
             <h1 className="text-white font-bold text-lg leading-tight">État des paiements</h1>
           </div>
         </div>
-        <p className="text-white/50 text-[10px] mt-2">Répartition soldés · partiels · non payés</p>
+        <p className="text-white/50 text-[10px] mt-2">Charge · Fond — soldés · partiels · impayés</p>
       </div>
 
       <div className="px-4 -mt-5 space-y-4">
 
-        {/* Chart */}
-        <div className="bg-white rounded-2xl shadow-sm p-4">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Répartition par statut de paiement</p>
-          <ChartPaiements />
+        {/* Year selector */}
+        {!loadingYears && years.length > 1 && (
+          <div className="bg-white rounded-2xl shadow-sm px-4 py-3 flex items-center gap-3">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Exercice</span>
+            <div className="flex gap-1 flex-wrap">
+              {years.map(y => (
+                <button key={y} onClick={() => setYear(y)}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition ${
+                    y === year ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}>
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Two donuts */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-2xl shadow-sm p-4">
+            <div className="flex items-center gap-1.5 mb-3">
+              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+              <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Appel de charge</p>
+            </div>
+            <ChartPaiements typeCharge="CHARGE" year={year} />
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm p-4">
+            <div className="flex items-center gap-1.5 mb-3">
+              <div className="w-2 h-2 rounded-full bg-amber-500" />
+              <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Appel de fond</p>
+            </div>
+            <ChartPaiements typeCharge="FOND" year={year} />
+          </div>
         </div>
 
         {/* Link to synthese */}
