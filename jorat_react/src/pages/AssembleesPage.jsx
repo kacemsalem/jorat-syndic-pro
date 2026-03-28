@@ -6,12 +6,24 @@ function getCsrf() {
 }
 
 const TYPES   = [{ value: "ORDINAIRE", label: "Ordinaire" }, { value: "EXTRAORDINAIRE", label: "Extraordinaire" }];
-const STATUTS = [{ value: "PLANIFIEE", label: "Planifiée" }, { value: "TENUE", label: "Tenue" }, { value: "ANNULEE", label: "Annulée" }];
+const STATUTS = [
+  { value: "PLANIFIEE",     label: "Planifiée"     },
+  { value: "TENUE",         label: "Tenue"         },
+  { value: "ANNULEE",       label: "Annulée"       },
+  { value: "PAS_DE_RETOUR", label: "Pas de retour" },
+];
 
 const STATUT_COLORS = {
-  PLANIFIEE: "bg-blue-100 text-blue-700",
-  TENUE:     "bg-green-100 text-green-700",
-  ANNULEE:   "bg-red-100 text-red-700",
+  PLANIFIEE:     "bg-blue-50 text-blue-700 border border-blue-200",
+  TENUE:         "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  ANNULEE:       "bg-red-50 text-red-600 border border-red-200",
+  PAS_DE_RETOUR: "bg-slate-100 text-slate-500 border border-slate-200",
+};
+const STATUT_BORDER = {
+  PLANIFIEE:     "border-l-blue-400",
+  TENUE:         "border-l-emerald-400",
+  ANNULEE:       "border-l-red-400",
+  PAS_DE_RETOUR: "border-l-slate-300",
 };
 
 const FONCTIONS = [
@@ -22,15 +34,16 @@ const FONCTIONS = [
   { value: "MEMBRE",         label: "Membre" },
 ];
 const FONCTION_STYLE = {
-  PRESIDENT:      "bg-amber-100 text-amber-800",
-  VICE_PRESIDENT: "bg-orange-100 text-orange-700",
-  TRESORIER:      "bg-blue-100 text-blue-700",
-  SECRETAIRE:     "bg-violet-100 text-violet-700",
-  MEMBRE:         "bg-slate-100 text-slate-600",
+  PRESIDENT:      "bg-slate-800 text-white",
+  VICE_PRESIDENT: "bg-slate-600 text-white",
+  TRESORIER:      "bg-slate-200 text-slate-700",
+  SECRETAIRE:     "bg-slate-200 text-slate-700",
+  MEMBRE:         "bg-slate-100 text-slate-500",
 };
 const FONCTION_LABEL = Object.fromEntries(FONCTIONS.map(f => [f.value, f.label]));
 const FONCTION_ORDER = ["PRESIDENT", "VICE_PRESIDENT", "TRESORIER", "SECRETAIRE", "MEMBRE"];
 
+const TODAY = new Date().toISOString().slice(0, 10);
 const EMPTY = { date_ag: "", type_ag: "ORDINAIRE", statut: "PLANIFIEE", ordre_du_jour: "" };
 
 // ── Bureau Syndical modal ─────────────────────────────────────
@@ -119,10 +132,10 @@ function BureauModal({ ag, onClose }) {
     <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mt-8 mb-8">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-pink-50 to-rose-50 rounded-t-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 rounded-t-2xl">
           <div>
             <h2 className="font-bold text-slate-800 text-base">Bureau Syndical</h2>
-            <p className="text-xs text-pink-600 font-medium mt-0.5">AG du {dateFormatted} — {ag.type_ag_label}</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">AG du {dateFormatted} — {ag.type_ag_label}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-xl font-bold px-2">×</button>
         </div>
@@ -141,7 +154,7 @@ function BureauModal({ ag, onClose }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {sorted.map(m => (
                   <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-rose-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm flex-shrink-0">
                       {(m.personne_nom || "?")[0].toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -335,6 +348,13 @@ export default function AssembleesPage() {
     finally { setSendingConvoc(null); }
   };
 
+  // AG déjà planifiée (hors celle en cours d'édition)
+  const hasPlanifiee = items.some(
+    it => it.statut === "PLANIFIEE" && (!editItem || it.id !== editItem.id)
+  );
+  // Date min : uniquement si statut PLANIFIEE (Tenue et Annulée acceptent les dates passées)
+  const dateMin = form.statut === "PLANIFIEE" ? TODAY : "";
+
   return (
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-4 pt-5 pb-8">
@@ -362,7 +382,7 @@ export default function AssembleesPage() {
               ? new Date(item.date_ag).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })
               : item.date_ag;
             return (
-            <div key={item.id} className="bg-violet-50 rounded-xl border border-violet-200 shadow-sm px-4 py-3 flex flex-col gap-2 relative">
+            <div key={item.id} className={`bg-white rounded-xl border border-slate-200 border-l-4 shadow-sm px-4 py-3 flex flex-col gap-2 relative ${STATUT_BORDER[item.statut] ?? "border-l-slate-300"}`}>
               {/* Ligne 1 : titre + statut + menu */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
@@ -405,50 +425,48 @@ export default function AssembleesPage() {
               )}
 
               {/* Ligne 4 : actions */}
-              <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-violet-100">
+              <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-slate-100">
                 <button onClick={() => navigate(`/gouvernance/resolutions?ag_id=${item.id}`)}
-                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200 transition">
+                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium hover:bg-slate-200 transition">
                   Résolutions ({item.nb_resolutions ?? 0})
                 </button>
                 <button onClick={() => setBureauAg(item)}
-                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-pink-100 text-pink-700 text-xs font-semibold hover:bg-pink-200 transition">
+                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium hover:bg-slate-200 transition">
                   Bureau Syndical
                 </button>
                 <button onClick={() => navigate(`/passation-consignes?assemblee=${item.id}`)}
-                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-semibold hover:bg-emerald-200 transition">
-                  Passation de consignes
+                  className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium hover:bg-slate-200 transition">
+                  Passation
                 </button>
                 {/* Convocation */}
                 {item.statut === "PLANIFIEE" ? (
                   <button
                     onClick={() => handleConvocation(item)}
                     disabled={sendingConvoc === item.id}
-                    className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold transition disabled:opacity-60 ${
+                    className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition disabled:opacity-60 ${
                       item.convocation_envoyee_le
-                        ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                        : "bg-teal-100 text-teal-700 hover:bg-teal-200"
+                        ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        : "bg-indigo-600 text-white hover:bg-indigo-700"
                     }`}
                   >
                     {sendingConvoc === item.id ? "Envoi…" : (
-                      item.convocation_envoyee_le
-                        ? `✉ Convocation (renvoi)`
-                        : "✉ Convoquer"
+                      item.convocation_envoyee_le ? "✉ Renvoi convocation" : "✉ Convoquer"
                     )}
                   </button>
                 ) : (
-                  <span className="px-3 py-1 rounded-lg bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed" title="Disponible uniquement pour les assemblées planifiées">
+                  <span className="px-3 py-1 rounded-lg bg-slate-50 text-slate-400 text-xs font-medium cursor-not-allowed">
                     ✉ Convoquer
                   </span>
                 )}
                 {item.convocation_envoyee_le && (
-                  <span className="text-[9px] text-amber-600 font-medium">
+                  <span className="text-[9px] text-slate-400 font-medium">
                     envoyée le {new Date(item.convocation_envoyee_le).toLocaleDateString("fr-FR")}
                   </span>
                 )}
                 {item.pv_document && (
                   <a href={item.pv_document} target="_blank" rel="noreferrer"
-                    className="px-3 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-semibold hover:bg-blue-200 transition">
-                    📄 PV
+                    className="px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium hover:bg-slate-200 transition">
+                    PV
                   </a>
                 )}
               </div>
@@ -465,36 +483,66 @@ export default function AssembleesPage() {
 
       {/* Modal form AG */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 my-4">
             <h2 className="text-lg font-bold text-slate-800 mb-5">
               {editItem ? "Modifier l'assemblée" : "Nouvelle assemblée générale"}
             </h2>
+
+            {/* Avertissement doublon PLANIFIEE */}
+            {!editItem && hasPlanifiee && (
+              <div className="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                <p className="text-xs text-amber-700 font-medium">
+                  Une assemblée est déjà planifiée. Clôturez ou annulez-la avant d'en créer une nouvelle.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-400 mb-1">Date *</label>
-                <input type="date" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
+                <input type="date"
+                  min={dateMin}
+                  className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none transition ${
+                    form.date_ag && form.date_ag < TODAY && form.statut === "PLANIFIEE"
+                      ? "border-red-300 focus:border-red-400 bg-red-50"
+                      : "border-slate-200 focus:border-indigo-400"
+                  }`}
                   value={form.date_ag} onChange={e => setForm(f => ({ ...f, date_ag: e.target.value }))} />
+                {form.date_ag && form.date_ag < TODAY && form.statut === "PLANIFIEE" && (
+                  <p className="text-xs text-red-500 mt-1">La date ne peut pas être dans le passé pour une AG planifiée.</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-400 mb-1">Type</label>
-                  <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
+                  <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
                     value={form.type_ag} onChange={e => setForm(f => ({ ...f, type_ag: e.target.value }))}>
                     {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-400 mb-1">Statut</label>
-                  <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
+                  <select className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
                     value={form.statut} onChange={e => setForm(f => ({ ...f, statut: e.target.value }))}>
-                    {STATUTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    {STATUTS.map(s => (
+                      <option
+                        key={s.value}
+                        value={s.value}
+                        disabled={s.value === "PLANIFIEE" && hasPlanifiee}
+                      >
+                        {s.label}{s.value === "PLANIFIEE" && hasPlanifiee ? " (déjà une planifiée)" : ""}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-400 mb-1">Ordre du jour</label>
-                <textarea rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400 resize-none"
+                <textarea rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 resize-none"
                   placeholder="Points à l'ordre du jour…"
                   value={form.ordre_du_jour} onChange={e => setForm(f => ({ ...f, ordre_du_jour: e.target.value }))} />
               </div>

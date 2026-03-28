@@ -4,11 +4,11 @@ import { useNavigate } from "react-router-dom";
 function SectionCard({ onClick, icon, label, description, color }) {
   return (
     <button onClick={onClick}
-      className="w-full flex flex-col items-start gap-3 p-4 bg-white rounded-2xl shadow-sm
+      className="w-full flex flex-col items-start gap-2 p-3 bg-white rounded-2xl shadow-sm
                  hover:shadow-md active:scale-[0.97] transition-all duration-150 text-left">
-      <div className={`w-11 h-11 ${color} rounded-xl flex items-center justify-center`}>
+      <div className={`w-9 h-9 ${color} rounded-xl flex items-center justify-center`}>
         <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8"
-          strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+          strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
           {icon}
         </svg>
       </div>
@@ -61,7 +61,7 @@ export default function AccueilPage() {
     <div className="bg-slate-100 flex flex-col min-h-screen -m-3 sm:-m-6">
 
       {/* ── Header bleu dégradé ──────────────────────────────── */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-4 pb-12">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-4 pb-8">
         <div className="flex items-center gap-3">
           {residence.logo ? (
             <img src={residence.logo} alt="logo"
@@ -100,10 +100,10 @@ export default function AccueilPage() {
       </div>
 
       {/* ── Cartes + boutons secondaires ─────────────────────── */}
-      <div className="flex-1 flex flex-col justify-center px-4 -mt-6 pb-24">
+      <div className="flex-1 flex flex-col justify-center px-4 -mt-5 pb-6">
 
         {/* 4 cartes principales */}
-        <div className="grid grid-cols-2 gap-3 w-full">
+        <div className="grid grid-cols-2 gap-2 w-full">
           <SectionCard
             onClick={() => navigate("/gestion")}
             label="Gestion"
@@ -135,10 +135,10 @@ export default function AccueilPage() {
         </div>
 
         {/* Outils + Aide — boutons ronds */}
-        <div className="flex justify-center gap-10 mt-6">
+        <div className="flex justify-center gap-10 mt-3">
           <button onClick={() => navigate("/outils")}
             className="flex flex-col items-center gap-1.5 group">
-            <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:shadow-md group-active:scale-95 transition-all">
+            <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:shadow-md group-active:scale-95 transition-all">
               <svg viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="1.8"
                 strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
                 <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
@@ -149,7 +149,7 @@ export default function AccueilPage() {
 
           <button onClick={() => navigate("/aide")}
             className="flex flex-col items-center gap-1.5 group">
-            <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:shadow-md group-active:scale-95 transition-all">
+            <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:shadow-md group-active:scale-95 transition-all">
               <svg viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="1.8"
                 strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
                 <circle cx="12" cy="12" r="10"/>

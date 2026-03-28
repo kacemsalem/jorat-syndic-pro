@@ -289,7 +289,7 @@ class FamilleDepenseSerializer(serializers.ModelSerializer):
 # ModeleDepense
 # -------------------------------------------------
 class ModeleDepenseSerializer(serializers.ModelSerializer):
-    famille_nom      = serializers.CharField(source="famille_depense.nom", read_only=True)
+    categorie_nom    = serializers.CharField(source="categorie.nom", read_only=True, allow_null=True)
     compte_code      = serializers.CharField(source="compte_comptable.code",    read_only=True, allow_null=True)
     compte_libelle   = serializers.CharField(source="compte_comptable.libelle", read_only=True, allow_null=True)
     fournisseur_nom  = serializers.SerializerMethodField()
@@ -313,7 +313,7 @@ class DepenseSerializer(serializers.ModelSerializer):
     compte_code        = serializers.CharField(source="compte.code",    read_only=True)
     compte_libelle     = serializers.CharField(source="compte.libelle", read_only=True)
     modele_nom         = serializers.CharField(source="modele_depense.nom",                      read_only=True, allow_null=True)
-    modele_famille_nom = serializers.CharField(source="modele_depense.famille_depense.nom",      read_only=True, allow_null=True)
+    modele_categorie_nom = serializers.CharField(source="modele_depense.categorie.nom",          read_only=True, allow_null=True)
     categorie_nom      = serializers.CharField(source="categorie.nom",    read_only=True, allow_null=True)
     categorie_famille  = serializers.CharField(source="categorie.famille", read_only=True, allow_null=True)
     fournisseur_nom    = serializers.SerializerMethodField()
@@ -582,7 +582,7 @@ class ContratSerializer(serializers.ModelSerializer):
     fournisseur_nom     = serializers.SerializerMethodField()
     compte_code         = serializers.CharField(source="compte_comptable.code",    read_only=True, allow_null=True)
     compte_libelle      = serializers.CharField(source="compte_comptable.libelle", read_only=True, allow_null=True)
-    famille_nom         = serializers.CharField(source="famille_depense.nom",      read_only=True, allow_null=True)
+    categorie_nom       = serializers.CharField(source="categorie.nom",             read_only=True, allow_null=True)
 
     def get_fournisseur_nom(self, obj):
         if not obj.fournisseur:

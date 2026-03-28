@@ -48,6 +48,9 @@ import MessagesResidentPage from "./pages/MessagesResidentPage";
 import ConsultationPage from "./pages/ConsultationPage";
 import EtatMensuelPage from "./pages/EtatMensuelPage";
 import PassationConsignesPage from "./pages/PassationConsignesPage";
+import GrapheCaissePage from "./pages/GrapheCaissePage";
+import GraphePaiementsPage from "./pages/GraphePaiementsPage";
+import GrapheDepensesPage from "./pages/GrapheDepensesPage";
 import ResolutionsVotePage from "./pages/ResolutionsVotePage";
 import KanbanResolutionsPage from "./pages/KanbanResolutionsPage";
 import ResidentVotePage from "./pages/ResidentVotePage";
@@ -157,12 +160,16 @@ function AppLayout() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 overflow-auto p-3 sm:p-6 pb-20">
+        <main className="flex-1 overflow-auto">
+          <div className="max-w-2xl mx-auto p-3 sm:p-6 pb-20 min-h-full">
           <AdminRoute>
             <Routes>
               <Route path="/accueil"            element={<AccueilPage />} />
               <Route path="/gestion"            element={<GestionPage />} />
               <Route path="/analyse"            element={<AnalysePage />} />
+              <Route path="/graphe-caisse"      element={<GrapheCaissePage />} />
+              <Route path="/graphe-paiements"   element={<GraphePaiementsPage />} />
+              <Route path="/graphe-depenses"    element={<GrapheDepensesPage />} />
               <Route path="/gouvernance"        element={<GouvernancePage />} />
               <Route path="/comptabilite"       element={<ComptabiliteMenuPage />} />
               <Route path="/outils"             element={<OutilsPage />} />
@@ -217,6 +224,7 @@ function AppLayout() {
               <Route path="/"                      element={<Navigate to="/accueil" replace />} />
             </Routes>
           </AdminRoute>
+          </div>
         </main>
       </div>
 

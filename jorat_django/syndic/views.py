@@ -920,15 +920,53 @@ class AssembleeGeneraleViewSet(ModelViewSet):
         residence = get_user_residence(self.request)
         if not residence:
             return AssembleeGenerale.objects.none()
+        today = timezone.now().date()
+        # Auto-transition PLANIFIEE → PAS_DE_RETOUR si la date est dépassée
+        AssembleeGenerale.objects.filter(
+            residence=residence,
+            statut="PLANIFIEE",
+            date_ag__lt=today,
+        ).update(statut="PAS_DE_RETOUR")
         return AssembleeGenerale.objects.filter(residence=residence).annotate(
             nb_resolutions=Count("resolutions")
-        )
+        ).order_by("-date_ag")
 
     def perform_create(self, serializer):
         residence = get_user_residence(self.request)
         if not residence:
             raise ValidationError("Aucune résidence associée.")
+        today = timezone.now().date()
+        date_ag = serializer.validated_data.get("date_ag")
+        # Interdire une date passée uniquement pour les AG planifiées
+        statut = serializer.validated_data.get("statut", "PLANIFIEE")
+        if statut == "PLANIFIEE" and date_ag and date_ag < today:
+            raise ValidationError({"date_ag": "La date ne peut pas être dans le passé pour une assemblée planifiée."})
+        # Interdire deux AG planifiées simultanément
+        if statut == "PLANIFIEE" and AssembleeGenerale.objects.filter(residence=residence, statut="PLANIFIEE").exists():
+            raise ValidationError({
+                "statut": "Une assemblée générale est déjà planifiée. "
+                          "Veuillez d'abord la clôturer ou l'annuler avant d'en créer une nouvelle."
+            })
         serializer.save(residence=residence)
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        today = timezone.now().date()
+        date_ag    = serializer.validated_data.get("date_ag",    instance.date_ag)
+        new_statut = serializer.validated_data.get("statut",     instance.statut)
+        # Si on (re)planifie une AG, vérifier qu'aucune autre n'est déjà planifiée
+        if new_statut == "PLANIFIEE" and instance.statut != "PLANIFIEE":
+            if AssembleeGenerale.objects.filter(
+                residence=instance.residence, statut="PLANIFIEE"
+            ).exclude(pk=instance.pk).exists():
+                raise ValidationError({
+                    "statut": "Une autre assemblée est déjà planifiée. "
+                              "Clôturez-la d'abord avant de replanifier celle-ci."
+                })
+        # Interdire une date passée uniquement pour les AG planifiées
+        if new_statut == "PLANIFIEE" and date_ag and date_ag < today:
+            raise ValidationError({"date_ag": "La date ne peut pas être dans le passé pour une assemblée planifiée."})
+        serializer.save()
 
     @action(detail=True, methods=["post"], url_path="envoyer-convocation")
     def envoyer_convocation(self, request, pk=None):

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import ChartDepenses from "../components/ChartDepenses";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -21,7 +22,7 @@ const INPUT_AUTO   = `${INPUT_BASE} border-blue-300 bg-blue-50 focus:border-blue
 const EMPTY_FORM = {
   modele_depense:    "",
   libelle:           "",
-  famille:           "",
+  categorie:         "",
   compte:            "",
   fournisseur:       "",
   date_depense:      new Date().toISOString().slice(0, 10),
@@ -32,7 +33,7 @@ const EMPTY_FORM = {
   mois:              "",
 };
 
-const EMPTY_AUTO = { libelle: false, famille: false, compte: false, fournisseur: false };
+const EMPTY_AUTO = { libelle: false, categorie: false, compte: false, fournisseur: false };
 
 // ── Mini sub-form quick-add ──────────────────────────────────────────────────
 function SubFormFamille({ onBack, onCreated }) {
@@ -44,10 +45,10 @@ function SubFormFamille({ onBack, onCreated }) {
     if (!nom.trim()) { setError("Le nom est obligatoire."); return; }
     setSaving(true); setError("");
     try {
-      const res = await fetch("/api/familles-depense/", {
+      const res = await fetch("/api/categories-depense/", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ nom: nom.trim() }),
+        body: JSON.stringify({ nom: nom.trim(), famille: "DIVERS" }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
       const created = await res.json();
@@ -61,7 +62,7 @@ function SubFormFamille({ onBack, onCreated }) {
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">
         ← Retour à la dépense
       </button>
-      <h3 className="text-base font-bold text-slate-800">Nouvelle famille de dépense</h3>
+      <h3 className="text-base font-bold text-slate-800">Nouvelle catégorie</h3>
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
         <input className={INPUT_NORMAL} value={nom} onChange={e => setNom(e.target.value)} placeholder="Ex : Entretien, Charges communes…" />
@@ -103,10 +104,10 @@ function SubFormModele({ familles: initialFamilles, comptes: initialComptes, fou
     if (!newCatNom.trim()) return;
     setSavingCat(true);
     try {
-      const res = await fetch("/api/familles-depense/", {
+      const res = await fetch("/api/categories-depense/", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ nom: newCatNom.trim() }),
+        body: JSON.stringify({ nom: newCatNom.trim(), famille: "DIVERS" }),
       });
       if (!res.ok) return;
       const created = await res.json();
@@ -159,7 +160,7 @@ function SubFormModele({ familles: initialFamilles, comptes: initialComptes, fou
     try {
       const payload = {
         nom: form.nom.trim(),
-        famille_depense:  form.famille          || null,
+        categorie:        form.famille          || null,
         compte_comptable: form.compte_comptable || null,
         fournisseur:      form.fournisseur      || null,
         actif: true,
@@ -386,7 +387,7 @@ export default function DepensesPage() {
   const location = useLocation();
   const [depenses,     setDepenses]     = useState([]);
   const [modeles,      setModeles]      = useState([]);
-  const [familles,     setFamilles]     = useState([]);
+  const [categories,   setCategories]   = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
   const [comptes,      setComptes]      = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -404,19 +405,20 @@ export default function DepensesPage() {
   const [filterFamille,     setFilterFamille]     = useState("");
   const [filterFournisseur, setFilterFournisseur] = useState("");
   const [filterAttente,     setFilterAttente]     = useState(false);
+  const [showChart,         setShowChart]         = useState(false);
 
   const fetchAll = () => {
     setLoading(true);
     Promise.all([
       fetch("/api/depenses/",                     { credentials: "include" }).then(r => r.json()),
       fetch("/api/modeles-depense/?actif=true",   { credentials: "include" }).then(r => r.json()),
-      fetch("/api/familles-depense/",             { credentials: "include" }).then(r => r.json()),
-      fetch("/api/fournisseurs/?actif=true",      { credentials: "include" }).then(r => r.json()),
-      fetch("/api/comptes-comptables/?actif=true",{ credentials: "include" }).then(r => r.json()),
-    ]).then(([dep, mod, fam, fou, cpt]) => {
+      fetch("/api/categories-depense/?actif=true", { credentials: "include" }).then(r => r.json()),
+      fetch("/api/fournisseurs/?actif=true",       { credentials: "include" }).then(r => r.json()),
+      fetch("/api/comptes-comptables/?actif=true", { credentials: "include" }).then(r => r.json()),
+    ]).then(([dep, mod, cat, fou, cpt]) => {
       setDepenses(Array.isArray(dep) ? dep : (dep.results ?? []));
       setModeles(Array.isArray(mod) ? mod : (mod.results ?? []));
-      setFamilles(Array.isArray(fam) ? fam : (fam.results ?? []));
+      setCategories(Array.isArray(cat) ? cat : (cat.results ?? []));
       setFournisseurs(Array.isArray(fou) ? fou : (fou.results ?? []));
       setComptes(Array.isArray(cpt) ? cpt : (cpt.results ?? []));
     }).catch(() => {}).finally(() => setLoading(false));
@@ -441,11 +443,11 @@ export default function DepensesPage() {
         ...f,
         modele_depense: modeleId,
         libelle:    m.nom || f.libelle,
-        famille:    (autoFilled.famille || !f.famille) ? (m.famille_depense ? String(m.famille_depense) : "") : f.famille,
+        categorie:  (autoFilled.categorie || !f.categorie) ? (m.categorie ? String(m.categorie) : "") : f.categorie,
         compte:     (autoFilled.compte     || !f.compte)     ? (m.compte_comptable ? String(m.compte_comptable) : "") : f.compte,
         fournisseur:(autoFilled.fournisseur|| !f.fournisseur) ? (m.fournisseur      ? String(m.fournisseur)      : "") : f.fournisseur,
       }));
-      setAutoFilled({ libelle: !!m.nom, famille: !!m.famille_depense, compte: !!m.compte_comptable, fournisseur: !!m.fournisseur });
+      setAutoFilled({ libelle: !!m.nom, categorie: !!m.categorie, compte: !!m.compte_comptable, fournisseur: !!m.fournisseur });
     } else {
       setForm(f => ({ ...f, modele_depense: modeleId }));
       setAutoFilled(EMPTY_AUTO);
@@ -455,15 +457,15 @@ export default function DepensesPage() {
   const clearAuto = (field) => setAutoFilled(a => ({ ...a, [field]: false }));
 
   const openCreate = () => {
-    const divers = familles.find(f => f.nom.toLowerCase() === "divers");
-    setForm({ ...EMPTY_FORM, mois: MOIS_OPTIONS[new Date().getMonth()].value, famille: divers ? String(divers.id) : "" });
+    const divers = categories.find(c => c.nom.toLowerCase() === "divers");
+    setForm({ ...EMPTY_FORM, mois: MOIS_OPTIONS[new Date().getMonth()].value, categorie: divers ? String(divers.id) : "" });
     setAutoFilled(EMPTY_AUTO); setEditItem(null); setError(""); setSubForm(null); setShowForm(true);
   };
   const openEdit   = (d)  => {
     setForm({
       modele_depense:    String(d.modele_depense   || ""),
       libelle:           d.libelle                  || "",
-      famille:           String(d.famille           || ""),
+      categorie:         String(d.categorie         || ""),
       compte:            String(d.compte            || ""),
       fournisseur:       String(d.fournisseur       || ""),
       date_depense:      d.date_depense,
@@ -479,14 +481,14 @@ export default function DepensesPage() {
 
   const handleSave = async () => {
     if (!form.libelle.trim()) { setError("Le libellé est obligatoire."); return; }
-    if (!form.famille) { setError("La catégorie est obligatoire."); return; }
+    if (!form.categorie) { setError("La catégorie est obligatoire."); return; }
     if (!form.montant || parseFloat(form.montant) <= 0) { setError("Le montant doit être > 0."); return; }
     if (!form.date_depense) { setError("La date est obligatoire."); return; }
     setSaving(true); setError("");
     const payload = {
       modele_depense:    form.modele_depense    || null,
       libelle:           form.libelle,
-      famille:           form.famille           || null,
+      categorie:         form.categorie         || null,
       compte:            form.compte            || null,
       fournisseur:       form.fournisseur       || null,
       date_depense:      form.date_depense,
@@ -522,7 +524,7 @@ export default function DepensesPage() {
     let list = depenses;
     if (filterAnnee)       list = list.filter(d => d.date_depense?.startsWith(filterAnnee));
     if (filterMois)        list = list.filter(d => d.mois === filterMois);
-    if (filterFamille)     list = list.filter(d => d.modele_famille_nom === filterFamille || d.categorie_famille === filterFamille);
+    if (filterFamille)     list = list.filter(d => d.modele_categorie_nom === filterFamille || d.categorie_nom === filterFamille);
     if (filterFournisseur) list = list.filter(d => String(d.fournisseur) === filterFournisseur);
     if (filterAttente)     list = list.filter(d => d.compte_code === "000");
     return list;
@@ -530,7 +532,7 @@ export default function DepensesPage() {
 
   const totalFiltered = filtered.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
   const annees = useMemo(() => [...new Set(depenses.map(d => d.date_depense?.slice(0, 4)).filter(Boolean))].sort().reverse(), [depenses]);
-  const famillesList = useMemo(() => [...new Set(depenses.map(d => d.modele_famille_nom || d.categorie_famille).filter(Boolean))].sort(), [depenses]);
+  const famillesList = useMemo(() => [...new Set(depenses.map(d => d.modele_categorie_nom || d.categorie_nom).filter(Boolean))].sort(), [depenses]);
   const fournisseursUsed = useMemo(() => {
     const ids = [...new Set(depenses.map(d => d.fournisseur).filter(Boolean))];
     return fournisseurs.filter(f => ids.includes(f.id));
@@ -538,13 +540,15 @@ export default function DepensesPage() {
 
   const modelesByFamille = useMemo(() => {
     const map = {};
-    modeles.forEach(m => { const k = m.famille_nom || "—"; if (!map[k]) map[k] = []; map[k].push(m); });
+    modeles.forEach(m => { const k = m.categorie_nom || "—"; if (!map[k]) map[k] = []; map[k].push(m); });
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   }, [modeles]);
 
   // ── Sub-form callbacks ────────────────────────────────────────────────────
   const onFamilleCreated = (created) => {
-    setFamilles(prev => [...prev, created]);
+    setCategories(prev => [...prev, created]);
+    clearAuto("categorie");
+    setForm(f => ({ ...f, categorie: String(created.id) }));
     setSubForm(null);
   };
   const onModeleCreated = (created) => {
@@ -590,6 +594,18 @@ export default function DepensesPage() {
               className="px-2.5 py-1.5 bg-white/15 border border-white/20 rounded-xl text-[10px] font-bold text-white/80 hover:bg-white/25 transition">
               Modèles
             </button>
+            <button onClick={() => setShowChart(v => !v)}
+              title="Évolution des dépenses"
+              className={`w-10 h-10 border rounded-full flex items-center justify-center transition shadow ${
+                showChart ? "bg-white/90 border-white/90" : "bg-white/20 border-white/20 hover:bg-white/30"
+              }`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke={showChart ? "#2563EB" : "white"} strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6"  y1="20" x2="6"  y2="14"/>
+              </svg>
+            </button>
             <button onClick={openCreate}
               className="w-10 h-10 bg-white/20 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition shadow">
               <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"
@@ -608,6 +624,14 @@ export default function DepensesPage() {
 
       {/* ── Contenu flottant ──────────────────────────────────── */}
       <div className="px-4 -mt-6 space-y-4 pb-6">
+
+        {/* Graphe évolution dépenses */}
+        {showChart && (
+          <div className="bg-white rounded-2xl shadow-sm p-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Évolution des dépenses</p>
+            <ChartDepenses depenses={depenses} />
+          </div>
+        )}
 
         {/* Filtres */}
         <div className="bg-white rounded-2xl shadow-sm p-3">
@@ -687,9 +711,9 @@ export default function DepensesPage() {
                           {dep.mois}
                         </span>
                       )}
-                      {(dep.modele_famille_nom || dep.categorie_famille) && (
+                      {(dep.modele_categorie_nom || dep.categorie_nom) && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                          {dep.modele_famille_nom || dep.categorie_famille}
+                          {dep.modele_categorie_nom || dep.categorie_nom}
                         </span>
                       )}
                       {dep.compte_code && (
@@ -739,7 +763,7 @@ export default function DepensesPage() {
               <SubFormFamille onBack={() => setSubForm(null)} onCreated={onFamilleCreated} />
             )}
             {subForm === "modele" && (
-              <SubFormModele familles={familles} comptes={comptes} fournisseurs={fournisseurs}
+              <SubFormModele familles={categories} comptes={comptes} fournisseurs={fournisseurs}
                 onBack={() => setSubForm(null)} onCreated={onModeleCreated}
                 onFamilleAdded={created => setFamilles(prev => [...prev, created])}
                 onCompteAdded={created => setComptes(prev => [...prev, created])}
@@ -795,11 +819,11 @@ export default function DepensesPage() {
                     <div className="flex gap-2">
                       <select
                         className={`flex-1 ${INPUT_NORMAL}`}
-                        value={form.famille}
-                        onChange={e => setForm(f => ({ ...f, famille: e.target.value }))}
+                        value={form.categorie}
+                        onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}
                       >
                         <option value="">— Aucune —</option>
-                        {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
                       </select>
                       <button type="button" onClick={() => navigate("/familles-depense", { state: { openForm: true } })}
                         title="Gérer les catégories"

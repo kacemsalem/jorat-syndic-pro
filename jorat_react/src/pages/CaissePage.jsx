@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import ChartCaisse from "../components/ChartCaisse";
 
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
@@ -52,6 +53,7 @@ export default function CaissePage() {
   const [filterType,  setFilterType]  = useState("");
   const [filterSens,  setFilterSens]  = useState("");
   const [openMenu,    setOpenMenu]    = useState(null);
+  const [showChart,   setShowChart]   = useState(false);
   const menuRef = useRef(null);
 
   const fetchAll = () => {
@@ -144,13 +146,25 @@ export default function CaissePage() {
               {isFiltered ? `${filtered.length} mouvement(s) filtrés` : `${mouvements.length} mouvement(s) au total`}
             </p>
           </div>
-          <button onClick={() => { setForm(EMPTY_FORM); setError(""); setShowForm(true); }}
-            className="w-10 h-10 bg-white/20 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition shadow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"
-              strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowChart(v => !v)}
+              title="Évolution de la caisse"
+              className={`w-10 h-10 border rounded-full flex items-center justify-center transition shadow ${
+                showChart ? "bg-white/90 border-white/90" : "bg-white/20 border-white/20 hover:bg-white/30"
+              }`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke={showChart ? "#2563EB" : "white"} strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </button>
+            <button onClick={() => { setForm(EMPTY_FORM); setError(""); setShowForm(true); }}
+              className="w-10 h-10 bg-white/20 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition shadow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Solde principal */}
@@ -219,6 +233,14 @@ export default function CaissePage() {
             </button>
           )}
         </div>
+
+        {/* Graphe évolution */}
+        {showChart && (
+          <div className="bg-white rounded-2xl shadow-sm p-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Évolution du solde</p>
+            <ChartCaisse mouvements={mouvements} />
+          </div>
+        )}
 
         {/* Liste des mouvements */}
         {loading ? (

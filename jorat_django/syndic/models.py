@@ -886,7 +886,7 @@ class FamilleDepense(TimeStampedModel):
 class ModeleDepense(TimeStampedModel):
     residence        = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="modeles_depense")
     nom              = models.CharField(max_length=200)
-    famille_depense  = models.ForeignKey("FamilleDepense", on_delete=models.PROTECT, related_name="modeles")
+    categorie        = models.ForeignKey("CategorieDepense", on_delete=models.PROTECT, null=True, blank=True, related_name="modeles_depense_cat")
     compte_comptable = models.ForeignKey("CompteComptable", on_delete=models.PROTECT, null=True, blank=True, related_name="modeles_depense")
     fournisseur      = models.ForeignKey("Fournisseur", on_delete=models.SET_NULL, null=True, blank=True, related_name="modeles_depense")
     actif            = models.BooleanField(default=True)
@@ -895,7 +895,7 @@ class ModeleDepense(TimeStampedModel):
         constraints = [
             models.UniqueConstraint(fields=["residence", "nom"], name="uniq_modele_depense_nom")
         ]
-        ordering = ["famille_depense__nom", "nom"]
+        ordering = ["categorie__nom", "nom"]
 
     def __str__(self):
         return self.nom
@@ -991,7 +991,7 @@ class Contrat(TimeStampedModel):
     actif            = models.BooleanField(default=True)
     notes            = models.TextField(blank=True)
     compte_comptable = models.ForeignKey("CompteComptable", on_delete=models.PROTECT, null=True, blank=True, related_name="contrats")
-    famille_depense  = models.ForeignKey("FamilleDepense",  on_delete=models.PROTECT, null=True, blank=True, related_name="contrats")
+    categorie        = models.ForeignKey("CategorieDepense", on_delete=models.PROTECT, null=True, blank=True, related_name="contrats_cat")
 
     class Meta:
         ordering = ["type_contrat", "libelle"]
@@ -1131,9 +1131,10 @@ class AssembleeGenerale(TimeStampedModel):
     ]
 
     STATUT_CHOICES = [
-        ("PLANIFIEE", "Planifiée"),
-        ("TENUE",     "Tenue"),
-        ("ANNULEE",   "Annulée"),
+        ("PLANIFIEE",      "Planifiée"),
+        ("TENUE",          "Tenue"),
+        ("ANNULEE",        "Annulée"),
+        ("PAS_DE_RETOUR",  "Pas de retour"),
     ]
 
     residence              = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="assemblees")

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import API, { fetchJson } from "../api";
+import ChartPaiements from "../components/ChartPaiements";
 
 // ── Constants ─────────────────────────────────────────────────
 const inputCls =
@@ -387,9 +388,16 @@ export default function PaiementPage() {
 
       {/* ── Step 1 : lot picker ─────────────────────────────── */}
       {!selectedLot ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Choisir un lot</h2>
-          <LotPicker lots={lots} groupes={groupes} onSelect={selectLot} />
+        <div className="space-y-4">
+          {/* Camembert état des paiements */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">État des paiements</p>
+            <ChartPaiements />
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Choisir un lot</h2>
+            <LotPicker lots={lots} groupes={groupes} onSelect={selectLot} />
+          </div>
         </div>
       ) : (
 

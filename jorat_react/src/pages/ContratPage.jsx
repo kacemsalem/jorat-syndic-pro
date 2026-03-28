@@ -45,7 +45,7 @@ const TYPE_ICONS = {
 const EMPTY = {
   reference_contrat: "", type_contrat: "", libelle: "", fournisseur: "", periodicite: "MENSUEL",
   montant: "", date_debut: "", date_fin: "", actif: true, notes: "",
-  compte_comptable: "", famille_depense: "",
+  compte_comptable: "", categorie: "",
 };
 
 const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400";
@@ -92,8 +92,8 @@ function SubFormFournisseur({ onBack, onCreated }) {
       <SubHeader onBack={onBack} label="Nouveau fournisseur"
         icon={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>} />
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
-        <input className={INPUT} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Nom du fournisseur…" />
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Raison sociale <span className="text-red-500">*</span></label>
+        <input className={INPUT} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Ex : SARL Atlas, Maroc Elect…" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -162,10 +162,10 @@ function SubFormFamille({ onBack, onCreated }) {
     if (!nom.trim()) { setError("Le nom est obligatoire."); return; }
     setSaving(true); setError("");
     try {
-      const res = await fetch("/api/familles-depense/", {
+      const res = await fetch("/api/categories-depense/", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ nom: nom.trim() }),
+        body: JSON.stringify({ nom: nom.trim(), famille: "DIVERS" }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
       onCreated(await res.json());
@@ -173,7 +173,7 @@ function SubFormFamille({ onBack, onCreated }) {
   };
   return (
     <div className="space-y-3">
-      <SubHeader onBack={onBack} label="Nouvelle famille de dépense"
+      <SubHeader onBack={onBack} label="Nouvelle catégorie"
         icon={<><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>} />
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
@@ -182,7 +182,7 @@ function SubFormFamille({ onBack, onCreated }) {
       {error && <p className="text-red-500 text-xs">{error}</p>}
       <button onClick={save} disabled={saving}
         className="w-full py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60 transition mt-1">
-        {saving ? "Création…" : "Créer la famille"}
+        {saving ? "Création…" : "Créer la catégorie"}
       </button>
     </div>
   );
@@ -193,7 +193,7 @@ export default function ContratPage() {
   const [contrats,    setContrats]    = useState([]);
   const [fournisseurs,setFournisseurs]= useState([]);
   const [comptes,     setComptes]     = useState([]);
-  const [familles,    setFamilles]    = useState([]);
+  const [categories,  setCategories]  = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [showForm,    setShowForm]    = useState(false);
   const [editItem,    setEditItem]    = useState(null);
@@ -214,7 +214,7 @@ export default function ContratPage() {
 
   const onFournisseurCreated = (c) => { setFournisseurs(p => [...p, c]); setForm(f => ({ ...f, fournisseur: String(c.id) })); setSubForm(null); };
   const onCompteCreated      = (c) => { setComptes(p => [...p, c]); setForm(f => ({ ...f, compte_comptable: String(c.id) })); setSubForm(null); };
-  const onFamilleCreated     = (c) => { setFamilles(p => [...p, c]); setForm(f => ({ ...f, famille_depense: String(c.id) })); setSubForm(null); };
+  const onCategorieCreated   = (c) => { setCategories(p => [...p, c]); setForm(f => ({ ...f, categorie: String(c.id) })); setSubForm(null); };
 
   const load = () => {
     setLoading(true);
@@ -222,12 +222,12 @@ export default function ContratPage() {
       fetch("/api/contrats/",                        { credentials: "include" }).then(r => r.json()),
       fetch("/api/fournisseurs/?actif=true",          { credentials: "include" }).then(r => r.json()),
       fetch("/api/comptes-comptables/?actif=true",    { credentials: "include" }).then(r => r.json()),
-      fetch("/api/familles-depense/",                { credentials: "include" }).then(r => r.json()),
-    ]).then(([c, f, cpt, fam]) => {
+      fetch("/api/categories-depense/?actif=true",   { credentials: "include" }).then(r => r.json()),
+    ]).then(([c, f, cpt, cat]) => {
       setContrats(Array.isArray(c) ? c : (c.results ?? []));
       setFournisseurs(Array.isArray(f) ? f : (f.results ?? []));
       setComptes(Array.isArray(cpt) ? cpt : (cpt.results ?? []));
-      setFamilles(Array.isArray(fam) ? fam : (fam.results ?? []));
+      setCategories(Array.isArray(cat) ? cat : (cat.results ?? []));
     }).catch(() => {}).finally(() => setLoading(false));
   };
 
@@ -247,7 +247,7 @@ export default function ContratPage() {
       actif:            c.actif,
       notes:            c.notes || "",
       compte_comptable: String(c.compte_comptable || ""),
-      famille_depense:  String(c.famille_depense  || ""),
+      categorie:        String(c.categorie        || ""),
     });
     setEditItem(c); setError(""); setShowForm(true);
   };
@@ -270,7 +270,7 @@ export default function ContratPage() {
       actif:            form.actif,
       notes:            form.notes,
       compte_comptable: form.compte_comptable || null,
-      famille_depense:  form.famille_depense  || null,
+      categorie:        form.categorie        || null,
     };
     const url    = editItem ? `/api/contrats/${editItem.id}/` : "/api/contrats/";
     const method = editItem ? "PATCH" : "POST";
@@ -391,7 +391,7 @@ export default function ContratPage() {
           <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-5">
             {subForm === "fournisseur" && <SubFormFournisseur onBack={() => setSubForm(null)} onCreated={onFournisseurCreated} />}
             {subForm === "compte"      && <SubFormCompte      onBack={() => setSubForm(null)} onCreated={onCompteCreated} />}
-            {subForm === "famille"     && <SubFormFamille     onBack={() => setSubForm(null)} onCreated={onFamilleCreated} />}
+            {subForm === "famille"     && <SubFormFamille     onBack={() => setSubForm(null)} onCreated={onCategorieCreated} />}
             {!subForm && (<>
             <h2 className="text-sm font-bold text-slate-700 mb-4">{editItem ? "Modifier le contrat" : "Nouveau contrat"}</h2>
             <div className="space-y-3">
@@ -481,11 +481,11 @@ export default function ContratPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Famille dépense</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Catégorie</label>
                   <div className="flex gap-1.5">
-                    <select className={`flex-1 ${INPUT}`} value={form.famille_depense} onChange={e => setForm(f => ({ ...f, famille_depense: e.target.value }))}>
+                    <select className={`flex-1 ${INPUT}`} value={form.categorie} onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}>
                       <option value="">— Aucune —</option>
-                      {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
                     </select>
                     <button type="button" onClick={() => setSubForm("famille")}
                       className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-teal-50 hover:text-teal-600 text-sm font-bold transition">

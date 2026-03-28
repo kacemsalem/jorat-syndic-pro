@@ -59,8 +59,6 @@ export default function AnalysePage() {
 
         <Section title="Suivi & Rapports">
           <div className="grid grid-cols-4 gap-2">
-            <NavCard onClick={() => navigate("/synthese")} label="Synthèse"
-              icon={<><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></>} />
             <NavCard onClick={() => navigate("/situation-paiements")} label="Timeline"
               icon={<><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/></>} />
             <NavCard onClick={() => navigate("/etat-mensuel")} label="Mensuel"
@@ -72,14 +70,12 @@ export default function AnalysePage() {
 
         <Section title="Graphes">
           <div className="grid grid-cols-4 gap-2">
-            <NavCard disabled label="Dépenses"
-              icon={<><path d="M12 5v14M19 12l-7 7-7-7"/></>} />
-            <NavCard disabled label="Paiements"
-              icon={<><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></>} />
-            <NavCard disabled label="Caisse"
-              icon={<><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M7 15h.01M12 15h.01"/></>} />
-            <NavCard disabled label="Lots"
-              icon={<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></>} />
+            <NavCard onClick={() => navigate("/graphe-depenses")} label="Dépenses"
+              icon={<><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>} />
+            <NavCard onClick={() => navigate("/graphe-paiements")} label="Paiements"
+              icon={<><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h20"/></>} />
+            <NavCard onClick={() => navigate("/graphe-caisse")} label="Caisse"
+              icon={<><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></>} />
           </div>
         </Section>
 
