@@ -50,6 +50,125 @@ const EMPTY = {
 
 const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400";
 
+// ── Sub-forms (création rapide) ──────────────────────────────────────────────
+function SubFormFournisseur({ onBack, onCreated }) {
+  const [form, setForm] = useState({ nom: "", telephone: "", email: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const save = async () => {
+    if (!form.nom.trim()) { setError("Le nom est obligatoire."); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await fetch("/api/fournisseurs/", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ nom: form.nom.trim(), telephone: form.telephone, email: form.email, actif: true }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
+      onCreated(await res.json());
+    } catch { setError("Erreur réseau."); } finally { setSaving(false); }
+  };
+  return (
+    <div className="space-y-4">
+      <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">← Retour au contrat</button>
+      <h3 className="text-base font-bold text-slate-800">Nouveau fournisseur</h3>
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
+        <input className={INPUT} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Nom du fournisseur…" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Téléphone</label>
+          <input className={INPUT} value={form.telephone} onChange={e => setForm(f => ({ ...f, telephone: e.target.value }))} placeholder="0600…" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Email</label>
+          <input className={INPUT} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="…@…" />
+        </div>
+      </div>
+      {error && <p className="text-red-500 text-xs">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
+        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60">{saving ? "…" : "Créer"}</button>
+      </div>
+    </div>
+  );
+}
+
+function SubFormCompte({ onBack, onCreated }) {
+  const [form, setForm] = useState({ code: "", libelle: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const save = async () => {
+    if (!form.code.trim() || !form.libelle.trim()) { setError("Code et libellé sont obligatoires."); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await fetch("/api/comptes-comptables/", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ code: form.code.trim(), libelle: form.libelle.trim(), actif: true }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
+      onCreated(await res.json());
+    } catch { setError("Erreur réseau."); } finally { setSaving(false); }
+  };
+  return (
+    <div className="space-y-4">
+      <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">← Retour au contrat</button>
+      <h3 className="text-base font-bold text-slate-800">Nouveau compte comptable</h3>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Code <span className="text-red-500">*</span></label>
+          <input className={INPUT} value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="Ex : 6140" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Libellé <span className="text-red-500">*</span></label>
+          <input className={INPUT} value={form.libelle} onChange={e => setForm(f => ({ ...f, libelle: e.target.value }))} placeholder="Ex : Entretien…" />
+        </div>
+      </div>
+      {error && <p className="text-red-500 text-xs">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
+        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60">{saving ? "…" : "Créer"}</button>
+      </div>
+    </div>
+  );
+}
+
+function SubFormFamille({ onBack, onCreated }) {
+  const [nom, setNom] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const save = async () => {
+    if (!nom.trim()) { setError("Le nom est obligatoire."); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await fetch("/api/familles-depense/", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ nom: nom.trim() }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
+      onCreated(await res.json());
+    } catch { setError("Erreur réseau."); } finally { setSaving(false); }
+  };
+  return (
+    <div className="space-y-4">
+      <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">← Retour au contrat</button>
+      <h3 className="text-base font-bold text-slate-800">Nouvelle famille de dépense</h3>
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
+        <input className={INPUT} value={nom} onChange={e => setNom(e.target.value)} placeholder="Ex : Entretien, Charges communes…" />
+      </div>
+      {error && <p className="text-red-500 text-xs">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
+        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60">{saving ? "…" : "Créer"}</button>
+      </div>
+    </div>
+  );
+}
+
 export default function ContratPage() {
   const navigate = useNavigate();
   const [contrats,    setContrats]    = useState([]);
@@ -66,10 +185,17 @@ export default function ContratPage() {
   const [filterActif, setFilterActif] = useState("true");
 
   // Génération de dépense
-  const [genModal,    setGenModal]    = useState(null); // contrat obj
+  const [genModal,    setGenModal]    = useState(null);
   const [genForm,     setGenForm]     = useState({ date_depense: "", mois: "", facture_reference: "", montant: "" });
   const [genSaving,   setGenSaving]   = useState(false);
   const [genMsg,      setGenMsg]      = useState("");
+
+  // Sous-formulaire de création rapide
+  const [subForm,    setSubForm]    = useState(null); // "fournisseur"|"famille"|"compte"
+
+  const onFournisseurCreated = (c) => { setFournisseurs(p => [...p, c]); setForm(f => ({ ...f, fournisseur: String(c.id) })); setSubForm(null); };
+  const onCompteCreated      = (c) => { setComptes(p => [...p, c]); setForm(f => ({ ...f, compte_comptable: String(c.id) })); setSubForm(null); };
+  const onFamilleCreated     = (c) => { setFamilles(p => [...p, c]); setForm(f => ({ ...f, famille_depense: String(c.id) })); setSubForm(null); };
 
   const load = () => {
     setLoading(true);
@@ -96,7 +222,7 @@ export default function ContratPage() {
       libelle:          c.libelle,
       fournisseur:      String(c.fournisseur || ""),
       periodicite:      c.periodicite,
-      montant:          String(c.montant),
+      montant:          c.montant != null ? String(c.montant) : "",
       date_debut:       c.date_debut,
       date_fin:         c.date_fin || "",
       actif:            c.actif,
@@ -106,12 +232,11 @@ export default function ContratPage() {
     });
     setEditItem(c); setError(""); setShowForm(true);
   };
-  const closeForm = () => { setShowForm(false); setEditItem(null); };
+  const closeForm = () => { setShowForm(false); setEditItem(null); setSubForm(null); };
 
   const handleSave = async () => {
     if (!form.type_contrat) { setError("Le type est obligatoire."); return; }
     if (!form.libelle.trim()) { setError("Le libellé est obligatoire."); return; }
-    if (!form.montant || parseFloat(form.montant) <= 0) { setError("Le montant doit être supérieur à 0."); return; }
     if (!form.date_debut) { setError("La date de début est obligatoire."); return; }
     setSaving(true); setError("");
     const payload = {
@@ -120,7 +245,7 @@ export default function ContratPage() {
       libelle:          form.libelle.trim(),
       fournisseur:      form.fournisseur      || null,
       periodicite:      form.periodicite,
-      montant:          form.montant,
+      montant:          form.montant          || null,
       date_debut:       form.date_debut,
       date_fin:         form.date_fin         || null,
       actif:            form.actif,
@@ -200,6 +325,10 @@ export default function ContratPage() {
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
       {/* Header */}
       <div className="bg-gradient-to-br from-teal-600 to-teal-700 px-4 pt-5 pb-14">
+        <button onClick={() => navigate("/depenses")}
+          className="flex items-center gap-1 text-white/70 text-[10px] font-semibold mb-3 hover:text-white transition">
+          ← Retour Dépenses
+        </button>
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Contrats récurrents</p>
@@ -241,6 +370,10 @@ export default function ContratPage() {
         {/* Form */}
         {showForm && (
           <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-5">
+            {subForm === "fournisseur" && <SubFormFournisseur onBack={() => setSubForm(null)} onCreated={onFournisseurCreated} />}
+            {subForm === "compte"      && <SubFormCompte      onBack={() => setSubForm(null)} onCreated={onCompteCreated} />}
+            {subForm === "famille"     && <SubFormFamille     onBack={() => setSubForm(null)} onCreated={onFamilleCreated} />}
+            {!subForm && (<>
             <h2 className="text-sm font-bold text-slate-700 mb-4">{editItem ? "Modifier le contrat" : "Nouveau contrat"}</h2>
             <div className="space-y-3">
 
@@ -270,10 +403,16 @@ export default function ContratPage() {
               {/* Fournisseur */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Fournisseur</label>
-                <select className={INPUT} value={form.fournisseur} onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}>
-                  <option value="">— Aucun —</option>
-                  {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
-                </select>
+                <div className="flex gap-2">
+                  <select className={`flex-1 ${INPUT}`} value={form.fournisseur} onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}>
+                    <option value="">— Aucun —</option>
+                    {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
+                  </select>
+                  <button type="button" onClick={() => setSubForm("fournisseur")}
+                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-teal-50 hover:text-teal-600 text-sm font-bold transition">
+                    +
+                  </button>
+                </div>
               </div>
 
               {/* Périodicité + Montant */}
@@ -285,7 +424,7 @@ export default function ContratPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Montant (MAD) *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Montant indicatif (MAD)</label>
                   <input type="number" step="0.01" min="0" className={INPUT} placeholder="0.00"
                     value={form.montant} onChange={e => setForm(f => ({ ...f, montant: e.target.value }))} />
                 </div>
@@ -309,19 +448,31 @@ export default function ContratPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Compte comptable</label>
-                  <select className={INPUT} value={form.compte_comptable} onChange={e => setForm(f => ({ ...f, compte_comptable: e.target.value }))}>
-                    <option value="">— Aucun —</option>
-                    {comptes.filter(c => c.code !== "000").map(c => (
-                      <option key={c.id} value={c.id}>{c.code} — {c.libelle}</option>
-                    ))}
-                  </select>
+                  <div className="flex gap-1.5">
+                    <select className={`flex-1 ${INPUT}`} value={form.compte_comptable} onChange={e => setForm(f => ({ ...f, compte_comptable: e.target.value }))}>
+                      <option value="">— Aucun —</option>
+                      {comptes.filter(c => c.code !== "000").map(c => (
+                        <option key={c.id} value={c.id}>{c.code} — {c.libelle}</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => setSubForm("compte")}
+                      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-teal-50 hover:text-teal-600 text-sm font-bold transition">
+                      +
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Famille dépense</label>
-                  <select className={INPUT} value={form.famille_depense} onChange={e => setForm(f => ({ ...f, famille_depense: e.target.value }))}>
-                    <option value="">— Aucune —</option>
-                    {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                  </select>
+                  <div className="flex gap-1.5">
+                    <select className={`flex-1 ${INPUT}`} value={form.famille_depense} onChange={e => setForm(f => ({ ...f, famille_depense: e.target.value }))}>
+                      <option value="">— Aucune —</option>
+                      {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                    </select>
+                    <button type="button" onClick={() => setSubForm("famille")}
+                      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-teal-50 hover:text-teal-600 text-sm font-bold transition">
+                      +
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -350,6 +501,7 @@ export default function ContratPage() {
                 {saving ? "…" : "Enregistrer"}
               </button>
             </div>
+            </>)}
           </div>
         )}
 
@@ -389,7 +541,7 @@ export default function ContratPage() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-base font-bold text-slate-800 font-mono">{fmt(c.montant)}</p>
+                        <p className="text-base font-bold text-slate-800 font-mono">{c.montant != null ? fmt(c.montant) : "—"}</p>
                         <p className="text-[10px] text-slate-400">MAD / {c.periodicite_label?.split(" ")[0].toLowerCase()}</p>
                       </div>
                     </div>

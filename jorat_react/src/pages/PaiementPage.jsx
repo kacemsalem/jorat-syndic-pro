@@ -479,21 +479,13 @@ export default function PaiementPage() {
                   </Field>
                 </div>
 
-                {/* Période comptable — select compact */}
+                {/* Période comptable */}
                 <Field label="Période comptable">
-                  <div className="grid grid-cols-6 gap-1">
-                    {MOIS_OPTIONS.map(m => (
-                      <button key={m.value} type="button"
-                        onClick={() => setForm(f => ({ ...f, mois: f.mois === m.value ? "" : m.value }))}
-                        className={`py-1 rounded-lg text-[10px] font-semibold border transition ${
-                          form.mois === m.value
-                            ? "bg-indigo-600 text-white border-indigo-600"
-                            : "bg-white text-slate-500 border-slate-200 hover:border-indigo-300"
-                        }`}>
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
+                  <select className={`${inputCls} py-1.5`} value={form.mois}
+                    onChange={e => setForm(f => ({ ...f, mois: e.target.value }))}>
+                    <option value="">— Aucune —</option>
+                    {MOIS_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
                 </Field>
 
                 <button

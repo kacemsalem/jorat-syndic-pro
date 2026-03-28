@@ -985,7 +985,7 @@ class Contrat(TimeStampedModel):
     libelle          = models.CharField(max_length=255, help_text="Description du contrat")
     fournisseur      = models.ForeignKey("Fournisseur",      on_delete=models.PROTECT,  null=True, blank=True, related_name="contrats")
     periodicite      = models.CharField(max_length=20,  choices=PERIODICITE_CHOICES, default="MENSUEL")
-    montant          = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
+    montant          = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     date_debut       = models.DateField()
     date_fin         = models.DateField(null=True, blank=True)
     actif            = models.BooleanField(default=True)

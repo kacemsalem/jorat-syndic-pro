@@ -10,6 +10,8 @@ const IC = {
 };
 
 /* ── 4 sections fixes ───────────────────────────────────── */
+const IC_ANALYSE = <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>;
+
 const SECTIONS = [
   {
     label: "Gestion",
@@ -19,31 +21,30 @@ const SECTIONS = [
       "/caisse", "/paiements", "/depenses", "/recettes",
       "/residences", "/kanban", "/appels-charge", "/groupes",
       "/personnes", "/lots", "/fiche-lot", "/details-appel",
-      "/synthese", "/situation-paiements", "/etat-mensuel",
-      "/rapport-financier", "/rapports",
+      "/contrats", "/modeles-depense",
     ].some(r => p === r || p.startsWith(r + "/")),
   },
+  {
+    label: "Analyse",
+    icon:  IC_ANALYSE,
+    path:  "/analyse",
+    test:  p => p === "/analyse" || [
+      "/synthese", "/situation-paiements", "/etat-mensuel",
+      "/rapport-financier", "/rapports", "/graphes",
+    ].some(r => p === r || p.startsWith(r + "/")),
+  },
+  // null = bouton Home central
   {
     label: "Gouvernance",
     icon:  IC.users,
     path:  "/gouvernance",
     test:  p => p === "/gouvernance" || p.startsWith("/gouvernance/") || p.startsWith("/passation") || p.startsWith("/espace-resident"),
   },
-  // null = bouton Home central
   {
     label: "Comptabilité",
     icon:  IC.balance,
     path:  "/comptabilite",
     test:  p => p === "/comptabilite" || p.startsWith("/comptabilite/"),
-  },
-  {
-    label: "Outils",
-    icon:  IC.wrench,
-    path:  "/outils",
-    test:  p => p === "/outils" || [
-      "/import", "/export", "/archivage", "/parametrage",
-      "/gestion-utilisateurs", "/initialisation", "/ia/", "/aide",
-    ].some(r => p === r || p.startsWith(r + "/") || p.startsWith(r)),
   },
 ];
 

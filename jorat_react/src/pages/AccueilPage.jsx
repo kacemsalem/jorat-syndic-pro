@@ -99,8 +99,10 @@ export default function AccueilPage() {
         </div>
       </div>
 
-      {/* ── 4 cartes centrées verticalement ─────────────────── */}
-      <div className="flex-1 flex items-center px-4 pb-20 -mt-6">
+      {/* ── Cartes + boutons secondaires ─────────────────────── */}
+      <div className="flex-1 flex flex-col justify-center px-4 -mt-6 pb-24">
+
+        {/* 4 cartes principales */}
         <div className="grid grid-cols-2 gap-3 w-full">
           <SectionCard
             onClick={() => navigate("/gestion")}
@@ -124,13 +126,41 @@ export default function AccueilPage() {
             icon={<><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>}
           />
           <SectionCard
-            onClick={() => navigate("/outils")}
-            label="Outils"
-            description="Import, export, archivage, IA"
-            color="bg-slate-600"
-            icon={<><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></>}
+            onClick={() => navigate("/analyse")}
+            label="Analyse"
+            description="Suivi, rapports, graphes"
+            color="bg-sky-600"
+            icon={<><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>}
           />
         </div>
+
+        {/* Outils + Aide — boutons ronds */}
+        <div className="flex justify-center gap-10 mt-6">
+          <button onClick={() => navigate("/outils")}
+            className="flex flex-col items-center gap-1.5 group">
+            <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:shadow-md group-active:scale-95 transition-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="1.8"
+                strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+            </div>
+            <span className="text-[10px] font-semibold text-slate-500">Outils</span>
+          </button>
+
+          <button onClick={() => navigate("/aide")}
+            className="flex flex-col items-center gap-1.5 group">
+            <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:shadow-md group-active:scale-95 transition-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="1.8"
+                strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <span className="text-[10px] font-semibold text-slate-500">Aide</span>
+          </button>
+        </div>
+
       </div>
 
     </div>

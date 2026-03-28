@@ -138,7 +138,8 @@ export default function CaissePage() {
         {/* Titre + bouton + */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Caisse</p>
+            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Finances</p>
+            <h1 className="text-white font-bold text-xl leading-tight">Caisse</h1>
             <p className="text-white/50 text-[10px] mt-0.5">
               {isFiltered ? `${filtered.length} mouvement(s) filtrés` : `${mouvements.length} mouvement(s) au total`}
             </p>

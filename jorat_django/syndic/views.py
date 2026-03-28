@@ -691,6 +691,39 @@ class ModeleDepenseViewSet(ModelViewSet):
             raise PermissionDenied("Aucune résidence associée.")
         serializer.save(residence=residence)
 
+    @action(detail=True, methods=["post"], url_path="generer-depense")
+    def generer_depense(self, request, pk=None):
+        """Génère une dépense à partir d'un modèle de dépense."""
+        modele    = self.get_object()
+        residence = get_user_residence(request)
+
+        date_str  = request.data.get("date_depense") or str(timezone.now().date())
+        mois_val  = request.data.get("mois") or None
+        ref       = request.data.get("facture_reference") or ""
+        montant   = request.data.get("montant")
+        if not montant:
+            return Response({"detail": "Montant obligatoire."}, status=400)
+
+        compte = modele.compte_comptable or _get_or_create_attente_compte(residence)
+
+        depense = Depense.objects.create(
+            residence         = residence,
+            compte            = compte,
+            fournisseur       = modele.fournisseur,
+            modele_depense    = modele,
+            date_depense      = date_str,
+            montant           = montant,
+            libelle           = modele.nom,
+            mois              = mois_val,
+            facture_reference = ref,
+        )
+        return Response({
+            "depense_id": depense.id,
+            "libelle":    depense.libelle,
+            "montant":    str(depense.montant),
+            "date":       str(depense.date_depense),
+        })
+
 
 # ============================================================
 # Contrat

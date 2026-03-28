@@ -65,26 +65,28 @@ const BASE_NAV_GROUPS = [
           { label: "Dépenses",    path: "/depenses",  icon: "depenses"  },
           { label: "Cotisations", path: "/paiements", icon: "paiements" },
           { label: "Recettes",    path: "/recettes",  icon: "recettes"  },
+          { label: "Contrats",    path: "/contrats",  icon: "rapport"   },
         ],
       },
       {
         label: "Configuration",
         items: [
-          { label: "Résidence",       path: "/residences",                icon: "residence"    },
-          { label: "Lots",            path: "/kanban",                    icon: "lots"         },
+          { label: "Résidence",       path: "/residences",                  icon: "residence"    },
+          { label: "Lots",            path: "/kanban",                      icon: "lots"         },
           { label: "Appel de charge", path: "/appels-charge?filtre=CHARGE", icon: "appel_charge" },
           { label: "Appel de fond",   path: "/appels-charge?filtre=FOND",   icon: "appel_fond"   },
         ],
       },
-      {
-        label: "Suivi",
-        items: [
-          { label: "Suivi par lot",  path: "/synthese",             icon: "situation" },
-          { label: "Timeline",       path: "/situation-paiements",  icon: "timeline"  },
-          { label: "État mensuel",   path: "/etat-mensuel",         icon: "ag"        },
-          { label: "Rapport global", path: "/rapport-financier",    icon: "rapport"   },
-        ],
-      },
+    ],
+  },
+  {
+    label: "Analyse",
+    collapsible: true,
+    items: [
+      { label: "Synthèse lots", path: "/synthese",            icon: "situation" },
+      { label: "Timeline",      path: "/situation-paiements", icon: "timeline"  },
+      { label: "État mensuel",  path: "/etat-mensuel",        icon: "ag"        },
+      { label: "Rapport",       path: "/rapport-financier",   icon: "rapport"   },
     ],
   },
   {

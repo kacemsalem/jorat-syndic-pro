@@ -575,7 +575,8 @@ export default function DepensesPage() {
       <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-4 pb-14">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Dépenses</p>
+            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Finances</p>
+            <h1 className="text-white font-bold text-xl leading-tight">Dépenses</h1>
             <p className="text-white/50 text-[10px]">
               {filtered.length} dépense{filtered.length !== 1 ? "s" : ""} {isFiltered ? "filtrées" : "au total"}
             </p>
@@ -584,6 +585,10 @@ export default function DepensesPage() {
             <button onClick={() => navigate("/contrats")}
               className="px-2.5 py-1.5 bg-white/15 border border-white/20 rounded-xl text-[10px] font-bold text-white/80 hover:bg-white/25 transition">
               Contrats
+            </button>
+            <button onClick={() => navigate("/modeles-depense")}
+              className="px-2.5 py-1.5 bg-white/15 border border-white/20 rounded-xl text-[10px] font-bold text-white/80 hover:bg-white/25 transition">
+              Modèles
             </button>
             <button onClick={openCreate}
               className="w-10 h-10 bg-white/20 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition shadow">
@@ -754,49 +759,30 @@ export default function DepensesPage() {
                   {editItem ? "Modifier la dépense" : "Nouvelle dépense"}
                 </h2>
 
-                {Object.values(autoFilled).some(Boolean) && (
-                  <p className="text-[11px] text-blue-500 mb-3 flex items-center gap-1.5">
-                    <span className="inline-block w-3 h-3 rounded border border-blue-300 bg-blue-50" />
-                    Champ pré-rempli par le modèle — modifiable librement
-                  </p>
+                {!editItem && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
+                    <p className="text-xs font-bold text-blue-800 mb-1">Dépense récurrente ou sous contrat ?</p>
+                    <p className="text-[11px] text-blue-700 leading-relaxed">
+                      Utilisez les boutons <strong>Contrats</strong> ou <strong>Modèles</strong> en haut de page
+                      pour générer automatiquement la dépense avec les champs pré-remplis.
+                    </p>
+                    <p className="text-[11px] text-blue-500 mt-1.5">
+                      Pour une dépense ponctuelle, renseignez simplement les champs ci-dessous. ↓
+                    </p>
+                  </div>
                 )}
 
                 <div className="space-y-3">
-
-                  {/* Modèle */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Modèle de dépense <span className="font-normal text-slate-400">(optionnel)</span>
-                    </label>
-                    <div className="flex gap-2">
-                      <select
-                        className="flex-1 border border-blue-200 bg-blue-50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
-                        value={form.modele_depense}
-                        onChange={e => handleModeleChange(e.target.value)}
-                      >
-                        <option value="">— Choisir un modèle —</option>
-                        {[...modeles].sort((a, b) => a.nom.localeCompare(b.nom)).map(m => (
-                          <option key={m.id} value={m.id}>{m.nom}</option>
-                        ))}
-                      </select>
-                      <button type="button" onClick={() => navigate("/modeles-depense", { state: { openForm: true } })}
-                        title="Gérer les modèles de dépense"
-                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">
-                        ↗
-                      </button>
-                    </div>
-                  </div>
 
                   {/* Libellé */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">
                       Libellé <span className="text-red-500">*</span>
-                      {autoFilled.libelle && <span className="ml-1.5 text-[10px] font-normal text-blue-400">pré-rempli</span>}
                     </label>
                     <input
-                      className={autoFilled.libelle ? INPUT_AUTO : INPUT_NORMAL}
+                      className={INPUT_NORMAL}
                       value={form.libelle}
-                      onChange={e => { clearAuto("libelle"); setForm(f => ({ ...f, libelle: e.target.value })); }}
+                      onChange={e => setForm(f => ({ ...f, libelle: e.target.value }))}
                       placeholder="Description courte de la dépense"
                     />
                   </div>
@@ -805,13 +791,12 @@ export default function DepensesPage() {
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">
                       Catégorie <span className="text-red-500">*</span>
-                      {autoFilled.famille && <span className="ml-1.5 text-[10px] font-normal text-blue-400">pré-rempli</span>}
                     </label>
                     <div className="flex gap-2">
                       <select
-                        className={`flex-1 ${autoFilled.famille ? INPUT_AUTO : INPUT_NORMAL}`}
+                        className={`flex-1 ${INPUT_NORMAL}`}
                         value={form.famille}
-                        onChange={e => { clearAuto("famille"); setForm(f => ({ ...f, famille: e.target.value })); }}
+                        onChange={e => setForm(f => ({ ...f, famille: e.target.value }))}
                       >
                         <option value="">— Aucune —</option>
                         {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
@@ -868,15 +853,12 @@ export default function DepensesPage() {
 
                   {/* Compte comptable — ligne complète */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Compte comptable
-                      {autoFilled.compte && <span className="ml-1.5 text-[10px] font-normal text-blue-400">pré-rempli</span>}
-                    </label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Compte comptable</label>
                     <div className="flex gap-2">
                       <select
-                        className={`flex-1 ${autoFilled.compte ? INPUT_AUTO : INPUT_NORMAL}`}
+                        className={`flex-1 ${INPUT_NORMAL}`}
                         value={form.compte}
-                        onChange={e => { clearAuto("compte"); setForm(f => ({ ...f, compte: e.target.value })); }}
+                        onChange={e => setForm(f => ({ ...f, compte: e.target.value }))}
                       >
                         <option value="">— Attente (000) —</option>
                         {comptes.filter(c => c.code !== "000").map(c => (
@@ -893,15 +875,12 @@ export default function DepensesPage() {
 
                   {/* Fournisseur — ligne complète */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Fournisseur
-                      {autoFilled.fournisseur && <span className="ml-1.5 text-[10px] font-normal text-blue-400">pré-rempli</span>}
-                    </label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Fournisseur</label>
                     <div className="flex gap-2">
                       <select
-                        className={`flex-1 ${autoFilled.fournisseur ? INPUT_AUTO : INPUT_NORMAL}`}
+                        className={`flex-1 ${INPUT_NORMAL}`}
                         value={form.fournisseur}
-                        onChange={e => { clearAuto("fournisseur"); setForm(f => ({ ...f, fournisseur: e.target.value })); }}
+                        onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}
                       >
                         <option value="">— Aucun —</option>
                         {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
