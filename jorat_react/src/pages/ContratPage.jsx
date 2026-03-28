@@ -51,6 +51,25 @@ const EMPTY = {
 const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400";
 
 // ── Sub-forms (création rapide) ──────────────────────────────────────────────
+function SubHeader({ icon, label, onBack }) {
+  return (
+    <div className="flex items-center gap-3 pb-3 mb-1 border-b border-slate-100">
+      <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" style={{width:18,height:18}}>{icon}</svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[9px] font-bold text-teal-600 uppercase tracking-widest">Création rapide</p>
+        <p className="text-sm font-bold text-slate-800 leading-tight">{label}</p>
+      </div>
+      <button onClick={onBack}
+        className="shrink-0 text-[11px] font-semibold text-slate-400 hover:text-teal-600 transition flex items-center gap-1">
+        ← Retour
+      </button>
+    </div>
+  );
+}
+
 function SubFormFournisseur({ onBack, onCreated }) {
   const [form, setForm] = useState({ nom: "", telephone: "", email: "" });
   const [saving, setSaving] = useState(false);
@@ -69,9 +88,9 @@ function SubFormFournisseur({ onBack, onCreated }) {
     } catch { setError("Erreur réseau."); } finally { setSaving(false); }
   };
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">← Retour au contrat</button>
-      <h3 className="text-base font-bold text-slate-800">Nouveau fournisseur</h3>
+    <div className="space-y-3">
+      <SubHeader onBack={onBack} label="Nouveau fournisseur"
+        icon={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>} />
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
         <input className={INPUT} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Nom du fournisseur…" />
@@ -87,10 +106,10 @@ function SubFormFournisseur({ onBack, onCreated }) {
         </div>
       </div>
       {error && <p className="text-red-500 text-xs">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60">{saving ? "…" : "Créer"}</button>
-      </div>
+      <button onClick={save} disabled={saving}
+        className="w-full py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60 transition mt-1">
+        {saving ? "Création…" : "Créer le fournisseur"}
+      </button>
     </div>
   );
 }
@@ -113,9 +132,9 @@ function SubFormCompte({ onBack, onCreated }) {
     } catch { setError("Erreur réseau."); } finally { setSaving(false); }
   };
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">← Retour au contrat</button>
-      <h3 className="text-base font-bold text-slate-800">Nouveau compte comptable</h3>
+    <div className="space-y-3">
+      <SubHeader onBack={onBack} label="Nouveau compte comptable"
+        icon={<><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>} />
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Code <span className="text-red-500">*</span></label>
@@ -127,10 +146,10 @@ function SubFormCompte({ onBack, onCreated }) {
         </div>
       </div>
       {error && <p className="text-red-500 text-xs">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60">{saving ? "…" : "Créer"}</button>
-      </div>
+      <button onClick={save} disabled={saving}
+        className="w-full py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60 transition mt-1">
+        {saving ? "Création…" : "Créer le compte"}
+      </button>
     </div>
   );
 }
@@ -153,18 +172,18 @@ function SubFormFamille({ onBack, onCreated }) {
     } catch { setError("Erreur réseau."); } finally { setSaving(false); }
   };
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">← Retour au contrat</button>
-      <h3 className="text-base font-bold text-slate-800">Nouvelle famille de dépense</h3>
+    <div className="space-y-3">
+      <SubHeader onBack={onBack} label="Nouvelle famille de dépense"
+        icon={<><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>} />
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
         <input className={INPUT} value={nom} onChange={e => setNom(e.target.value)} placeholder="Ex : Entretien, Charges communes…" />
       </div>
       {error && <p className="text-red-500 text-xs">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60">{saving ? "…" : "Créer"}</button>
-      </div>
+      <button onClick={save} disabled={saving}
+        className="w-full py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60 transition mt-1">
+        {saving ? "Création…" : "Créer la famille"}
+      </button>
     </div>
   );
 }

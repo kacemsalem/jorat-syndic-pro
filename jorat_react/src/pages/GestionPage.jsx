@@ -84,30 +84,6 @@ export default function GestionPage() {
           </div>
         </Section>
 
-        <Section title="Analyse">
-          <button onClick={() => navigate("/analyse")}
-            className="w-full flex items-center justify-between px-2 py-3 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="1.8"
-                  strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                  <line x1="18" y1="20" x2="18" y2="10"/>
-                  <line x1="12" y1="20" x2="12" y2="4"/>
-                  <line x1="6" y1="20" x2="6" y2="14"/>
-                </svg>
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-slate-700">Tableau d'analyse</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Synthèse · Timeline · Rapport · Graphes</p>
-              </div>
-            </div>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="2.5"
-              strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
-        </Section>
-
       </div>
     </div>
   );

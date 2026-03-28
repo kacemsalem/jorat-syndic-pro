@@ -733,8 +733,8 @@ export default function DepensesPage() {
 
       {/* ── Modal formulaire ──────────────────────────────────── */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[96vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto p-4 pb-20">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-auto p-6 my-4">
             {subForm === "famille" && (
               <SubFormFamille onBack={() => setSubForm(null)} onCreated={onFamilleCreated} />
             )}

@@ -16,9 +16,28 @@ const MOIS_OPTS = [
 ];
 
 const EMPTY = { nom: "", famille_depense: "", compte_comptable: "", fournisseur: "", actif: true };
-const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400";
+const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400";
 
 // ── Sub-forms (création rapide) ──────────────────────────────────────────────
+function SubHeader({ icon, label, onBack }) {
+  return (
+    <div className="flex items-center gap-3 pb-3 mb-1 border-b border-slate-100">
+      <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center shrink-0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" style={{width:18,height:18}}>{icon}</svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[9px] font-bold text-yellow-700 uppercase tracking-widest">Création rapide</p>
+        <p className="text-sm font-bold text-slate-800 leading-tight">{label}</p>
+      </div>
+      <button onClick={onBack}
+        className="shrink-0 text-[11px] font-semibold text-slate-400 hover:text-yellow-700 transition flex items-center gap-1">
+        ← Retour
+      </button>
+    </div>
+  );
+}
+
 function SubFormFournisseur({ onBack, onCreated }) {
   const [form, setForm] = useState({ nom: "", telephone: "", email: "" });
   const [saving, setSaving] = useState(false);
@@ -37,9 +56,9 @@ function SubFormFournisseur({ onBack, onCreated }) {
     } catch { setError("Erreur réseau."); } finally { setSaving(false); }
   };
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">← Retour au modèle</button>
-      <h3 className="text-base font-bold text-slate-800">Nouveau fournisseur</h3>
+    <div className="space-y-3">
+      <SubHeader onBack={onBack} label="Nouveau fournisseur"
+        icon={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>} />
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
         <input className={INPUT} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Nom du fournisseur…" />
@@ -55,10 +74,10 @@ function SubFormFournisseur({ onBack, onCreated }) {
         </div>
       </div>
       {error && <p className="text-red-500 text-xs">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">{saving ? "…" : "Créer"}</button>
-      </div>
+      <button onClick={save} disabled={saving}
+        className="w-full py-2 rounded-xl bg-yellow-500 text-white text-sm font-semibold hover:bg-yellow-600 disabled:opacity-60 transition mt-1">
+        {saving ? "Création…" : "Créer le fournisseur"}
+      </button>
     </div>
   );
 }
@@ -81,9 +100,9 @@ function SubFormCompte({ onBack, onCreated }) {
     } catch { setError("Erreur réseau."); } finally { setSaving(false); }
   };
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">← Retour au modèle</button>
-      <h3 className="text-base font-bold text-slate-800">Nouveau compte comptable</h3>
+    <div className="space-y-3">
+      <SubHeader onBack={onBack} label="Nouveau compte comptable"
+        icon={<><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>} />
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Code <span className="text-red-500">*</span></label>
@@ -95,10 +114,10 @@ function SubFormCompte({ onBack, onCreated }) {
         </div>
       </div>
       {error && <p className="text-red-500 text-xs">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">{saving ? "…" : "Créer"}</button>
-      </div>
+      <button onClick={save} disabled={saving}
+        className="w-full py-2 rounded-xl bg-yellow-500 text-white text-sm font-semibold hover:bg-yellow-600 disabled:opacity-60 transition mt-1">
+        {saving ? "Création…" : "Créer le compte"}
+      </button>
     </div>
   );
 }
@@ -121,18 +140,18 @@ function SubFormFamille({ onBack, onCreated }) {
     } catch { setError("Erreur réseau."); } finally { setSaving(false); }
   };
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 font-medium">← Retour au modèle</button>
-      <h3 className="text-base font-bold text-slate-800">Nouvelle famille de dépense</h3>
+    <div className="space-y-3">
+      <SubHeader onBack={onBack} label="Nouvelle famille de dépense"
+        icon={<><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>} />
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
         <input className={INPUT} value={nom} onChange={e => setNom(e.target.value)} placeholder="Ex : Entretien, Charges communes…" />
       </div>
       {error && <p className="text-red-500 text-xs">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <button onClick={onBack} className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
-        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">{saving ? "…" : "Créer"}</button>
-      </div>
+      <button onClick={save} disabled={saving}
+        className="w-full py-2 rounded-xl bg-yellow-500 text-white text-sm font-semibold hover:bg-yellow-600 disabled:opacity-60 transition mt-1">
+        {saving ? "Création…" : "Créer la famille"}
+      </button>
     </div>
   );
 }
@@ -273,7 +292,7 @@ export default function ModelesDepensePage() {
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
 
       {/* Header */}
-      <div className="bg-gradient-to-br from-amber-500 to-amber-600 px-4 pt-5 pb-14">
+      <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 px-4 pt-5 pb-14">
         <button onClick={() => navigate("/depenses")}
           className="flex items-center gap-1 text-white/70 text-[10px] font-semibold mb-3 hover:text-white transition">
           ← Retour Dépenses
@@ -303,12 +322,12 @@ export default function ModelesDepensePage() {
         <div className="bg-white rounded-2xl shadow-sm p-3">
           <div className="grid grid-cols-2 gap-2">
             <select value={filterFamille} onChange={e => setFilterFamille(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-amber-400 text-slate-600">
+              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-yellow-400 text-slate-600">
               <option value="">Toutes les familles</option>
               {familles.map(f => <option key={f.id} value={String(f.id)}>{f.nom}</option>)}
             </select>
             <select value={filterActif} onChange={e => setFilterActif(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-amber-400 text-slate-600">
+              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-yellow-400 text-slate-600">
               <option value="true">Actifs</option>
               <option value="false">Inactifs</option>
               <option value="">Tous</option>
@@ -345,7 +364,7 @@ export default function ModelesDepensePage() {
                     {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                   </select>
                   <button type="button" onClick={() => setSubForm("famille")}
-                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-amber-50 hover:text-amber-600 text-sm font-bold transition">
+                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-yellow-50 hover:text-yellow-600 text-sm font-bold transition">
                     +
                   </button>
                 </div>
@@ -363,7 +382,7 @@ export default function ModelesDepensePage() {
                     ))}
                   </select>
                   <button type="button" onClick={() => setSubForm("compte")}
-                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-amber-50 hover:text-amber-600 text-sm font-bold transition">
+                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-yellow-50 hover:text-yellow-600 text-sm font-bold transition">
                     +
                   </button>
                 </div>
@@ -379,7 +398,7 @@ export default function ModelesDepensePage() {
                     {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
                   </select>
                   <button type="button" onClick={() => setSubForm("fournisseur")}
-                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-amber-50 hover:text-amber-600 text-sm font-bold transition">
+                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border bg-slate-100 border-slate-200 text-slate-400 hover:bg-yellow-50 hover:text-yellow-600 text-sm font-bold transition">
                     +
                   </button>
                 </div>
@@ -389,7 +408,7 @@ export default function ModelesDepensePage() {
               <div className="flex items-center gap-2 pt-1">
                 <input type="checkbox" id="actif-chk" checked={form.actif}
                   onChange={e => setForm(f => ({ ...f, actif: e.target.checked }))}
-                  className="w-4 h-4 accent-amber-500" />
+                  className="w-4 h-4 accent-yellow-500" />
                 <label htmlFor="actif-chk" className="text-sm text-slate-700 cursor-pointer">Modèle actif</label>
               </div>
             </div>
@@ -401,7 +420,7 @@ export default function ModelesDepensePage() {
                 Annuler
               </button>
               <button onClick={handleSave} disabled={saving}
-                className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+                className="px-4 py-2 bg-amber-700 text-white rounded-xl text-sm font-semibold hover:bg-amber-800 disabled:opacity-60">
                 {saving ? "…" : "Enregistrer"}
               </button>
             </div>
@@ -412,12 +431,12 @@ export default function ModelesDepensePage() {
         {/* Liste */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm py-14 text-center">
             <p className="text-slate-300 text-sm">Aucun modèle défini</p>
-            <button onClick={openCreate} className="mt-3 text-amber-600 text-xs font-semibold hover:underline">
+            <button onClick={openCreate} className="mt-3 text-yellow-700 text-xs font-semibold hover:underline">
               + Ajouter un modèle
             </button>
           </div>
@@ -427,7 +446,7 @@ export default function ModelesDepensePage() {
               <div key={m.id}
                 className={`bg-white rounded-2xl shadow-sm border ${m.actif ? "border-slate-100" : "border-slate-100 opacity-60"} overflow-hidden`}>
                 <div className="px-4 py-3 flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center shrink-0">
                     <svg viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="1.8"
                       strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
                       <path d="M9 12h6M9 16h6M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
@@ -437,7 +456,7 @@ export default function ModelesDepensePage() {
                     <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{m.nom}</p>
                     <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                       {m.famille_nom && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-yellow-700">
                           {m.famille_nom}
                         </span>
                       )}
@@ -462,7 +481,7 @@ export default function ModelesDepensePage() {
                 <div className="border-t border-slate-50 px-4 py-2 flex items-center gap-2">
                   {m.actif && (
                     <button onClick={() => openGen(m)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition">
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-xs font-semibold hover:bg-yellow-600 transition">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
                         strokeLinecap="round" strokeLinejoin="round" style={{ width: 11, height: 11 }}>
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -495,20 +514,20 @@ export default function ModelesDepensePage() {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Montant (MAD) *</label>
                 <input type="number" step="0.01" min="0"
-                  className="w-full border border-amber-300 bg-amber-50 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:border-amber-500"
+                  className="w-full border border-yellow-300 bg-yellow-50 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:border-yellow-500"
                   placeholder="0.00"
                   value={genForm.montant} onChange={e => setGenForm(f => ({ ...f, montant: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Date de la dépense *</label>
                 <input type="date"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400"
                   value={genForm.date_depense} onChange={e => setGenForm(f => ({ ...f, date_depense: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Mois imputé</label>
                 <select
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400 bg-white"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400 bg-white"
                   value={genForm.mois} onChange={e => setGenForm(f => ({ ...f, mois: e.target.value }))}>
                   <option value="">— Aucun —</option>
                   {MOIS_OPTS.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
@@ -517,7 +536,7 @@ export default function ModelesDepensePage() {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Réf. facture</label>
                 <input
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-yellow-400"
                   placeholder="FAC-2026-001"
                   value={genForm.facture_reference} onChange={e => setGenForm(f => ({ ...f, facture_reference: e.target.value }))} />
               </div>
@@ -533,7 +552,7 @@ export default function ModelesDepensePage() {
                 Annuler
               </button>
               <button onClick={handleGen} disabled={genSaving || genMsg.startsWith("✓")}
-                className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-60">
+                className="px-4 py-2 bg-amber-700 text-white rounded-xl text-sm font-semibold hover:bg-amber-800 disabled:opacity-60">
                 {genSaving ? "…" : "Créer la dépense"}
               </button>
             </div>

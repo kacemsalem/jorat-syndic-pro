@@ -191,7 +191,7 @@ export default function CaissePage() {
         {/* Filtres */}
         <div className="bg-white rounded-2xl shadow-sm p-3">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Filtres</p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="grid grid-cols-2 gap-2">
             <select value={filterAnnee} onChange={e => setFilterAnnee(e.target.value)} className={SEL}>
               <option value="">Toutes années</option>
               {annees.map(a => <option key={a} value={a}>{a}</option>)}

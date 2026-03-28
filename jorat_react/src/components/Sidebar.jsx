@@ -83,7 +83,7 @@ const BASE_NAV_GROUPS = [
     label: "Analyse",
     collapsible: true,
     items: [
-      { label: "Synthèse lots", path: "/synthese",            icon: "situation" },
+      { label: "Synthèse",      path: "/synthese",            icon: "situation" },
       { label: "Timeline",      path: "/situation-paiements", icon: "timeline"  },
       { label: "État mensuel",  path: "/etat-mensuel",        icon: "ag"        },
       { label: "Rapport",       path: "/rapport-financier",   icon: "rapport"   },
