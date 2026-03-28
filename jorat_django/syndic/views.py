@@ -675,13 +675,13 @@ class ModeleDepenseViewSet(ModelViewSet):
         residence = get_user_residence(self.request)
         if not residence:
             return ModeleDepense.objects.none()
-        qs     = ModeleDepense.objects.select_related("famille_depense", "compte_comptable", "fournisseur").filter(residence=residence)
+        qs     = ModeleDepense.objects.select_related("categorie", "compte_comptable", "fournisseur").filter(residence=residence)
         actif  = self.request.query_params.get("actif")
         famille = self.request.query_params.get("famille")
         if actif is not None:
             qs = qs.filter(actif=(actif.lower() == "true"))
         if famille:
-            qs = qs.filter(famille_depense_id=famille)
+            qs = qs.filter(categorie_id=famille)
         return qs
 
     def perform_create(self, serializer):
@@ -738,7 +738,7 @@ class ContratViewSet(ModelViewSet):
         if not residence:
             return Contrat.objects.none()
         qs = Contrat.objects.select_related(
-            "fournisseur", "compte_comptable", "famille_depense"
+            "fournisseur", "compte_comptable", "categorie"
         ).filter(residence=residence)
         actif = self.request.query_params.get("actif")
         if actif is not None:
