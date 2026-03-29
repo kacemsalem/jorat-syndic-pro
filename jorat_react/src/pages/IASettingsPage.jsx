@@ -47,11 +47,13 @@ function AppDocsButton({ onLoaded }) {
   );
 }
 
-const MODELS_GROQ = [
-  "llama-3.1-8b-instant",
-  "llama-3.3-70b-versatile",
-  "mixtral-8x7b-32768",
-  "gemma2-9b-it",
+const PRESETS = [
+  { label: "Gemini 2.0 Flash", model: "gemini-2.0-flash",         url: "https://generativelanguage.googleapis.com/v1beta/openai/", badge: "Recommandé", badgeColor: "bg-emerald-100 text-emerald-700" },
+  { label: "Gemini 1.5 Flash", model: "gemini-1.5-flash",         url: "https://generativelanguage.googleapis.com/v1beta/openai/", badge: "Gratuit",     badgeColor: "bg-blue-100 text-blue-700" },
+  { label: "Llama 3.3 70B",    model: "llama-3.3-70b-versatile",  url: "https://api.groq.com/openai/v1",                           badge: "Rapide",      badgeColor: "bg-indigo-100 text-indigo-700" },
+  { label: "Llama 3.1 8B",     model: "llama-3.1-8b-instant",     url: "https://api.groq.com/openai/v1",                           badge: "Léger",       badgeColor: "bg-slate-100 text-slate-600" },
+  { label: "Llama 3.1 70B",    model: "llama-3.1-70b-versatile",  url: "https://api.groq.com/openai/v1",                           badge: "Groq",        badgeColor: "bg-slate-100 text-slate-600" },
+  { label: "Llama 3 70B",      model: "llama3-70b-8192",          url: "https://api.groq.com/openai/v1",                           badge: "Groq",        badgeColor: "bg-slate-100 text-slate-600" },
 ];
 
 export default function IASettingsPage() {
@@ -169,10 +171,26 @@ export default function IASettingsPage() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Configuration API</h2>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-700">
-          <strong>Recommandé (gratuit) :</strong> Créez un compte sur{" "}
-          <span className="font-mono">console.groq.com</span> → API Keys → Créer une clé.
-          Modèle suggéré : <span className="font-mono">llama-3.1-8b-instant</span>
+        {/* Préréglages rapides */}
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Sélection rapide</p>
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map(p => (
+              <button key={p.model} type="button"
+                onClick={() => setConfig(c => ({ ...c, model_name: p.model, api_url: p.url }))}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+                  config.model_name === p.model
+                    ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-700"
+                }`}>
+                {p.label}
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${p.badgeColor}`}>{p.badge}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1.5">
+            Cliquer remplit automatiquement URL + modèle · Gemini → <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-indigo-500 underline">aistudio.google.com</a> · Groq → <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-indigo-500 underline">console.groq.com</a>
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-3">
@@ -180,7 +198,7 @@ export default function IASettingsPage() {
             <label className="block text-xs font-semibold text-slate-600 mb-1">URL de l'API</label>
             <input className={INPUT} value={config.api_url}
               onChange={e => setConfig(c => ({ ...c, api_url: e.target.value }))}
-              placeholder="https://api.groq.com/openai/v1/chat/completions" />
+              placeholder="https://generativelanguage.googleapis.com/v1beta/openai/" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">Clé API</label>
@@ -193,19 +211,13 @@ export default function IASettingsPage() {
             )}
             <input type="password" className={INPUT} value={config.api_key}
               onChange={e => setConfig(c => ({ ...c, api_key: e.target.value }))}
-              placeholder={config._key_saved ? "Laisser vide = conserver la clé actuelle" : "gsk_…"} />
+              placeholder={config._key_saved ? "Laisser vide = conserver la clé actuelle" : "AIza… (Gemini) ou gsk_… (Groq)"} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Modèle</label>
-            <div className="flex gap-2">
-              <select className={INPUT} value={config.model_name}
-                onChange={e => setConfig(c => ({ ...c, model_name: e.target.value }))}>
-                {MODELS_GROQ.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-              <input className={INPUT + " w-64"} value={config.model_name}
-                onChange={e => setConfig(c => ({ ...c, model_name: e.target.value }))}
-                placeholder="ou saisir manuellement" />
-            </div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Modèle <span className="font-normal text-slate-400">(saisie libre)</span></label>
+            <input className={INPUT} value={config.model_name}
+              onChange={e => setConfig(c => ({ ...c, model_name: e.target.value }))}
+              placeholder="gemini-2.0-flash" />
           </div>
         </div>
       </div>

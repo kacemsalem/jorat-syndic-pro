@@ -623,7 +623,7 @@ export default function DepensesPage() {
       </div>
 
       {/* ── Contenu flottant ──────────────────────────────────── */}
-      <div className="px-4 -mt-6 space-y-4 pb-6">
+      <div className="px-4 -mt-6 space-y-4 pb-24">
 
         {/* Graphe évolution dépenses */}
         {showChart && (

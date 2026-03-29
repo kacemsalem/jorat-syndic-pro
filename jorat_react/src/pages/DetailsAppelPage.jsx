@@ -223,7 +223,7 @@ export default function DetailsAppelPage() {
       </div>
 
       {/* ── Liste lots (flat, triée par lot) ── */}
-      <div className="px-4 -mt-4 pb-6 max-w-5xl mx-auto">
+      <div className="px-4 -mt-4 pb-24 max-w-5xl mx-auto">
         {loading ? (
           <p className="text-slate-400 text-sm py-8 text-center">Chargement…</p>
         ) : details.length === 0 ? (

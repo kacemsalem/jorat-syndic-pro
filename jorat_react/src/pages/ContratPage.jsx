@@ -367,7 +367,7 @@ export default function ContratPage() {
         </p>
       </div>
 
-      <div className="px-4 -mt-6 space-y-4 pb-6">
+      <div className="px-4 -mt-6 space-y-4 pb-24">
 
         {/* Filtres */}
         <div className="bg-white rounded-2xl shadow-sm p-3">

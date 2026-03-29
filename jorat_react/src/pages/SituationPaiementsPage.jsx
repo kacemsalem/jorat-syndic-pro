@@ -234,7 +234,7 @@ export default function SituationPaiementsPage() {
           </div>
         </div>
       </div>
-      <div className="px-4 -mt-5 pb-6 max-w-5xl mx-auto space-y-4">
+      <div className="px-4 -mt-5 pb-24 max-w-5xl mx-auto space-y-4">
 
       {/* ── Stats ── */}
       {!loading && lots.length > 0 && (

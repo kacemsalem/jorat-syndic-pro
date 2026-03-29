@@ -115,10 +115,64 @@ def _build_business_context(message_lower, residence):
             "rapport", "rapport financier", "taux de recouvrement",
             "bilan", "kpi", "résumé financier", "global",
         ],
+        "fournisseurs": [
+            "fournisseur", "fournisseurs", "prestataire", "prestataires",
+            "entreprise", "societe", "société", "contact", "telephone",
+        ],
+        "contrats": [
+            "contrat", "contrats", "contrat de service", "prestation",
+            "montant contrat", "durée contrat", "renouvellement",
+        ],
+        "personnes": [
+            "personne", "personnes", "propriétaire", "copropriétaire",
+            "résident", "résidents", "habitant", "occupant", "nom",
+            "prénom", "contact", "téléphone", "email", "liste des",
+        ],
+        "groupes": [
+            "groupe", "groupes", "bâtiment", "bâtiments", "bloc", "blocs",
+            "tour", "tours", "immeuble",
+        ],
+        "modeles": [
+            "modèle", "modèles", "modèle de dépense", "gabarit",
+        ],
+        "categories": [
+            "catégorie", "catégories", "famille", "familles", "type de dépense",
+        ],
     }
 
     def _match(keys):
         return any(k in message_lower for k in keys)
+
+    # ── 0. BASELINE — toujours envoyé (vue d'ensemble de toutes les données) ─
+    try:
+        from .models import (
+            Lot, Groupe, Personne, CaisseMouvement, Depense, Recette,
+            Paiement, AppelCharge, Fournisseur, Contrat, AIDocument,
+        )
+        nb_lots      = Lot.objects.filter(residence=residence).count()
+        nb_groupes   = Groupe.objects.filter(residence=residence).count()
+        nb_personnes = Personne.objects.filter(residence=residence).count()
+        nb_depenses  = Depense.objects.filter(residence=residence).count()
+        nb_recettes  = Recette.objects.filter(residence=residence).count()
+        nb_paiements = Paiement.objects.filter(lot__residence=residence).count()
+        nb_appels    = AppelCharge.objects.filter(residence=residence).count()
+        nb_fournis   = Fournisseur.objects.filter(residence=residence).count()
+        nb_contrats  = Contrat.objects.filter(residence=residence).count()
+        agg_caisse   = CaisseMouvement.objects.filter(residence=residence).aggregate(
+            e=S("montant", filter=Qd(sens="DEBIT")), s=S("montant", filter=Qd(sens="CREDIT"))
+        )
+        solde = float(agg_caisse["e"] or 0) - float(agg_caisse["s"] or 0)
+        total_dep = float(Depense.objects.filter(residence=residence).aggregate(t=S("montant"))["t"] or 0)
+        total_pay = float(Paiement.objects.filter(lot__residence=residence).aggregate(t=S("montant"))["t"] or 0)
+        parts.append(
+            f"RÉSUMÉ GÉNÉRAL — {residence.nom_residence} :\n"
+            f"  Lots : {nb_lots} · Groupes : {nb_groupes} · Copropriétaires : {nb_personnes}\n"
+            f"  Solde caisse : {solde:,.2f} MAD · Dépenses : {total_dep:,.2f} MAD · Paiements encaissés : {total_pay:,.2f} MAD\n"
+            f"  Enregistrements — Dépenses : {nb_depenses} · Recettes : {nb_recettes} · Paiements : {nb_paiements}\n"
+            f"  Appels de charge/fond : {nb_appels} · Fournisseurs : {nb_fournis} · Contrats : {nb_contrats}"
+        )
+    except Exception:
+        pass
 
     # ── 1. CAISSE ──────────────────────────────────────────────────────────
     if _match(KW["caisse"]) or _match(KW["rapport"]):
@@ -413,6 +467,88 @@ def _build_business_context(message_lower, residence):
         except Exception:
             pass
 
+    # ── 12. FOURNISSEURS ──────────────────────────────────────────────────
+    if _match(KW["fournisseurs"]) or _match(KW["contrats"]):
+        try:
+            from .models import Fournisseur
+            fournis = Fournisseur.objects.filter(residence=residence).order_by("nom")
+            if fournis.exists():
+                lignes = [f"FOURNISSEURS — {residence.nom_residence} ({fournis.count()}) :"]
+                for f in fournis:
+                    ligne = f"  • {f.nom}"
+                    if getattr(f, "telephone", None): ligne += f" — Tél : {f.telephone}"
+                    if getattr(f, "email", None):     ligne += f" — Email : {f.email}"
+                    if getattr(f, "categorie", None): ligne += f" — Catégorie : {f.categorie}"
+                    lignes.append(ligne)
+                parts.append("\n".join(lignes))
+        except Exception:
+            pass
+
+    # ── 13. CONTRATS ──────────────────────────────────────────────────────
+    if _match(KW["contrats"]):
+        try:
+            from .models import Contrat
+            contrats = Contrat.objects.filter(residence=residence).select_related("fournisseur").order_by("-date_debut")
+            if contrats.exists():
+                lignes = [f"CONTRATS — {residence.nom_residence} ({contrats.count()}) :"]
+                for c in contrats:
+                    fnom = c.fournisseur.nom if getattr(c, "fournisseur", None) and c.fournisseur else "?"
+                    montant = f" — {float(c.montant):,.2f} MAD" if getattr(c, "montant", None) else ""
+                    debut   = str(c.date_debut) if getattr(c, "date_debut", None) else "?"
+                    fin     = str(c.date_fin) if getattr(c, "date_fin", None) else "en cours"
+                    lignes.append(f"  • {c.libelle} — {fnom}{montant} — {debut} → {fin}")
+                parts.append("\n".join(lignes))
+        except Exception:
+            pass
+
+    # ── 14. COPROPRIÉTAIRES / PERSONNES ──────────────────────────────────
+    if _match(KW["personnes"]):
+        try:
+            from .models import Personne, Lot
+            personnes = Personne.objects.filter(residence=residence).order_by("nom")
+            if personnes.exists():
+                lignes = [f"COPROPRIÉTAIRES — {residence.nom_residence} ({personnes.count()}) :"]
+                for p in personnes[:30]:
+                    lots_p = Lot.objects.filter(representant=p, residence=residence)
+                    lots_str = ", ".join(str(l.numero_lot) for l in lots_p) if lots_p.exists() else "—"
+                    tel   = getattr(p, "telephone", None) or ""
+                    email = getattr(p, "email", None) or ""
+                    lignes.append(f"  • {p.nom} {p.prenom or ''} — Lot(s) : {lots_str}"
+                                  + (f" — Tél : {tel}" if tel else "")
+                                  + (f" — Email : {email}" if email else ""))
+                if personnes.count() > 30:
+                    lignes.append(f"  … ({personnes.count() - 30} autres)")
+                parts.append("\n".join(lignes))
+        except Exception:
+            pass
+
+    # ── 15. GROUPES / BÂTIMENTS ───────────────────────────────────────────
+    if _match(KW["groupes"]):
+        try:
+            from .models import Groupe, Lot
+            groupes = Groupe.objects.filter(residence=residence).order_by("nom_groupe")
+            if groupes.exists():
+                lignes = [f"GROUPES/BÂTIMENTS — {residence.nom_residence} :"]
+                for g in groupes:
+                    nb = Lot.objects.filter(groupe=g).count()
+                    lignes.append(f"  • {g.nom_groupe} — {nb} lot(s)")
+                parts.append("\n".join(lignes))
+        except Exception:
+            pass
+
+    # ── 16. CATÉGORIES DE DÉPENSE ─────────────────────────────────────────
+    if _match(KW["categories"]) or _match(KW["modeles"]):
+        try:
+            from .models import CategorieDepense
+            cats = CategorieDepense.objects.filter(residence=residence).order_by("nom")
+            if cats.exists():
+                lignes = [f"CATÉGORIES DE DÉPENSE ({cats.count()}) :"]
+                for c in cats:
+                    lignes.append(f"  • {c.nom}" + (f" — {c.famille}" if getattr(c, "famille", None) else ""))
+                parts.append("\n".join(lignes))
+        except Exception:
+            pass
+
     return "\n\n".join(parts)
 
 
@@ -449,7 +585,9 @@ def _call_llm(cfg, system_msg, user_msg, history=None):
         parsed   = urllib.parse.urlparse(cfg.api_url)
         ctx      = ssl.create_default_context()
         conn     = http.client.HTTPSConnection(parsed.netloc, timeout=30, context=ctx)
-        path     = parsed.path or "/"
+        path     = parsed.path.rstrip("/") or "/"
+        if not path.endswith("/chat/completions"):
+            path += "/chat/completions"
         if parsed.query:
             path += "?" + parsed.query
         body = json.dumps(payload).encode("utf-8")
@@ -457,6 +595,14 @@ def _call_llm(cfg, system_msg, user_msg, history=None):
         resp = conn.getresponse()
         raw  = resp.read().decode("utf-8")
         conn.close()
+        if resp.status == 429:
+            return (
+                "⚠️ Quota API dépassé (erreur 429).\n\n"
+                "Solutions :\n"
+                "• Attendez 1 minute puis réessayez (limite : 15 req/min sur le tier gratuit Gemini)\n"
+                "• Si la limite journalière est atteinte (1 500 req/jour), réessayez demain\n"
+                "• Ou passez sur Groq (gratuit, sans quota strict) : console.groq.com → API Keys"
+            )
         if resp.status != 200:
             return f"Erreur API ({resp.status}) : {raw[:300]}"
         return json.loads(raw)["choices"][0]["message"]["content"]
@@ -672,9 +818,9 @@ def ai_chat(request):
 # Objectif : rester sous ~4 000 tokens = ~16 000 chars pour le prompt système.
 # L'historique et le message user sont gérés séparément dans _call_llm.
 _BUDGET_SYSTEM_BASE = 1_200   # prompt de base + nom résidence + instructions
-_BUDGET_DOCS        = 6_000   # chunks PDF pertinents (3–5 sections max)
-_BUDGET_BUSINESS    = 2_500   # données live DB
-# Total système ≈ 9 700 chars ≈ 2 425 tokens — largement sous la limite
+_BUDGET_DOCS        = 8_000   # chunks PDF pertinents — équilibre qualité/quota (Groq 8k+, Gemini gratuit)
+_BUDGET_BUSINESS    = 5_000   # données live DB (baseline + handlers étendus)
+# Total système ≈ 18 700 chars ≈ 4 675 tokens — safe pour llama-3.1-8b (8192t) et Gemini Flash (1M)
 
 
 def _keyword_score(text, words):
@@ -683,7 +829,7 @@ def _keyword_score(text, words):
     return sum(1 for w in words if w in t)
 
 
-def _select_doc_chunks(doc_text, user_words, budget, max_chunks=5):
+def _select_doc_chunks(doc_text, user_words, budget, max_chunks=10):
     """
     Découpe le document en sections (par double saut de ligne ou ## titre),
     note chaque section selon la pertinence, retourne les meilleures
@@ -737,7 +883,12 @@ def _ai_chat_inner(request):
 
     # Mots-clés extraits de la question (pour la sélection de chunks pertinents)
     msg_lower  = message.lower()
-    user_words = [w for w in re.sub(r'[^\w\s]', ' ', msg_lower).split() if len(w) > 3]
+    # Inclure les nombres et mots courts (len > 1) pour capturer "13", "art", etc.
+    user_words = [w for w in re.sub(r'[^\w\s]', ' ', msg_lower).split() if len(w) > 1]
+    # Ajouter les références "article N" comme token composite
+    for m in re.finditer(r'article\s+(\d+)', msg_lower):
+        user_words.append(f"article {m.group(1)}")
+        user_words.append(m.group(1))  # numéro seul aussi
 
     # ── 1. Chunks PDF pertinents ──────────────────────────────────────────
     docs = AIDocument.objects.filter(residence=residence, actif=True)

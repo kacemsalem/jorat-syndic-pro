@@ -54,6 +54,100 @@ const SUGGESTIONS = [
   "Quelles sont les dépenses totales enregistrées ?",
 ];
 
+function InfoModal({ onClose, onSettings }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-br from-indigo-600 to-violet-600 px-5 pt-5 pb-6 rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8"
+                strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-white font-bold text-base">À propos de l'Assistant IA</h2>
+              <p className="text-white/60 text-[10px]">Configuration · Documents · Modèles</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+
+          {/* Section 1 — Configuration */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+              </svg>
+              <p className="text-xs font-bold text-amber-800">Paramétrage du modèle IA</p>
+            </div>
+            <p className="text-[11px] text-amber-700 leading-relaxed">
+              L'administrateur peut configurer l'IA dans les paramètres : <strong>URL du serveur</strong>, <strong>clé API</strong> et <strong>modèle LLM</strong>. Cette configuration permet de connecter n'importe quel fournisseur compatible (OpenAI, Ollama, Mistral, etc.).
+            </p>
+          </div>
+
+          {/* Section 2 — Modèles performants */}
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                <polyline points="17 6 23 6 23 12"/>
+              </svg>
+              <p className="text-xs font-bold text-indigo-800">Des modèles plus puissants = de meilleurs résultats</p>
+            </div>
+            <p className="text-[11px] text-indigo-700 leading-relaxed">
+              Les modèles avancés (GPT-4, Claude, Mistral Large…) comprennent mieux le contexte financier, formulent des analyses plus précises et commettent moins d'erreurs. Un modèle local basique reste utile pour des questions simples.
+            </p>
+          </div>
+
+          {/* Section 3 — Documents */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+              <p className="text-xs font-bold text-emerald-800">Charger des documents utiles</p>
+            </div>
+            <p className="text-[11px] text-emerald-700 leading-relaxed">
+              Dans <strong>Paramétrage → Assistant IA</strong>, vous pouvez importer des documents de référence (règlement intérieur, contrats types, textes juridiques…). L'assistant les consulte pour enrichir ses réponses avec le contexte propre à votre résidence.
+            </p>
+          </div>
+
+        </div>
+
+        {/* Actions */}
+        <div className="px-5 pb-5 flex flex-col gap-2">
+          <button onClick={onSettings}
+            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+            </svg>
+            Accéder au paramétrage IA
+          </button>
+          <button onClick={onClose}
+            className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition">
+            ← Retour à l'assistant
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function IAChatPage() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState([
@@ -62,13 +156,15 @@ export default function IAChatPage() {
   const [input,   setInput]   = useState("");
   const [loading, setLoading] = useState(false);
   const [configured, setConfigured] = useState(null);
+  const [modelName,  setModelName]  = useState("");
+  const [showInfo, setShowInfo] = useState(false);
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
 
   useEffect(() => {
     fetch("/api/ai/config/", { credentials: "include" })
       .then(r => r.json())
-      .then(d => setConfigured(d.configured))
+      .then(d => { setConfigured(d.configured); setModelName(d.model_name || ""); })
       .catch(() => setConfigured(false));
   }, []);
 
@@ -104,6 +200,13 @@ export default function IAChatPage() {
   };
 
   return (
+    <>
+    {showInfo && (
+      <InfoModal
+        onClose={() => setShowInfo(false)}
+        onSettings={() => { setShowInfo(false); navigate("/parametrage/ia"); }}
+      />
+    )}
     <div className="flex flex-col h-[calc(100vh-64px)] max-w-3xl mx-auto">
 
       {/* Header */}
@@ -123,7 +226,14 @@ export default function IAChatPage() {
             </div>
             <div>
               <p className="text-sm font-bold text-slate-800">Assistant IA</p>
-              <p className="text-[10px] text-slate-400">Syndic Pro</p>
+              {configured && modelName ? (
+                <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  {modelName}
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-400">Syndic Pro</p>
+              )}
             </div>
           </div>
         </div>
@@ -137,6 +247,16 @@ export default function IAChatPage() {
           <button onClick={() => setMessages([{ role: "assistant", content: "Conversation réinitialisée. Comment puis-je vous aider ?" }])}
             className="text-[11px] px-3 py-1 bg-slate-100 text-slate-600 rounded-lg font-semibold hover:bg-slate-200 transition">
             Nouvelle conversation
+          </button>
+          <button onClick={() => setShowInfo(true)}
+            className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center hover:bg-indigo-100 transition"
+            title="À propos de l'assistant IA">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2.2"
+              strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -191,5 +311,6 @@ export default function IAChatPage() {
         </p>
       </div>
     </div>
+    </>
   );
 }

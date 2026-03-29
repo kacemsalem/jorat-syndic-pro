@@ -212,7 +212,7 @@ export default function AppelsChargePage() {
           {filtre === "FOND" ? "Gestion des fonds de réserve" : "Gestion des charges communes"}
         </p>
       </div>
-      <div className="px-4 -mt-6 pb-6 max-w-5xl mx-auto">
+      <div className="px-4 -mt-6 pb-24 max-w-5xl mx-auto">
 
       {/* ── Header actions ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">

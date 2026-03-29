@@ -193,6 +193,23 @@ export default function PaiementPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paiementToDelete, setPaiementToDelete]   = useState(null);
   const [showSaveConfirm, setShowSaveConfirm]     = useState(false);
+  const [chartYears, setChartYears] = useState([]);
+  const [chartYear,  setChartYear]  = useState(new Date().getFullYear());
+
+  // ── Chart years fetch ──────────────────────────────────────
+  useEffect(() => {
+    fetch("/api/situation-paiements/?type_charge=CHARGE", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        const yrs = d.years || [];
+        if (yrs.length > 0) {
+          setChartYears(yrs);
+          const cur = new Date().getFullYear();
+          setChartYear(yrs.includes(cur) ? cur : yrs[yrs.length - 1]);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Data fetching ──────────────────────────────────────────
   const fetchAllDetails = (lotId, type = typeAppel) => {
@@ -384,15 +401,44 @@ export default function PaiementPage() {
         <h1 className="text-white font-bold text-lg">Saisie de paiement</h1>
         <p className="text-white/60 text-[11px] mt-0.5">Enregistrer et ventiler un paiement</p>
       </div>
-      <div className="px-4 -mt-6 space-y-4 pb-6 max-w-5xl mx-auto">
+      <div className="px-4 -mt-6 space-y-4 pb-24 max-w-5xl mx-auto">
 
       {/* ── Step 1 : lot picker ─────────────────────────────── */}
       {!selectedLot ? (
         <div className="space-y-4">
-          {/* Camembert état des paiements */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">État des paiements</p>
-            <ChartPaiements />
+          {/* État des paiements — 2 donuts */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">État des paiements</p>
+              {chartYears.length > 1 && (
+                <div className="flex gap-1 flex-wrap">
+                  {chartYears.map(y => (
+                    <button key={y} onClick={() => setChartYear(y)}
+                      className={`px-2.5 py-0.5 rounded-lg text-[10px] font-semibold transition ${
+                        y === chartYear ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}>
+                      {y}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Charge</p>
+                </div>
+                <ChartPaiements typeCharge="CHARGE" year={chartYear} />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-amber-500" />
+                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Fond</p>
+                </div>
+                <ChartPaiements typeCharge="FOND" year={chartYear} />
+              </div>
+            </div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Choisir un lot</h2>

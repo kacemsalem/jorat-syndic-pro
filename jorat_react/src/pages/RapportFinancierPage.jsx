@@ -174,7 +174,7 @@ export default function RapportFinancierPage() {
           </div>
         </div>
       </div>
-      <div className="px-4 -mt-5 pb-6 max-w-5xl mx-auto space-y-4">
+      <div className="px-4 -mt-5 pb-24 max-w-5xl mx-auto space-y-4">
 
       {error && (
         <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "12px 20px", marginBottom: 16, color: "#dc2626", fontSize: 13 }}>

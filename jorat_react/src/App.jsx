@@ -161,7 +161,7 @@ function AppLayout() {
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <main className="flex-1 overflow-auto">
-          <div className="max-w-2xl mx-auto p-3 sm:p-6 pb-20 min-h-full">
+          <div className="max-w-4xl mx-auto p-3 sm:p-6 pb-20 min-h-full">
           <AdminRoute>
             <Routes>
               <Route path="/accueil"            element={<AccueilPage />} />

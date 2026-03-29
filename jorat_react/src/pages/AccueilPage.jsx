@@ -100,7 +100,7 @@ export default function AccueilPage() {
       </div>
 
       {/* ── Cartes + boutons secondaires ─────────────────────── */}
-      <div className="flex-1 flex flex-col justify-center px-4 -mt-5 pb-6">
+      <div className="flex-1 flex flex-col justify-start px-4 mt-3 pb-6">
 
         {/* 4 cartes principales */}
         <div className="grid grid-cols-2 gap-2 w-full">
@@ -134,8 +134,8 @@ export default function AccueilPage() {
           />
         </div>
 
-        {/* Outils + Aide — boutons ronds */}
-        <div className="flex justify-center gap-10 mt-3">
+        {/* Outils + IA + Aide — boutons ronds */}
+        <div className="flex justify-center gap-8 mt-3">
           <button onClick={() => navigate("/outils")}
             className="flex flex-col items-center gap-1.5 group">
             <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:shadow-md group-active:scale-95 transition-all">
@@ -145,6 +145,19 @@ export default function AccueilPage() {
               </svg>
             </div>
             <span className="text-[10px] font-semibold text-slate-500">Outils</span>
+          </button>
+
+          <button onClick={() => navigate("/ia/chat")}
+            className="flex flex-col items-center gap-1.5 group">
+            <div className="w-12 h-12 rounded-full bg-violet-50 shadow-sm border border-violet-200 flex items-center justify-center group-hover:shadow-md group-active:scale-95 transition-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="1.8"
+                strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                <circle cx="9" cy="14" r="1" fill="#7C3AED" stroke="none"/>
+                <circle cx="15" cy="14" r="1" fill="#7C3AED" stroke="none"/>
+              </svg>
+            </div>
+            <span className="text-[10px] font-semibold text-violet-600">IA</span>
           </button>
 
           <button onClick={() => navigate("/aide")}

@@ -84,7 +84,7 @@ export default function EtatMensuelPage() {
         </div>
         <p className="text-white/50 text-[10px] mt-1">Paiements reçus · Dépenses du mois</p>
       </div>
-      <div className="px-4 -mt-5 pb-6 max-w-5xl mx-auto space-y-4">
+      <div className="px-4 -mt-5 pb-24 max-w-5xl mx-auto space-y-4">
 
       {loading && (
         <div className="flex items-center justify-center py-12">
