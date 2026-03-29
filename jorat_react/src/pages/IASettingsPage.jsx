@@ -14,9 +14,11 @@ function AppDocsButton({ onLoaded }) {
   const load = async () => {
     setLoading(true); setMsg(null);
     try {
+      const activeRid = localStorage.getItem("active_residence") || "";
       const r = await fetch("/api/ai/load-app-docs/", {
         method: "POST", credentials: "include",
-        headers: { "X-CSRFToken": getCsrf() },
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify(activeRid ? { residence_id: activeRid } : {}),
       });
       const d = await r.json().catch(() => ({}));
       setLoading(false);
@@ -48,12 +50,12 @@ function AppDocsButton({ onLoaded }) {
 }
 
 const PRESETS = [
-  { label: "Gemini 2.0 Flash", model: "gemini-2.0-flash",         url: "https://generativelanguage.googleapis.com/v1beta/openai/", badge: "Recommandé", badgeColor: "bg-emerald-100 text-emerald-700" },
-  { label: "Gemini 1.5 Flash", model: "gemini-1.5-flash",         url: "https://generativelanguage.googleapis.com/v1beta/openai/", badge: "Gratuit",     badgeColor: "bg-blue-100 text-blue-700" },
-  { label: "Llama 3.3 70B",    model: "llama-3.3-70b-versatile",  url: "https://api.groq.com/openai/v1",                           badge: "Rapide",      badgeColor: "bg-indigo-100 text-indigo-700" },
-  { label: "Llama 3.1 8B",     model: "llama-3.1-8b-instant",     url: "https://api.groq.com/openai/v1",                           badge: "Léger",       badgeColor: "bg-slate-100 text-slate-600" },
-  { label: "Llama 3.1 70B",    model: "llama-3.1-70b-versatile",  url: "https://api.groq.com/openai/v1",                           badge: "Groq",        badgeColor: "bg-slate-100 text-slate-600" },
-  { label: "Llama 3 70B",      model: "llama3-70b-8192",          url: "https://api.groq.com/openai/v1",                           badge: "Groq",        badgeColor: "bg-slate-100 text-slate-600" },
+  { label: "DeepSeek Chat",    model: "deepseek-chat",             url: "https://api.deepseek.com/v1",                              badge: "Recommandé", badgeColor: "bg-emerald-100 text-emerald-700" },
+  { label: "Gemini 2.0 Flash", model: "gemini-2.0-flash",         url: "https://generativelanguage.googleapis.com/v1beta/openai/", badge: "Gratuit",    badgeColor: "bg-blue-100 text-blue-700" },
+  { label: "Gemini 1.5 Flash", model: "gemini-1.5-flash",         url: "https://generativelanguage.googleapis.com/v1beta/openai/", badge: "Gratuit",    badgeColor: "bg-blue-100 text-blue-700" },
+  { label: "Llama 3.3 70B",    model: "llama-3.3-70b-versatile",  url: "https://api.groq.com/openai/v1",                           badge: "Rapide",     badgeColor: "bg-indigo-100 text-indigo-700" },
+  { label: "Llama 3.1 8B",     model: "llama-3.1-8b-instant",     url: "https://api.groq.com/openai/v1",                           badge: "Léger",      badgeColor: "bg-slate-100 text-slate-600" },
+  { label: "Llama 3 70B",      model: "llama3-70b-8192",          url: "https://api.groq.com/openai/v1",                           badge: "Groq",       badgeColor: "bg-slate-100 text-slate-600" },
 ];
 
 export default function IASettingsPage() {
@@ -67,11 +69,14 @@ export default function IASettingsPage() {
   const [saved,    setSaved]    = useState(false);
   const [nomDoc,   setNomDoc]   = useState("");
 
+  const rid = localStorage.getItem("active_residence") || "";
+  const ridParam = rid ? `?residence_id=${rid}` : "";
+
   const load = async () => {
     setLoading(true);
     const [r1, r2] = await Promise.all([
-      fetch("/api/ai/documents/",  { credentials: "include" }),
-      fetch("/api/ai/config/",     { credentials: "include" }),
+      fetch(`/api/ai/documents/${ridParam}`,  { credentials: "include" }),
+      fetch("/api/ai/config/",                { credentials: "include" }),
     ]);
     const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
     setDocs(Array.isArray(d1) ? d1 : []);
@@ -189,7 +194,7 @@ export default function IASettingsPage() {
             ))}
           </div>
           <p className="text-[10px] text-slate-400 mt-1.5">
-            Cliquer remplit automatiquement URL + modèle · Gemini → <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-indigo-500 underline">aistudio.google.com</a> · Groq → <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-indigo-500 underline">console.groq.com</a>
+            Cliquer remplit automatiquement URL + modèle · DeepSeek → <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer" className="text-indigo-500 underline">platform.deepseek.com</a> · Gemini → <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-indigo-500 underline">aistudio.google.com</a> · Groq → <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-indigo-500 underline">console.groq.com</a>
           </p>
         </div>
 

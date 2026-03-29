@@ -146,12 +146,12 @@ def _build_business_context(message_lower, residence):
     # ── 0. BASELINE — toujours envoyé (vue d'ensemble de toutes les données) ─
     try:
         from .models import (
-            Lot, Groupe, Personne, CaisseMouvement, Depense, Recette,
-            Paiement, AppelCharge, Fournisseur, Contrat, AIDocument,
+            Lot, Groupe, CaisseMouvement, Depense, Recette,
+            Paiement, AppelCharge, Fournisseur, Contrat,
         )
         nb_lots      = Lot.objects.filter(residence=residence).count()
         nb_groupes   = Groupe.objects.filter(residence=residence).count()
-        nb_personnes = Personne.objects.filter(residence=residence).count()
+        nb_personnes = Lot.objects.filter(residence=residence, proprietaire__isnull=False).values("proprietaire").distinct().count()
         nb_depenses  = Depense.objects.filter(residence=residence).count()
         nb_recettes  = Recette.objects.filter(residence=residence).count()
         nb_paiements = Paiement.objects.filter(lot__residence=residence).count()
@@ -504,21 +504,24 @@ def _build_business_context(message_lower, residence):
     # ── 14. COPROPRIÉTAIRES / PERSONNES ──────────────────────────────────
     if _match(KW["personnes"]):
         try:
-            from .models import Personne, Lot
-            personnes = Personne.objects.filter(residence=residence).order_by("nom")
-            if personnes.exists():
-                lignes = [f"COPROPRIÉTAIRES — {residence.nom_residence} ({personnes.count()}) :"]
-                for p in personnes[:30]:
-                    lots_p = Lot.objects.filter(representant=p, residence=residence)
-                    lots_str = ", ".join(str(l.numero_lot) for l in lots_p) if lots_p.exists() else "—"
-                    tel   = getattr(p, "telephone", None) or ""
-                    email = getattr(p, "email", None) or ""
-                    lignes.append(f"  • {p.nom} {p.prenom or ''} — Lot(s) : {lots_str}"
-                                  + (f" — Tél : {tel}" if tel else "")
-                                  + (f" — Email : {email}" if email else ""))
-                if personnes.count() > 30:
-                    lignes.append(f"  … ({personnes.count() - 30} autres)")
-                parts.append("\n".join(lignes))
+            from .models import Lot
+            lots = (Lot.objects.filter(residence=residence)
+                    .select_related("proprietaire", "representant")
+                    .order_by("numero_lot"))
+            lignes = [f"COPROPRIÉTAIRES — {residence.nom_residence} ({lots.count()} lots) :"]
+            for l in lots:
+                p = l.proprietaire or l.representant
+                if p:
+                    nom = f"{p.nom} {p.prenom or ''}".strip()
+                    tel   = p.telephone or ""
+                    email = p.email or ""
+                    ligne = f"  • Lot {l.numero_lot} — {nom}"
+                    if tel:   ligne += f" — Tél : {tel}"
+                    if email: ligne += f" — Email : {email}"
+                else:
+                    ligne = f"  • Lot {l.numero_lot} — (aucun propriétaire)"
+                lignes.append(ligne)
+            parts.append("\n".join(lignes))
         except Exception:
             pass
 
@@ -672,9 +675,16 @@ def ai_load_app_docs(request):
                 nb_updated += 1
         return nb_created, nb_updated
 
-    # Superuser : charger pour toutes les résidences
+    # Superuser : charge pour la résidence ciblée (residence_id en param) ou toutes
     if request.user.is_superuser:
-        residences = list(Residence.objects.all())
+        rid = request.data.get("residence_id") or request.query_params.get("residence_id")
+        if rid:
+            try:
+                residences = [Residence.objects.get(pk=rid)]
+            except Residence.DoesNotExist:
+                return Response({"detail": "Résidence introuvable."}, status=400)
+        else:
+            residences = list(Residence.objects.all())
         if not residences:
             return Response({"detail": "Aucune résidence dans la base."}, status=400)
         total_created = total_updated = 0
@@ -720,10 +730,14 @@ def _doc_to_dict(d):
 def ai_documents(request):
     from .models import AIDocument, Residence
 
-    # ── Superuser : tous les documents de toutes les résidences ──
+    # ── Superuser : scoper à residence_id si fourni, sinon toutes ──
     if request.user.is_superuser:
         if request.method == "GET":
-            docs = AIDocument.objects.select_related("residence").all()
+            rid = request.query_params.get("residence_id")
+            qs  = AIDocument.objects.select_related("residence")
+            if rid:
+                qs = qs.filter(residence_id=rid)
+            docs = qs.all()
             return Response([_doc_to_dict(d) for d in docs])
         # POST superuser : upload pour toutes les résidences
         fichier = request.FILES.get("fichier")
