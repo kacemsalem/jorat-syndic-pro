@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ChartDepenses from "../components/ChartDepenses";
 
@@ -335,13 +335,13 @@ function SubFormFournisseur({ onBack, onCreated }) {
   const [error, setError] = useState("");
 
   const handleSave = async () => {
-    if (!form.nom.trim()) { setError("Le nom est obligatoire."); return; }
+    if (!form.nom.trim()) { setError("Le nom de la société est obligatoire."); return; }
     setSaving(true); setError("");
     try {
       const res = await fetch("/api/fournisseurs/", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ nom: form.nom.trim(), telephone: form.telephone, email: form.email, actif: true }),
+        body: JSON.stringify({ nom_societe: form.nom.trim(), nom: "", telephone: form.telephone, email: form.email, actif: true }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
       const created = await res.json();
@@ -357,8 +357,8 @@ function SubFormFournisseur({ onBack, onCreated }) {
       </button>
       <h3 className="text-base font-bold text-slate-800">Nouveau fournisseur</h3>
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Nom <span className="text-red-500">*</span></label>
-        <input className={INPUT_NORMAL} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Nom du fournisseur" />
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Nom société <span className="text-red-500">*</span></label>
+        <input className={INPUT_NORMAL} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Nom de la société" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -407,24 +407,67 @@ export default function DepensesPage() {
   const [filterAttente,     setFilterAttente]     = useState(false);
   const [showChart,         setShowChart]         = useState(false);
 
-  const fetchAll = () => {
-    setLoading(true);
+  const [depTotal,    setDepTotal]    = useState(0);   // total records (server)
+  const [depNextUrl,  setDepNextUrl]  = useState(null); // pagination next link
+  const [nbAttente,   setNbAttente]   = useState(0);
+  const [annees,      setAnnees]      = useState([]);
+
+  // ── Reference data (fetched once) ───────────────────────────────────────────
+  const fetchMeta = () => {
     Promise.all([
-      fetch("/api/depenses/",                     { credentials: "include" }).then(r => r.json()),
-      fetch("/api/modeles-depense/?actif=true",   { credentials: "include" }).then(r => r.json()),
+      fetch("/api/modeles-depense/?actif=true",    { credentials: "include" }).then(r => r.json()),
       fetch("/api/categories-depense/?actif=true", { credentials: "include" }).then(r => r.json()),
-      fetch("/api/fournisseurs/?actif=true",       { credentials: "include" }).then(r => r.json()),
-      fetch("/api/comptes-comptables/?actif=true", { credentials: "include" }).then(r => r.json()),
-    ]).then(([dep, mod, cat, fou, cpt]) => {
-      setDepenses(Array.isArray(dep) ? dep : (dep.results ?? []));
-      setModeles(Array.isArray(mod) ? mod : (mod.results ?? []));
+      fetch("/api/fournisseurs/?actif=true",        { credentials: "include" }).then(r => r.json()),
+      fetch("/api/comptes-comptables/?actif=true",  { credentials: "include" }).then(r => r.json()),
+      fetch("/api/depenses/stats/",                 { credentials: "include" }).then(r => r.json()),
+    ]).then(([mod, cat, fou, cpt, stats]) => {
+      setModeles(Array.isArray(mod)  ? mod  : (mod.results  ?? []));
       setCategories(Array.isArray(cat) ? cat : (cat.results ?? []));
       setFournisseurs(Array.isArray(fou) ? fou : (fou.results ?? []));
-      setComptes(Array.isArray(cpt) ? cpt : (cpt.results ?? []));
-    }).catch(() => {}).finally(() => setLoading(false));
+      setComptes(Array.isArray(cpt)  ? cpt  : (cpt.results  ?? []));
+      setAnnees(stats.annees ?? []);
+      setNbAttente(stats.count_attente ?? 0);
+    }).catch(() => {});
   };
 
+  // ── Dépenses (paginated, re-fetched on filter change) ────────────────────────
+  const buildUrl = (extra = {}) => {
+    const p = new URLSearchParams();
+    if (filterAnnee)       p.set("annee",       filterAnnee);
+    if (filterMois)        p.set("mois",         filterMois);
+    if (filterFamille)     p.set("famille",      filterFamille);
+    if (filterFournisseur) p.set("fournisseur",  filterFournisseur);
+    if (filterAttente)     p.set("a_affecter",   "true");
+    Object.entries(extra).forEach(([k, v]) => p.set(k, v));
+    return `/api/depenses/?${p.toString()}`;
+  };
+
+  const fetchDepenses = (append = false) => {
+    if (!append) setLoading(true);
+    const url = append && depNextUrl ? depNextUrl : buildUrl();
+    fetch(url, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        const rows = d.results ?? (Array.isArray(d) ? d : []);
+        setDepenses(prev => append ? [...prev, ...rows] : rows);
+        setDepTotal(d.count ?? rows.length);
+        setDepNextUrl(d.next ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  const fetchAll = () => { fetchMeta(); fetchDepenses(); };
+
   useEffect(() => { fetchAll(); }, []);
+
+  // Re-fetch on filter change (not on first mount, handled above)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    setDepNextUrl(null);
+    fetchDepenses();
+  }, [filterAnnee, filterMois, filterFamille, filterFournisseur, filterAttente]);
 
   useEffect(() => {
     if (location.state?.openForm) {
@@ -507,7 +550,7 @@ export default function DepensesPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
-      closeForm(); fetchAll();
+      closeForm(); fetchDepenses(); fetchMeta();
     } catch { setError("Erreur réseau."); }
     finally { setSaving(false); }
   };
@@ -515,28 +558,19 @@ export default function DepensesPage() {
   const handleDelete = async (dep) => {
     if (!confirm(`Supprimer "${dep.libelle}" ?`)) return;
     await fetch(`/api/depenses/${dep.id}/`, { method: "DELETE", credentials: "include", headers: { "X-CSRFToken": getCsrf() } });
-    fetchAll();
+    fetchDepenses();
+    fetchMeta(); // refresh annees + count_attente
   };
 
-  const nbAttente = useMemo(() => depenses.filter(d => d.compte_code === "000").length, [depenses]);
-
-  const filtered = useMemo(() => {
-    let list = depenses;
-    if (filterAnnee)       list = list.filter(d => d.date_depense?.startsWith(filterAnnee));
-    if (filterMois)        list = list.filter(d => d.mois === filterMois);
-    if (filterFamille)     list = list.filter(d => d.modele_categorie_nom === filterFamille || d.categorie_nom === filterFamille);
-    if (filterFournisseur) list = list.filter(d => String(d.fournisseur) === filterFournisseur);
-    if (filterAttente)     list = list.filter(d => d.compte_code === "000");
-    return list;
-  }, [depenses, filterAnnee, filterMois, filterFamille, filterFournisseur, filterAttente]);
-
+  // Filters are now server-side — depenses already filtered by backend
+  const filtered     = depenses;
   const totalFiltered = filtered.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
-  const annees = useMemo(() => [...new Set(depenses.map(d => d.date_depense?.slice(0, 4)).filter(Boolean))].sort().reverse(), [depenses]);
-  const famillesList = useMemo(() => [...new Set(depenses.map(d => d.modele_categorie_nom || d.categorie_nom).filter(Boolean))].sort(), [depenses]);
-  const fournisseursUsed = useMemo(() => {
-    const ids = [...new Set(depenses.map(d => d.fournisseur).filter(Boolean))];
-    return fournisseurs.filter(f => ids.includes(f.id));
-  }, [depenses, fournisseurs]);
+  const famillesList  = useMemo(() =>
+    categories.map(c => c.nom).filter(n => n !== "ND (non définie)").sort()
+  , [categories]);
+  const fournisseursUsed = useMemo(() =>
+    fournisseurs.filter(f => f.nom_societe !== "ND (non définie)")
+  , [fournisseurs]);
 
   const modelesByFamille = useMemo(() => {
     const map = {};
@@ -582,7 +616,7 @@ export default function DepensesPage() {
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Finances</p>
             <h1 className="text-white font-bold text-xl leading-tight">Dépenses</h1>
             <p className="text-white/50 text-[10px]">
-              {filtered.length} dépense{filtered.length !== 1 ? "s" : ""} {isFiltered ? "filtrées" : "au total"}
+              {filtered.length} / {depTotal} dépense{depTotal !== 1 ? "s" : ""}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -711,18 +745,18 @@ export default function DepensesPage() {
                           {dep.mois}
                         </span>
                       )}
-                      {(dep.modele_categorie_nom || dep.categorie_nom) && (
+                      {(() => { const cat = dep.modele_categorie_nom || dep.categorie_nom; return cat && cat !== "ND (non définie)" && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                          {dep.modele_categorie_nom || dep.categorie_nom}
+                          {cat}
                         </span>
-                      )}
-                      {dep.compte_code && (
+                      ); })()}
+                      {dep.compte_code && dep.compte_code !== "ND" && (
                         <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full ${dep.compte_code === "000" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-400"}`}>
                           {dep.compte_code}{dep.compte_code === "000" ? " ⚠" : ""}
                         </span>
                       )}
                     </div>
-                    {dep.fournisseur_nom && (
+                    {dep.fournisseur_nom && dep.fournisseur_nom !== "ND (non définie)" && (
                       <p className="text-[10px] text-slate-400 truncate">{dep.fournisseur_nom}</p>
                     )}
                   </div>
@@ -751,6 +785,18 @@ export default function DepensesPage() {
                 </div>
               ))}
             </div>
+
+            {/* Charger plus */}
+            {depNextUrl && (
+              <div className="px-4 py-3 border-t border-slate-100">
+                <button
+                  onClick={() => fetchDepenses(true)}
+                  disabled={loading}
+                  className="w-full py-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl transition disabled:opacity-50">
+                  {loading ? "Chargement…" : `Charger plus (${depTotal - filtered.length} restantes)`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -823,9 +869,9 @@ export default function DepensesPage() {
                         onChange={e => setForm(f => ({ ...f, categorie: e.target.value }))}
                       >
                         <option value="">— Aucune —</option>
-                        {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+                        {categories.filter(c => c.nom !== "ND (non définie)").map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
                       </select>
-                      <button type="button" onClick={() => navigate("/familles-depense", { state: { openForm: true } })}
+                      <button type="button" onClick={() => navigate("/categories-depense", { state: { openForm: true } })}
                         title="Gérer les catégories"
                         className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition border border-slate-200 text-base">↗</button>
                     </div>
@@ -907,7 +953,7 @@ export default function DepensesPage() {
                         onChange={e => setForm(f => ({ ...f, fournisseur: e.target.value }))}
                       >
                         <option value="">— Aucun —</option>
-                        {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_complet || f.nom}</option>)}
+                        {fournisseurs.filter(f => f.nom_societe !== "ND (non définie)" && f.nom !== "ND (non définie)").map(f => <option key={f.id} value={f.id}>{f.nom_societe || f.nom_complet || f.nom}</option>)}
                       </select>
                       <button type="button" onClick={() => navigate("/fournisseurs")}
                         title="Gérer les fournisseurs"

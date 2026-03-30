@@ -219,19 +219,27 @@ def _validate_lots(rows, residence):
         if len(errors) > errs_before:
             continue
 
-        groupe_obj = None
         raw_grp = str(row.get("groupe", "")).strip()
         if raw_grp:
             groupe_obj = groupes.get(raw_grp.lower())
             if not groupe_obj:
-                errors.append({"row": i, "message": f"Groupe introuvable: '{raw_grp}'"}); continue
+                groupe_obj, _ = Groupe.objects.get_or_create(residence=residence, nom_groupe="ND (non définie)")
+                groupes["nd (non définie)"] = groupe_obj
+        else:
+            groupe_obj, _ = Groupe.objects.get_or_create(residence=residence, nom_groupe="ND (non définie)")
+            groupes["nd (non définie)"] = groupe_obj
 
-        proprio_obj = None
         raw_prop = str(row.get("proprietaire", "")).strip()
         if raw_prop:
             proprio_obj = personnes.get(raw_prop.lower())
             if not proprio_obj:
-                errors.append({"row": i, "message": f"Propriétaire introuvable: '{raw_prop}'"}); continue
+                proprio_obj, _ = Personne.objects.get_or_create(
+                    residence=residence, nom="ND (non définie)",
+                    defaults={"prenom": "", "type_personne": "PHYSIQUE"},
+                )
+                personnes["nd (non définie)"] = proprio_obj
+        else:
+            proprio_obj = None
 
         valid.append({
             "numero_lot": numero, "type_lot": type_lot,
@@ -483,7 +491,7 @@ def _validate_recettes(rows, residence):
 def _validate_depenses(rows, residence):
     comptes     = {c.code: c for c in CompteComptable.objects.filter(residence=residence)}
     categories  = {c.nom.strip().lower(): c for c in CategorieDepense.objects.filter(residence=residence)}
-    fournisseurs = {f.nom.strip().lower(): f for f in Fournisseur.objects.filter(residence=residence)}
+    fournisseurs = {f.nom_societe.strip().lower(): f for f in Fournisseur.objects.filter(residence=residence)}
     valid, errors = [], []
     for i, row in enumerate(rows, start=2):
         libelle = str(row.get("libelle", "")).strip()
@@ -491,31 +499,49 @@ def _validate_depenses(rows, residence):
             errors.append({"row": i, "message": "libelle est obligatoire"}); continue
 
         code_compte = str(row.get("code_compte", "")).strip()
-        if not code_compte:
-            errors.append({"row": i, "message": "code_compte est obligatoire"}); continue
-        compte_obj = comptes.get(code_compte)
-        if not compte_obj:
-            errors.append({"row": i, "message": f"Compte introuvable: '{code_compte}'"}); continue
+        if code_compte:
+            compte_obj = comptes.get(code_compte)
+            if not compte_obj:
+                compte_obj, _ = CompteComptable.objects.get_or_create(
+                    residence=residence, code="ND",
+                    defaults={"libelle": "Non défini", "type_compte": "CHARGE"},
+                )
+                comptes["ND"] = compte_obj
+        else:
+            compte_obj, _ = CompteComptable.objects.get_or_create(
+                residence=residence, code="ND",
+                defaults={"libelle": "Non défini", "type_compte": "CHARGE"},
+            )
+            comptes["ND"] = compte_obj
 
         errs_before = len(errors)
         montant = _dec(row.get("montant"), "montant", errors, i, min_val=Decimal("0.01"))
         if len(errors) > errs_before:
             continue
 
-        # Optional FKs
-        categorie_obj = None
+        # Optional FKs — fallback to "ND" if not found
         raw_cat = str(row.get("categorie", "")).strip()
         if raw_cat:
             categorie_obj = categories.get(raw_cat.lower())
             if not categorie_obj:
-                errors.append({"row": i, "message": f"Catégorie introuvable: '{raw_cat}'"}); continue
+                categorie_obj, _ = CategorieDepense.objects.get_or_create(
+                    residence=residence, nom="ND (non définie)",
+                )
+                categories["nd (non définie)"] = categorie_obj
+        else:
+            categorie_obj = None
 
-        fournisseur_obj = None
         raw_four = str(row.get("fournisseur", "")).strip()
         if raw_four:
             fournisseur_obj = fournisseurs.get(raw_four.lower())
             if not fournisseur_obj:
-                errors.append({"row": i, "message": f"Fournisseur introuvable: '{raw_four}'"}); continue
+                fournisseur_obj, _ = Fournisseur.objects.get_or_create(
+                    residence=residence, nom_societe="ND (non définie)",
+                    defaults={"nom": "", "actif": True},
+                )
+                fournisseurs["nd (non définie)"] = fournisseur_obj
+        else:
+            fournisseur_obj = None
 
         date_depense = _parse_date(row.get("date_depense")) or datetime.date.today()
 

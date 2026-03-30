@@ -826,9 +826,9 @@ class Fournisseur(TimeStampedModel):
     ]
 
     residence    = models.ForeignKey("Residence", on_delete=models.CASCADE, related_name="fournisseurs")
-    nom_societe  = models.CharField(max_length=200, blank=True, verbose_name="Nom société")
+    nom_societe  = models.CharField(max_length=200, verbose_name="Nom société")
     genre        = models.CharField(max_length=5, choices=GENRE_CHOICES, blank=True)
-    nom          = models.CharField(max_length=150, verbose_name="Nom contact")
+    nom          = models.CharField(max_length=150, blank=True, verbose_name="Nom contact")
     prenom       = models.CharField(max_length=150, blank=True, verbose_name="Prénom contact")
     gsm          = models.CharField(max_length=30, blank=True)
     telephone    = models.CharField(max_length=30, blank=True)
@@ -837,12 +837,12 @@ class Fournisseur(TimeStampedModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["residence", "nom"], name="uniq_fournisseur_nom_par_residence")
+            models.UniqueConstraint(fields=["residence", "nom_societe"], name="uniq_fournisseur_nom_societe_par_residence")
         ]
-        ordering = ["nom"]
+        ordering = ["nom_societe", "nom"]
 
     def __str__(self):
-        return self.nom
+        return self.nom_societe or self.nom
 
 
 class CompteComptable(TimeStampedModel):

@@ -30,6 +30,16 @@ export default function EtatMensuelPage() {
 
   // Cross-table: paiements par lot × mois (année complète)
   const [crossData, setCrossData] = useState(null);
+  const [availableYears, setAvailableYears] = useState([]);
+
+  // Fetch all years with financial activity (dépenses + recettes + paiements)
+  useEffect(() => {
+    fetch(`/api/annees-activite/`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (Array.isArray(d) && d.length) setAvailableYears(d); })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetch(`/api/situation-paiements/?year=${year}&type_charge=CHARGE`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
@@ -60,8 +70,7 @@ export default function EtatMensuelPage() {
     });
   }, [crossData, year, month]);
 
-  const yearOptions = [];
-  for (let y = now.getFullYear() - 3; y <= now.getFullYear() + 1; y++) yearOptions.push(y);
+  const yearOptions = availableYears.length ? availableYears : [now.getFullYear()];
 
   return (
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">

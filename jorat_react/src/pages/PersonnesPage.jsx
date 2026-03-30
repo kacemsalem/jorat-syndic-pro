@@ -80,9 +80,19 @@ export default function PersonnesPage() {
 
   const remove = async (p) => {
     if (!window.confirm(`Supprimer ${p.nom} ${p.prenom} ?`)) return;
-    await deleteJson(`${API_BASE}/personnes/${p.id}/`);
-    if (selected?.id === p.id) resetForm();
-    loadPersonnes();
+    setError(""); setInfo("");
+    try {
+      const r = await deleteJson(`${API_BASE}/personnes/${p.id}/`);
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        setError(body.detail || Object.values(body).flat().join(" ") || `Erreur ${r.status}`);
+        return;
+      }
+      if (selected?.id === p.id) resetForm();
+      loadPersonnes();
+    } catch {
+      setError("Erreur réseau lors de la suppression.");
+    }
   };
 
   const resetForm = () => {

@@ -196,12 +196,13 @@ export default function LotsKanban() {
   const lotsByGroupe = useMemo(() => {
     const map = new Map();
     for (const l of sorted) {
-      const key = l.groupe ?? "UNGROUPED";
+      const gName = groupes.find(g => String(g.id) === String(l.groupe))?.nom_groupe;
+      const key = (!l.groupe || gName === "ND (non définie)") ? "UNGROUPED" : l.groupe;
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(l);
     }
     return map;
-  }, [sorted]);
+  }, [sorted, groupes]);
 
   const groupeName = (id) => {
     if (id === "UNGROUPED") return "Sans groupe";
@@ -268,7 +269,7 @@ export default function LotsKanban() {
             className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
           >
             <option value="">Tous les groupes</option>
-            {groupes.map(g => (
+            {groupes.filter(g => g.nom_groupe !== "ND (non définie)").map(g => (
               <option key={g.id} value={String(g.id)}>{g.nom_groupe}</option>
             ))}
             <option value="UNGROUPED">Sans groupe</option>

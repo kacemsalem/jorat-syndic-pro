@@ -5,60 +5,99 @@ function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
 }
 
-const DATASET_GROUPS = [
+const ALL_DATASETS = {
+  "lots": {
+    key: "lots", label: "Lots", desc: "Appartements, bureaux, locaux…",
+    columns: ["numero_lot", "type_lot", "etage_lot", "surface", "montant_ref", "groupe", "proprietaire"],
+    required: ["numero_lot"],
+    note: "groupe et proprietaire sont optionnels — si absent ou introuvable, «ND (non définie)» est utilisé automatiquement.",
+  },
+  "personnes": {
+    key: "personnes", label: "Contacts", desc: "Propriétaires et occupants",
+    columns: ["nom", "prenom", "telephone", "email", "type_personne"],
+    required: ["nom"],
+    note: "type_personne: PHYSIQUE ou MORALE",
+  },
+  "plan-comptable": {
+    key: "plan-comptable", label: "Plan Comptable", desc: "Comptes comptables",
+    columns: ["code_compte", "libelle", "type_compte"],
+    required: ["code_compte", "libelle"],
+    note: "type_compte: CHARGE, PRODUIT ou TRESORERIE. Les codes existants sont ignorés.",
+  },
+  "depenses": {
+    key: "depenses", label: "Dépenses", desc: "Charges et dépenses de la résidence",
+    columns: ["date_depense", "montant", "libelle", "code_compte", "categorie", "fournisseur", "facture_reference", "mois"],
+    required: ["date_depense", "montant", "libelle"],
+    note: "categorie, fournisseur et code_compte sont optionnels — si absents ou introuvables, «ND (non définie)» est utilisé. mois: JAN-DEC.",
+  },
+  "recettes": {
+    key: "recettes", label: "Recettes", desc: "Produits et recettes diverses",
+    columns: ["date_recette", "montant", "libelle", "code_compte", "source", "mois"],
+    required: ["date_recette", "montant", "libelle", "code_compte"],
+    note: "Met à jour la caisse automatiquement. code_compte doit exister dans le plan comptable. mois: JAN-DEC.",
+  },
+  "appel-charge": {
+    key: "appel-charge", label: "Appels de charge", desc: "Appels de charge / fond",
+    columns: ["type_charge", "exercice", "periode", "nom_fond", "description_appel", "date_emission"],
+    required: ["type_charge", "exercice"],
+    note: "type_charge: CHARGE ou FOND. periode: JAN…DEC ou ANNEE.",
+  },
+  "paiements": {
+    key: "paiements", label: "Paiements", desc: "Paiements copropriétaires",
+    columns: ["numero_lot", "date_paiement", "montant", "reference", "mois", "mode_paiement"],
+    required: ["numero_lot", "montant"],
+    note: "Met à jour la caisse automatiquement. mode_paiement: ESPECES, VIREMENT ou CHEQUE.",
+  },
+};
+
+// Kit = guided import path with tips
+const KITS = [
   {
-    label: "Référentiel",
-    datasets: [
-      {
-        key: "lots",
-        label: "Lots",
-        desc: "Appartements, bureaux, locaux…",
-        columns: ["numero_lot", "type_lot", "etage_lot", "surface", "montant_ref", "groupe", "proprietaire"],
-        required: ["numero_lot"],
-        note: "groupe et proprietaire doivent exister dans la résidence.",
-      },
-      {
-        key: "personnes",
-        label: "Personnes",
-        desc: "Propriétaires et occupants",
-        columns: ["nom", "prenom", "telephone", "email", "type_personne"],
-        required: ["nom"],
-        note: "type_personne: PHYSIQUE ou MORALE",
-      },
-      {
-        key: "plan-comptable",
-        label: "Plan Comptable",
-        desc: "Comptes comptables de la résidence",
-        columns: ["code_compte", "libelle", "type_compte"],
-        required: ["code_compte", "libelle"],
-        note: "type_compte: CHARGE, PRODUIT ou TRESORERIE. Les codes existants sont ignorés.",
-      },
+    key: "kit-lots",
+    label: "Kit Lots",
+    icon: "🏢",
+    color: "border-amber-300 bg-amber-50",
+    activeColor: "ring-2 ring-amber-400",
+    desc: "Lots avec contacts et groupes",
+    steps: [
+      { dataset: "personnes",  label: "1. Contacts", hint: "Propriétaires à associer", import: true },
+      { dataset: null,         label: "2. Groupes",  hint: "Créer via Paramètres → Groupes", import: false },
+      { dataset: "lots",       label: "3. Lots",     hint: "Numéros, surfaces, références", import: true },
     ],
+    tip: "Groupes et contacts sont optionnels dans le fichier Lots. Si absent ou introuvable, «ND (non définie)» est attribué automatiquement — vous corrigez ensuite manuellement.",
   },
   {
-    label: "Finances",
-    datasets: [
-      {
-        key: "recettes",
-        label: "Recettes",
-        desc: "Produits et recettes diverses",
-        columns: ["date_recette", "montant", "libelle", "code_compte", "source", "mois"],
-        required: ["date_recette", "montant", "libelle", "code_compte"],
-        note: "Met à jour la caisse automatiquement. code_compte doit exister dans le plan comptable. mois: JAN-DEC.",
-      },
-      {
-        key: "depenses",
-        label: "Dépenses",
-        desc: "Charges et dépenses de la résidence",
-        columns: ["date_depense", "montant", "libelle", "code_compte", "categorie", "fournisseur", "facture_reference", "mois"],
-        required: ["date_depense", "montant", "libelle", "code_compte"],
-        note: "Met à jour la caisse automatiquement. categorie et fournisseur sont optionnels. mois: JAN-DEC.",
-      },
+    key: "kit-depenses",
+    label: "Kit Dépenses",
+    icon: "💸",
+    color: "border-rose-300 bg-rose-50",
+    activeColor: "ring-2 ring-rose-400",
+    desc: "Dépenses avec plan comptable",
+    steps: [
+      { dataset: "plan-comptable", label: "1. Plan Comptable",  hint: "Codes comptables", import: true },
+      { dataset: null,             label: "2. Catégories",      hint: "Via Paramètres → Catégories dépenses", import: false },
+      { dataset: null,             label: "3. Fournisseurs",    hint: "Via Paramètres → Fournisseurs", import: false },
+      { dataset: "depenses",       label: "4. Dépenses",        hint: "Charges et factures", import: true },
     ],
+    tip: "Catégorie, fournisseur et compte sont optionnels. Si vide ou introuvable, «ND (non définie)» est attribué automatiquement.",
+  },
+  {
+    key: "kit-autres",
+    label: "Autres",
+    icon: "📋",
+    color: "border-slate-200 bg-slate-50",
+    activeColor: "ring-2 ring-slate-400",
+    desc: "Recettes, paiements, appels…",
+    steps: [
+      { dataset: "recettes",     label: "Recettes",      hint: "Produits et recettes", import: true },
+      { dataset: "paiements",    label: "Paiements",     hint: "Règlements copropriétaires", import: true },
+      { dataset: "appel-charge", label: "Appels charge", hint: "Appels de charge / fond", import: true },
+    ],
+    tip: null,
   },
 ];
 
-const DATASETS = DATASET_GROUPS.flatMap(g => g.datasets);
+const DATASETS = Object.values(ALL_DATASETS);
 
 // ── Step indicator ──────────────────────────────────────────
 function Steps({ current }) {
@@ -100,15 +139,17 @@ export default function ImportPage() {
   const navigate = useNavigate();
   const fileRef  = useRef(null);
 
-  const [step,      setStep]      = useState(1);
-  const [dataset,   setDataset]   = useState("lots");
-  const [file,      setFile]      = useState(null);
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState("");
-  const [analysis,  setAnalysis]  = useState(null);  // result from validate
-  const [imported,  setImported]  = useState(null);  // result from import
+  const [step,       setStep]      = useState(1);
+  const [activeKit,  setActiveKit] = useState("kit-lots");
+  const [dataset,    setDataset]   = useState("lots");
+  const [file,       setFile]      = useState(null);
+  const [loading,    setLoading]   = useState(false);
+  const [error,      setError]     = useState("");
+  const [analysis,   setAnalysis]  = useState(null);  // result from validate
+  const [imported,   setImported]  = useState(null);  // result from import
 
-  const selectedDs = DATASETS.find(d => d.key === dataset);
+  const selectedDs  = ALL_DATASETS[dataset] || DATASETS[0];
+  const selectedKit = KITS.find(k => k.key === activeKit) || KITS[0];
 
   const downloadTemplate = () => {
     const a = document.createElement("a");
@@ -180,10 +221,11 @@ export default function ImportPage() {
   const reset = () => {
     setStep(1); setFile(null); setAnalysis(null); setImported(null); setError("");
     if (fileRef.current) fileRef.current.value = "";
+    // keep activeKit and dataset so user can re-import same type
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto pb-24">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div>
@@ -196,98 +238,130 @@ export default function ImportPage() {
 
       {/* Step 1 — Sélection */}
       {step === 1 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-6">
+        <div className="space-y-5">
 
-          {/* Dataset selector */}
-          <div className="space-y-4">
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">
-              Type de données à importer
-            </label>
-            {DATASET_GROUPS.map(group => (
-              <div key={group.label}>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
-                  {group.label}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {group.datasets.map(ds => (
-                    <button
-                      key={ds.key}
-                      onClick={() => { setDataset(ds.key); setFile(null); setError(""); if (fileRef.current) fileRef.current.value = ""; }}
-                      className={`p-4 rounded-xl border-2 text-left transition ${
-                        dataset === ds.key
-                          ? "border-amber-400 bg-amber-50"
-                          : "border-slate-100 hover:border-slate-200 bg-slate-50"
-                      }`}
-                    >
-                      <div className="text-sm font-bold text-slate-800">{ds.label}</div>
-                      <div className="text-xs text-slate-400 mt-1">{ds.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Kit selector */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {KITS.map(kit => (
+              <button key={kit.key} onClick={() => {
+                  setActiveKit(kit.key);
+                  const firstImport = kit.steps.find(s => s.import);
+                  if (firstImport) setDataset(firstImport.dataset);
+                  setFile(null); setError("");
+                  if (fileRef.current) fileRef.current.value = "";
+                }}
+                className={`p-4 rounded-2xl border-2 text-left transition ${
+                  activeKit === kit.key ? `${kit.color} ${kit.activeColor}` : "border-slate-100 bg-white hover:border-slate-200"
+                }`}>
+                <div className="text-2xl mb-1">{kit.icon}</div>
+                <div className="text-sm font-bold text-slate-800">{kit.label}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{kit.desc}</div>
+              </button>
             ))}
           </div>
 
-          {/* Columns info */}
-          <div className="bg-slate-50 rounded-xl p-4">
-            <div className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
-              Colonnes attendues
-            </div>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {selectedDs.columns.map(col => (
-                <span key={col} className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  selectedDs.required.includes(col)
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-slate-100 text-slate-600"
-                }`}>
-                  {col}{selectedDs.required.includes(col) ? " *" : ""}
-                </span>
-              ))}
-            </div>
-            <p className="text-xs text-slate-400">* Obligatoire — {selectedDs.note}</p>
-          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-5">
 
-          {/* Template download */}
-          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
+            {/* Kit steps guidance */}
             <div>
-              <div className="text-sm font-semibold text-blue-800">Télécharger le modèle</div>
-              <div className="text-xs text-blue-500 mt-0.5">Fichier Excel pré-formaté avec les bons en-têtes</div>
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">
+                Ordre d'import recommandé
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedKit.steps.map((s, idx) => (
+                  <div key={s.label} className="flex items-center gap-2">
+                    {s.import ? (
+                      <button
+                        onClick={() => { setDataset(s.dataset); setFile(null); setError(""); if (fileRef.current) fileRef.current.value = ""; }}
+                        className={`px-3 py-2 rounded-xl border text-xs font-semibold transition text-left ${
+                          dataset === s.dataset
+                            ? "border-amber-400 bg-amber-50 text-amber-800"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
+                        }`}>
+                        <div>{s.label}</div>
+                        <div className="font-normal text-slate-400 mt-0.5">{s.hint}</div>
+                      </button>
+                    ) : (
+                      <div className="px-3 py-2 rounded-xl border border-dashed border-slate-200 text-xs text-left opacity-70">
+                        <div className="font-semibold text-slate-500">{s.label}</div>
+                        <div className="text-slate-400 mt-0.5">{s.hint}</div>
+                      </div>
+                    )}
+                    {idx < selectedKit.steps.length - 1 && (
+                      <span className="text-slate-300 text-lg">→</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {selectedKit.tip && (
+                <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  <span className="text-amber-500 mt-0.5 shrink-0">💡</span>
+                  <p className="text-xs text-amber-800">{selectedKit.tip}</p>
+                </div>
+              )}
             </div>
-            <button
-              onClick={downloadTemplate}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition">
-              ⬇ Modèle Excel
-            </button>
-          </div>
 
-          {/* File upload */}
-          <div>
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
-              Fichier Excel (.xlsx)
-            </label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              onChange={handleFileChange}
-              className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
-            />
-            {file && (
-              <p className="text-xs text-slate-500 mt-1.5">
-                Fichier sélectionné: <span className="font-semibold">{file.name}</span> ({(file.size / 1024).toFixed(1)} Ko)
-              </p>
-            )}
-          </div>
+            {/* Columns info */}
+            <div className="bg-slate-50 rounded-xl p-4">
+              <div className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
+                Colonnes pour : <span className="text-amber-700">{selectedDs.label}</span>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedDs.columns.map(col => (
+                  <span key={col} className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    selectedDs.required.includes(col)
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-slate-100 text-slate-600"
+                  }`}>
+                    {col}{selectedDs.required.includes(col) ? " *" : ""}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400">* Obligatoire — {selectedDs.note}</p>
+            </div>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+            {/* Template download */}
+            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <div>
+                <div className="text-sm font-semibold text-blue-800">Télécharger le modèle</div>
+                <div className="text-xs text-blue-500 mt-0.5">Fichier Excel pré-formaté — {selectedDs.label}</div>
+              </div>
+              <button
+                onClick={downloadTemplate}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition">
+                ⬇ Modèle Excel
+              </button>
+            </div>
 
-          <div className="flex justify-end">
-            <button
-              onClick={handleAnalyse}
-              disabled={!file || loading}
-              className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 disabled:opacity-50 transition shadow">
-              {loading ? "Analyse en cours…" : "Analyser le fichier →"}
-            </button>
+            {/* File upload */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
+                Fichier Excel (.xlsx)
+              </label>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={handleFileChange}
+                className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+              />
+              {file && (
+                <p className="text-xs text-slate-500 mt-1.5">
+                  Fichier sélectionné: <span className="font-semibold">{file.name}</span> ({(file.size / 1024).toFixed(1)} Ko)
+                </p>
+              )}
+            </div>
+
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+
+            <div className="flex justify-end">
+              <button
+                onClick={handleAnalyse}
+                disabled={!file || loading}
+                className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 disabled:opacity-50 transition shadow">
+                {loading ? "Analyse en cours…" : "Analyser le fichier →"}
+              </button>
+            </div>
           </div>
         </div>
       )}

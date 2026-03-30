@@ -15,6 +15,9 @@ from .models import (
     Depense,
     Recette,
     CaisseMouvement,
+    AssembleeGenerale,
+    MandatBureauSyndical,
+    ResolutionVote,
 )
 from .views import get_user_residence
 from .views_users import _require_admin
@@ -42,7 +45,7 @@ def init_complete(request):
         counts["caisse"]          = CaisseMouvement.objects.filter(residence=residence).delete()[0]
 
     logger.warning(
-        "INIT_COMPLETE by user=%s (id=%s) on residence=%s (id=%s) — %s",
+        "INIT_COMPLETE by user=%s (id=%s) on residence=%s (id=%s): %s",
         request.user.username,
         request.user.pk,
         residence.nom_residence,
@@ -52,5 +55,37 @@ def init_complete(request):
 
     return Response({
         "detail": "Initialisation complète effectuée avec succès.",
+        "counts": counts,
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def init_assemblees(request):
+    """Supprime toutes les assemblées générales et données associées (BS, résolutions, PV, votes)."""
+    admin_membership, err = _require_admin(request)
+    if err:
+        return err
+
+    residence = admin_membership.residence
+
+    with transaction.atomic():
+        counts = {}
+        # MandatBureauSyndical uses SET_NULL → delete manually before AGs
+        counts["mandats_bureau"]    = MandatBureauSyndical.objects.filter(residence=residence).delete()[0]
+        # ResolutionVote linked to AG via FK CASCADE but also has residence FK → delete explicitly
+        counts["resolutions_vote"]  = ResolutionVote.objects.filter(residence=residence).delete()[0]
+        # AssembleeGenerale CASCADE → Resolutions, PassationConsignes
+        counts["assemblees"]        = AssembleeGenerale.objects.filter(residence=residence).delete()[0]
+
+    logger.warning(
+        "INIT_ASSEMBLEES by user=%s (id=%s) on residence=%s (id=%s): %s",
+        request.user.username, request.user.pk,
+        residence.nom_residence, residence.pk,
+        counts,
+    )
+
+    return Response({
+        "detail": "Assemblées générales supprimées avec succès.",
         "counts": counts,
     })

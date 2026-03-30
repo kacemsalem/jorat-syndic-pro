@@ -3,12 +3,14 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
+from django.db.models.deletion import ProtectedError
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.pagination import PageNumberPagination
 
 from .models import (
     Residence,
@@ -229,6 +231,23 @@ class PersonneViewSet(ModelViewSet):
     def perform_create(self, serializer):
         residence = get_user_residence(self.request)
         serializer.save(residence=residence)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError as e:
+            # Identify which related objects are blocking the delete
+            related = set()
+            for obj in e.protected_objects:
+                name = obj.__class__.__name__
+                if name == "Lot":
+                    related.add("un ou plusieurs lots")
+                elif name in ("MandatBureauSyndical", "MembreBureauSyndical"):
+                    related.add("le bureau syndical")
+                else:
+                    related.add(name)
+            detail = "Ce contact est lié à : " + ", ".join(sorted(related)) + ". Retirez ces liens avant de le supprimer."
+            return Response({"detail": detail}, status=409)
 
 
 # ============================================================
@@ -589,35 +608,61 @@ class CompteComptableViewSet(ModelViewSet):
 # ============================================================
 # Depense
 # ============================================================
+class _PageBy100(PageNumberPagination):
+    page_size             = 100
+    page_size_query_param = "page_size"
+    max_page_size         = 500
+
+    def get_paginated_response(self, data):
+        return Response({
+            "count":    self.page.paginator.count,
+            "next":     self.get_next_link(),
+            "previous": self.get_previous_link(),
+            "results":  data,
+        })
+
+# Keep alias for compatibility
+_DepensePagination = _PageBy100
+
+
 class DepenseViewSet(ModelViewSet):
     serializer_class = DepenseSerializer
-    pagination_class = None
+    pagination_class = _DepensePagination
     queryset         = Depense.objects.all()
 
     def get_queryset(self):
         residence = get_user_residence(self.request)
         if not residence:
             return Depense.objects.none()
-        qs             = Depense.objects.select_related("compte", "categorie", "fournisseur").filter(residence=residence)
-        compte_id      = self.request.query_params.get("compte")
-        categorie_id   = self.request.query_params.get("categorie")
-        fournisseur_id = self.request.query_params.get("fournisseur")
-        famille        = self.request.query_params.get("famille")
-        annee          = self.request.query_params.get("annee")
-        a_affecter     = self.request.query_params.get("a_affecter")
-        if compte_id:
-            qs = qs.filter(compte_id=compte_id)
-        if categorie_id:
-            qs = qs.filter(categorie_id=categorie_id)
-        if fournisseur_id:
-            qs = qs.filter(fournisseur_id=fournisseur_id)
-        if famille:
-            qs = qs.filter(categorie__famille=famille)
-        if annee:
-            qs = qs.filter(date_depense__year=annee)
-        if a_affecter == "true":
+        qs = Depense.objects.select_related(
+            "compte", "categorie", "fournisseur",
+            "modele_depense", "modele_depense__categorie",   # fix N+1
+        ).filter(residence=residence).order_by("-date_depense", "-id")
+
+        p = self.request.query_params
+        if p.get("compte"):       qs = qs.filter(compte_id=p["compte"])
+        if p.get("categorie"):    qs = qs.filter(categorie_id=p["categorie"])
+        if p.get("fournisseur"):  qs = qs.filter(fournisseur_id=p["fournisseur"])
+        if p.get("famille"):      qs = qs.filter(categorie__famille=p["famille"])
+        if p.get("annee"):        qs = qs.filter(date_depense__year=p["annee"])
+        if p.get("mois"):         qs = qs.filter(mois=p["mois"])
+        if p.get("a_affecter") == "true":
             qs = qs.filter(compte__code="000")
         return qs
+
+    @action(detail=False, methods=["get"], url_path="stats")
+    def stats(self, request):
+        """Metadata for filter dropdowns: distinct years + pending count."""
+        residence = get_user_residence(request)
+        if not residence:
+            return Response({"annees": [], "count_attente": 0})
+        qs = Depense.objects.filter(residence=residence)
+        annees = sorted(
+            set(qs.values_list("date_depense__year", flat=True)),
+            reverse=True,
+        )
+        count_attente = qs.filter(compte__code="000").count()
+        return Response({"annees": annees, "count_attente": count_attente})
 
     def _resolve_compte(self, serializer, residence):
         """Return compte from payload, or derive from modele, or fallback to 000."""
@@ -792,24 +837,31 @@ class ContratViewSet(ModelViewSet):
 # ============================================================
 class RecetteViewSet(ModelViewSet):
     serializer_class = RecetteSerializer
-    pagination_class = None
+    pagination_class = _PageBy100
     queryset         = Recette.objects.all()
 
     def get_queryset(self):
         residence = get_user_residence(self.request)
         if not residence:
             return Recette.objects.none()
-        qs         = Recette.objects.select_related("compte").filter(residence=residence)
-        annee      = self.request.query_params.get("annee")
-        compte_id  = self.request.query_params.get("compte_id")
-        a_affecter = self.request.query_params.get("a_affecter")
-        if annee:
-            qs = qs.filter(date_recette__year=annee)
-        if compte_id:
-            qs = qs.filter(compte_id=compte_id)
-        if a_affecter == "true":
+        qs = Recette.objects.select_related("compte").filter(residence=residence).order_by("-date_recette", "-id")
+        p = self.request.query_params
+        if p.get("annee"):      qs = qs.filter(date_recette__year=p["annee"])
+        if p.get("mois"):       qs = qs.filter(mois=p["mois"])
+        if p.get("compte_id"):  qs = qs.filter(compte_id=p["compte_id"])
+        if p.get("a_affecter") == "true":
             qs = qs.filter(compte__code="000")
         return qs
+
+    @action(detail=False, methods=["get"], url_path="stats")
+    def stats(self, request):
+        residence = get_user_residence(request)
+        if not residence:
+            return Response({"annees": [], "count_attente": 0})
+        qs = Recette.objects.filter(residence=residence)
+        annees = sorted(set(qs.values_list("date_recette__year", flat=True)), reverse=True)
+        count_attente = qs.filter(compte__code="000").count()
+        return Response({"annees": annees, "count_attente": count_attente})
 
     def perform_create(self, serializer):
         residence = get_user_residence(self.request)
@@ -826,37 +878,29 @@ class RecetteViewSet(ModelViewSet):
 # ============================================================
 class CaisseMouvementViewSet(ModelViewSet):
     serializer_class = CaisseMouvementSerializer
-    pagination_class = None
+    pagination_class = _PageBy100
     queryset         = CaisseMouvement.objects.all()
 
     def get_queryset(self):
         residence = get_user_residence(self.request)
         if not residence:
             return CaisseMouvement.objects.none()
-        qs      = CaisseMouvement.objects.filter(residence=residence).select_related(
+        qs = CaisseMouvement.objects.filter(residence=residence).select_related(
             "depense__compte", "recette__compte", "paiement"
-        )
-        type_mv = self.request.query_params.get("type_mouvement")
-        sens    = self.request.query_params.get("sens")
-        annee   = self.request.query_params.get("annee")
-        mois    = self.request.query_params.get("mois")
-        if type_mv:
-            qs = qs.filter(type_mouvement=type_mv)
-        if sens:
-            qs = qs.filter(sens=sens)
-        if annee:
-            qs = qs.filter(date_mouvement__year=annee)
-        if mois:
-            qs = qs.filter(date_mouvement__month=mois)
+        ).order_by("-date_mouvement", "-id")
+        p = self.request.query_params
+        if p.get("type_mouvement"): qs = qs.filter(type_mouvement=p["type_mouvement"])
+        if p.get("sens"):           qs = qs.filter(sens=p["sens"])
+        if p.get("annee"):          qs = qs.filter(date_mouvement__year=p["annee"])
+        if p.get("mois"):           qs = qs.filter(mois=p["mois"])
         return qs
 
     def list(self, request, *args, **kwargs):
         residence = get_user_residence(request)
         if not residence:
-            return Response([])
+            return Response({"results": [], "count": 0, "next": None, "previous": None})
 
-        # Compute running balance in strict chronological order (date asc, id asc)
-        # Uses .values() for a lightweight query — no model instantiation needed.
+        # Lightweight running-balance map (all records, chronological)
         all_mvt = (
             CaisseMouvement.objects
             .filter(residence=residence)
@@ -870,14 +914,29 @@ class CaisseMouvementViewSet(ModelViewSet):
             running += v if m["sens"] == "DEBIT" else -v
             balance_map[m["id"]] = float(running)
 
-        # Serialize the filtered queryset (filters applied via get_queryset)
-        queryset   = self.get_queryset()
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            data = [dict(item, running_balance=balance_map.get(item["id"])) for item in serializer.data]
+            return self.get_paginated_response(data)
+
         serializer = self.get_serializer(queryset, many=True)
-        data = [
-            dict(item, running_balance=balance_map.get(item["id"]))
-            for item in serializer.data
-        ]
+        data = [dict(item, running_balance=balance_map.get(item["id"])) for item in serializer.data]
         return Response(data)
+
+    @action(detail=False, methods=["get"], url_path="stats")
+    def stats(self, request):
+        residence = get_user_residence(request)
+        if not residence:
+            return Response({"annees": [], "balance_totale": 0})
+        qs = CaisseMouvement.objects.filter(residence=residence)
+        annees = sorted(set(qs.values_list("date_mouvement__year", flat=True)), reverse=True)
+        total = Decimal("0")
+        for m in qs.values("montant", "sens"):
+            v = Decimal(str(m["montant"]))
+            total += v if m["sens"] == "DEBIT" else -v
+        return Response({"annees": annees, "balance_totale": float(total)})
 
     def perform_create(self, serializer):
         residence = get_user_residence(self.request)
@@ -967,6 +1026,12 @@ class AssembleeGeneraleViewSet(ModelViewSet):
         if new_statut == "PLANIFIEE" and date_ag and date_ag < today:
             raise ValidationError({"date_ag": "La date ne peut pas être dans le passé pour une assemblée planifiée."})
         serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # MandatBureauSyndical.assemblee_generale uses SET_NULL → delete manually
+        MandatBureauSyndical.objects.filter(assemblee_generale=instance).delete()
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"], url_path="envoyer-convocation")
     def envoyer_convocation(self, request, pk=None):

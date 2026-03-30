@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views_rapport import (
     rapport_financier_json, rapport_financier_excel, rapport_financier_pdf,
     situation_export_excel, situation_export_pdf,
-    situation_paiements_view, send_email_view,
+    situation_paiements_view, send_email_view, annees_activite,
 )
 from .views_comptabilite import (
     journal_view, grand_livre_view, balance_view, cpc_view, bilan_view,
@@ -20,7 +20,7 @@ from .views_users import (
     reset_user_password,
     change_own_password,
 )
-from .views_init import init_complete
+from .views_init import init_complete, init_assemblees
 from .views import passation_list_create, passation_detail, passation_refresh_caisse, passation_reserves, passation_situation_lots
 from .views_archive import archive_list, archive_create, archive_restore
 from .views_ai import ai_documents, ai_document_detail, ai_config_view, ai_chat, ai_load_app_docs
@@ -98,6 +98,7 @@ urlpatterns = [
     path("situation/export/excel/",         situation_export_excel,       name="situation-excel"),
     path("situation/export/pdf/",           situation_export_pdf,         name="situation-pdf"),
     path("situation-paiements/",            situation_paiements_view,     name="situation-paiements"),
+    path("annees-activite/",               annees_activite,              name="annees-activite"),
     path("send-email/",                     send_email_view,              name="send-email"),
     path("export/excel/",                   export_excel,            name="export-excel"),
     path("import/excel/",                   import_excel,            name="import-excel"),
@@ -108,6 +109,7 @@ urlpatterns = [
     path("residence-users/<int:pk>/reset-password/", reset_user_password, name="residence-users-reset-password"),
     path("change-password/",               change_own_password,     name="change-password"),
     path("init-complete/",                 init_complete,           name="init-complete"),
+    path("init-assemblees/",               init_assemblees,         name="init-assemblees"),
     path("passations/",                    passation_list_create,   name="passation-list"),
     path("passations/<int:pk>/",           passation_detail,        name="passation-detail"),
     path("passations/<int:pk>/refresh-caisse/", passation_refresh_caisse, name="passation-refresh"),

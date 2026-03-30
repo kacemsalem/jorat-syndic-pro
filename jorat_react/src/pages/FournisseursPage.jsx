@@ -42,7 +42,7 @@ export default function FournisseursPage() {
   };
 
   const handleSave = async () => {
-    if (!form.nom.trim()) { setError("Le nom contact est obligatoire."); return; }
+    if (!form.nom_societe.trim()) { setError("Le nom de la société est obligatoire."); return; }
     setSaving(true); setError(""); setInfo("");
     const url    = editItem ? `/api/fournisseurs/${editItem.id}/` : "/api/fournisseurs/";
     const method = editItem ? "PATCH" : "POST";
@@ -125,7 +125,7 @@ export default function FournisseursPage() {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Nom de la société</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Nom de la société <span className="text-red-500">*</span></label>
             <input className={inputCls} value={form.nom_societe}
               onChange={e => setForm(f => ({ ...f, nom_societe: e.target.value }))}
               placeholder="Raison sociale / nom entreprise" />
@@ -142,7 +142,7 @@ export default function FournisseursPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Nom contact *</label>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Nom contact</label>
               <input className={inputCls} value={form.nom}
                 onChange={e => setForm(f => ({ ...f, nom: e.target.value }))}
                 placeholder="Nom du contact" />

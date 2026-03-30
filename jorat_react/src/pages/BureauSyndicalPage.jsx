@@ -26,7 +26,7 @@ const FONCTION_STYLE = {
 };
 
 // ── Active mandate card ─────────────────────────────────────
-function ActiveMandatCard({ mandat, onEdit, onDelete }) {
+function ActiveMandatCard({ mandat, onEdit, onDelete, onDeleteMembre }) {
   if (!mandat) return (
     <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
       <p className="text-slate-400 font-medium">Aucun mandat actif</p>
@@ -77,7 +77,7 @@ function ActiveMandatCard({ mandat, onEdit, onDelete }) {
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-rose-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                   {(m.personne_nom || "?")[0].toUpperCase()}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-slate-800 truncate">
                     {m.personne_nom} {m.personne_prenom}
                   </div>
@@ -85,6 +85,12 @@ function ActiveMandatCard({ mandat, onEdit, onDelete }) {
                     {FONCTION_LABEL[m.fonction] || m.fonction}
                   </span>
                 </div>
+                <button
+                  onClick={() => onDeleteMembre(m)}
+                  className="text-red-300 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition flex-shrink-0"
+                  title="Retirer ce membre">
+                  🗑️
+                </button>
               </div>
             ))}
           </div>
@@ -345,6 +351,21 @@ export default function BureauSyndicalPage() {
     fetchMandats();
   };
 
+  const handleDeleteMembre = async m => {
+    if (!window.confirm(`Retirer ${m.personne_nom} ${m.personne_prenom || ""} du bureau ?`)) return;
+    setError("");
+    const res = await fetch(`/api/membres-bureau/${m.id}/`, {
+      method: "DELETE", credentials: "include",
+      headers: { "X-CSRFToken": getCsrf() },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.detail || "Erreur lors de la suppression.");
+      return;
+    }
+    fetchMandats();
+  };
+
   const handleFormSave = () => { setShowForm(false); fetchMandats(); };
 
   return (
@@ -376,6 +397,7 @@ export default function BureauSyndicalPage() {
           <ActiveMandatCard
             mandat={activeMandat}
             onDelete={handleDelete}
+            onDeleteMembre={handleDeleteMembre}
           />
 
           {/* New mandate form — below active card */}

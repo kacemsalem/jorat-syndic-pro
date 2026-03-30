@@ -58,7 +58,7 @@ export default function ExportPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto pb-24">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div>

@@ -7,6 +7,103 @@ function getCsrf() {
 
 const CONFIRM_WORD = "CONFIRMER";
 
+// ── Generic confirm+run action ──────────────────────────────
+function ActionBlock({ title, desc, bullets, note, apiUrl, doneMsg, confirmText = CONFIRM_WORD }) {
+  const [step, setStep]       = useState("idle");
+  const [input, setInput]     = useState("");
+  const [errorMsg, setError]  = useState("");
+  const [counts, setCounts]   = useState(null);
+
+  const canSubmit = input === confirmText;
+
+  const run = async () => {
+    setStep("running"); setError("");
+    try {
+      const res = await fetch(apiUrl, {
+        method: "POST", credentials: "include",
+        headers: { "X-CSRFToken": getCsrf(), "Content-Type": "application/json" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data?.detail || `Erreur ${res.status}`); setStep("error"); return; }
+      setCounts(data.counts ?? null);
+      setStep("done");
+    } catch { setError("Erreur réseau."); setStep("error"); }
+  };
+
+  if (step === "done") return (
+    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 space-y-3">
+      <p className="text-sm font-bold text-emerald-700">{doneMsg}</p>
+      {counts && (
+        <div className="text-xs text-emerald-800 space-y-0.5">
+          {Object.entries(counts).map(([k, v]) => (
+            <div key={k} className="flex justify-between">
+              <span className="capitalize">{k.replace(/_/g, " ")}</span>
+              <span className="font-semibold">{v} supprimé(s)</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={() => { setStep("idle"); setInput(""); setCounts(null); }}
+        className="text-xs text-emerald-700 underline">Fermer</button>
+    </div>
+  );
+
+  return (
+    <div className="bg-red-50 border border-red-200 rounded-2xl p-5 space-y-3">
+      <h2 className="text-base font-bold text-red-700">{title}</h2>
+      <p className="text-sm text-red-700">{desc}</p>
+      <ul className="text-sm text-red-600 space-y-0.5 pl-4 list-disc">
+        {bullets.map((b, i) => <li key={i}>{b}</li>)}
+      </ul>
+      {note && <p className="text-xs font-semibold text-red-700 bg-red-100 rounded-lg px-3 py-2">{note}</p>}
+
+      {step === "idle" && (
+        <div className="space-y-3 pt-1">
+          <p className="text-sm text-red-700 font-medium">
+            Saisissez <code className="bg-red-100 px-1.5 py-0.5 rounded font-mono">{confirmText}</code> pour confirmer :
+          </p>
+          <input type="text" value={input} onChange={e => setInput(e.target.value)}
+            placeholder={confirmText} autoComplete="off" spellCheck={false}
+            className="w-full border border-red-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-300" />
+          <button onClick={() => setStep("confirm")} disabled={!canSubmit}
+            className="w-full py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
+            Confirmer la suppression
+          </button>
+        </div>
+      )}
+
+      {step === "confirm" && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-bold text-slate-800">Dernière confirmation</h3>
+            <p className="text-sm text-slate-600">Cette suppression est <strong>irréversible</strong>. Continuer ?</p>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setStep("idle")}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>
+              <button onClick={run}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700">Oui, supprimer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === "running" && (
+        <div className="flex items-center gap-3 py-2 text-slate-500">
+          <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Suppression en cours…</span>
+        </div>
+      )}
+
+      {step === "error" && (
+        <div className="text-red-700 text-sm">
+          {errorMsg}
+          <button onClick={() => setStep("idle")} className="ml-3 underline text-xs">Réessayer</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function InitialisationPage() {
   const navigate = useNavigate();
 
@@ -72,15 +169,32 @@ export default function InitialisationPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-5">
+    <div className="max-w-lg mx-auto space-y-6 pb-24">
 
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-slate-800">Initialisation complète</h1>
-        <p className="text-sm text-slate-500 mt-1">Réinitialisation des données opérationnelles</p>
+        <p className="text-sm text-slate-500 mt-1">Réinitialisation sélective des données</p>
       </div>
 
-      {/* Warning card */}
+      {/* ── Action 1 : Assemblées générales ── */}
+      <ActionBlock
+        title="Supprimer les Assemblées Générales"
+        desc="Supprime toutes les assemblées et les données associées :"
+        bullets={[
+          "Assemblées générales",
+          "Bureau syndical (mandats et membres)",
+          "Résolutions et votes",
+          "PV de passation de consignes",
+        ]}
+        note="La résidence, les lots, les contacts et les données financières ne seront pas affectés."
+        apiUrl="/api/init-assemblees/"
+        doneMsg="Assemblées générales supprimées avec succès."
+      />
+
+      {/* ── Action 2 : Données financières (init complète) ── */}
+      <div>
+        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Données financières</div>
       <div className="bg-red-50 border border-red-200 rounded-2xl p-5 space-y-3">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -180,6 +294,7 @@ export default function InitialisationPage() {
         </div>
       )}
 
+      </div>{/* fin Action 2 wrapper */}
     </div>
   );
 }

@@ -856,6 +856,28 @@ def situation_paiements_view(request):
 
 
 # ============================================================
+# Années avec activité financière — GET /api/annees-activite/
+# ============================================================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def annees_activite(request):
+    """Retourne toutes les années ayant au moins une dépense, recette ou paiement."""
+    residence = get_user_residence(request)
+    if not residence:
+        return Response([])
+
+    years = set()
+    years.update(Depense.objects.filter(residence=residence)
+                 .values_list("date_depense__year", flat=True).distinct())
+    years.update(Recette.objects.filter(residence=residence)
+                 .values_list("date_recette__year", flat=True).distinct())
+    years.update(Paiement.objects.filter(residence=residence)
+                 .values_list("date_paiement__year", flat=True).distinct())
+    years.discard(None)
+    return Response(sorted(years, reverse=True))
+
+
+# ============================================================
 # Envoi d'email — POST /api/send-email/
 # ============================================================
 @api_view(["POST"])

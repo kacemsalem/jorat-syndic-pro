@@ -30,17 +30,24 @@ const EMPTY_FORM = {
 export default function RecettesPage() {
   const navigate = useNavigate();
 
-  const [recettes,  setRecettes]  = useState([]);
-  const [comptes,   setComptes]   = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [showForm,  setShowForm]  = useState(false);
-  const [editItem,  setEditItem]  = useState(null);
-  const [form,      setForm]      = useState(EMPTY_FORM);
-  const [saving,        setSaving]        = useState(false);
-  const [error,         setError]         = useState("");
-  const [openMenu,      setOpenMenu]      = useState(null);
-  const [defaultCompte, setDefaultCompte] = useState("");
-  const menuRef = useRef(null);
+  const [recettes,     setRecettes]     = useState([]);
+  const [recTotal,     setRecTotal]     = useState(0);
+  const [nextUrl,      setNextUrl]      = useState(null);
+  const [annees,       setAnnees]       = useState([]);
+  const [nbAttente,    setNbAttente]    = useState(0);
+  const [comptes,      setComptes]      = useState([]);
+  const [comptesUsed,  setComptesUsed]  = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [loadingMore,  setLoadingMore]  = useState(false);
+  const [showForm,     setShowForm]     = useState(false);
+  const [editItem,     setEditItem]     = useState(null);
+  const [form,         setForm]         = useState(EMPTY_FORM);
+  const [saving,           setSaving]           = useState(false);
+  const [error,            setError]            = useState("");
+  const [openMenu,         setOpenMenu]         = useState(null);
+  const [defaultCompte,    setDefaultCompte]    = useState("");
+  const menuRef       = useRef(null);
+  const isFirstRender = useRef(true);
 
   const [filterAnnee,   setFilterAnnee]   = useState("");
   const [filterMois,    setFilterMois]    = useState("");
@@ -52,22 +59,83 @@ export default function RecettesPage() {
   const [savingQuick,     setSavingQuick]     = useState(false);
   const [quickError,      setQuickError]      = useState("");
 
-  const fetchAll = () => {
-    setLoading(true);
-    Promise.all([
-      fetch("/api/recettes/",                      { credentials: "include" }).then(r => r.json()),
-      fetch("/api/comptes-comptables/?actif=true", { credentials: "include" }).then(r => r.json()),
-    ]).then(([rec, cpt]) => {
-      setRecettes(Array.isArray(rec) ? rec : (rec.results ?? []));
-      const cptList = Array.isArray(cpt) ? cpt : (cpt.results ?? []);
-      setComptes(cptList);
-      const compte000 = cptList.find(c => c.code === "000");
-      if (compte000) setDefaultCompte(String(compte000.id));
-      setLoading(false);
-    }).catch(() => setLoading(false));
+  const fetchStats = () => {
+    fetch("/api/recettes/stats/", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) {
+          setAnnees(d.annees ?? []);
+          setNbAttente(d.count_attente ?? 0);
+        }
+      })
+      .catch(() => {});
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  const fetchComptes = () => {
+    fetch("/api/comptes-comptables/?actif=true", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        const list = Array.isArray(d) ? d : (d.results ?? []);
+        setComptes(list);
+        const c000 = list.find(c => c.code === "000");
+        if (c000) setDefaultCompte(String(c000.id));
+      })
+      .catch(() => {});
+  };
+
+  const buildUrl = (extra = {}) => {
+    const params = new URLSearchParams();
+    const a  = extra.annee   ?? filterAnnee;
+    const m  = extra.mois    ?? filterMois;
+    const cp = extra.compte  ?? filterCompte;
+    const at = extra.attente ?? filterAttente;
+    if (a)  params.set("annee",      a);
+    if (m)  params.set("mois",       m);
+    if (cp) params.set("compte_id",  cp);
+    if (at) params.set("a_affecter", "true");
+    return `/api/recettes/?${params.toString()}`;
+  };
+
+  const fetchRecettes = (append = false) => {
+    if (append) setLoadingMore(true); else setLoading(true);
+    const url = append && nextUrl ? nextUrl : buildUrl();
+    fetch(url, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const results = d.results ?? [];
+        setRecettes(prev => append ? [...prev, ...results] : results);
+        setRecTotal(d.count ?? 0);
+        setNextUrl(d.next ?? null);
+        // Rebuild comptesUsed from loaded records
+        if (!append) {
+          const ids = new Set(results.map(r => String(r.compte)));
+          setComptesUsed(comptes.filter(c => ids.has(String(c.id))));
+        } else {
+          setComptesUsed(prev => {
+            const existing = new Set(prev.map(c => String(c.id)));
+            const newIds   = new Set(results.map(r => String(r.compte)));
+            const toAdd    = comptes.filter(c => !existing.has(String(c.id)) && newIds.has(String(c.id)));
+            return toAdd.length ? [...prev, ...toAdd] : prev;
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => { setLoading(false); setLoadingMore(false); });
+  };
+
+  useEffect(() => {
+    fetchStats();
+    fetchComptes();
+    fetchRecettes(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    fetchRecettes(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterAnnee, filterMois, filterCompte, filterAttente]);
 
   useEffect(() => {
     const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenu(null); };
@@ -75,30 +143,8 @@ export default function RecettesPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const nbAttente = useMemo(() => recettes.filter(r => r.compte_code === "000").length, [recettes]);
-
-  const filtered = useMemo(() => {
-    return recettes.filter(r => {
-      if (filterAnnee   && !r.date_recette?.startsWith(filterAnnee)) return false;
-      if (filterMois    && r.mois !== filterMois)                     return false;
-      if (filterCompte  && String(r.compte) !== filterCompte)         return false;
-      if (filterAttente && r.compte_code !== "000")                   return false;
-      return true;
-    });
-  }, [recettes, filterAnnee, filterMois, filterCompte, filterAttente]);
-
   const totalRecettes = useMemo(() =>
-    filtered.reduce((s, r) => s + (parseFloat(r.montant) || 0), 0), [filtered]);
-
-  const comptesUsed = useMemo(() => {
-    const ids = new Set(recettes.map(r => String(r.compte)));
-    return comptes.filter(c => ids.has(String(c.id)));
-  }, [recettes, comptes]);
-
-  const annees = useMemo(() => {
-    const set = new Set(recettes.map(r => r.date_recette?.slice(0, 4)).filter(Boolean));
-    return [...set].sort().reverse();
-  }, [recettes]);
+    recettes.reduce((s, r) => s + (parseFloat(r.montant) || 0), 0), [recettes]);
 
   const openCreate = () => {
     setEditItem(null);
@@ -128,14 +174,14 @@ export default function RecettesPage() {
         body: JSON.stringify({ ...form, compte: form.compte ? Number(form.compte) : null }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(JSON.stringify(d)); return; }
-      closeForm(); fetchAll();
+      closeForm(); fetchStats(); fetchRecettes(false);
     } finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
     if (!confirm("Supprimer cette recette ?")) return;
     await fetch(`/api/recettes/${id}/`, { method: "DELETE", credentials: "include", headers: { "X-CSRFToken": getCsrf() } });
-    fetchAll();
+    fetchStats(); fetchRecettes(false);
   };
 
   const handleQuickCompteSave = async () => {
@@ -169,7 +215,7 @@ export default function RecettesPage() {
           <div>
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Recettes</p>
             <p className="text-white/50 text-[10px]">
-              {filtered.length} recette{filtered.length !== 1 ? "s" : ""} {isFiltered ? "filtrées" : "au total"}
+              {recettes.length} / {recTotal} recette{recTotal !== 1 ? "s" : ""}
             </p>
           </div>
           <button onClick={openCreate}
@@ -230,7 +276,7 @@ export default function RecettesPage() {
           <div className="flex items-center justify-center py-16">
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : recettes.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm py-16 text-center">
             <p className="text-slate-300 text-sm">Aucune recette</p>
           </div>
@@ -239,11 +285,11 @@ export default function RecettesPage() {
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recettes</p>
               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                {filtered.length}
+                {recettes.length} / {recTotal}
               </span>
             </div>
             <div className="divide-y divide-slate-100">
-              {filtered.map(r => (
+              {recettes.map(r => (
                 <div key={r.id} className="flex items-center gap-3 px-4 py-3">
 
                   {/* Icône cercle vert */}
@@ -304,6 +350,16 @@ export default function RecettesPage() {
                 </div>
               ))}
             </div>
+
+            {/* Charger plus */}
+            {nextUrl && (
+              <div className="px-4 py-3 border-t border-slate-100 text-center">
+                <button onClick={() => fetchRecettes(true)} disabled={loadingMore}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                  {loadingMore ? "Chargement…" : `Charger plus (${recTotal - recettes.length} restants)`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

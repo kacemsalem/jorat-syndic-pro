@@ -36,13 +36,17 @@ const EMPTY_FORM = {
 };
 
 const INPUT = "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 transition";
-
-const SEL = "border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0";
+const SEL   = "border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600 shrink-0";
 
 export default function CaissePage() {
   const navigate = useNavigate();
   const [mouvements,         setMouvements]         = useState([]);
+  const [caissTotal,         setCaissTotal]         = useState(0);
+  const [nextUrl,            setNextUrl]            = useState(null);
+  const [balanceTotale,      setBalanceTotale]      = useState(0);
+  const [annees,             setAnnees]             = useState([]);
   const [loading,            setLoading]            = useState(true);
+  const [loadingMore,        setLoadingMore]        = useState(false);
   const [showForm,           setShowForm]           = useState(false);
   const [showRecetteConfirm, setShowRecetteConfirm] = useState(false);
   const [form,        setForm]        = useState(EMPTY_FORM);
@@ -54,17 +58,61 @@ export default function CaissePage() {
   const [filterSens,  setFilterSens]  = useState("");
   const [openMenu,    setOpenMenu]    = useState(null);
   const [showChart,   setShowChart]   = useState(false);
-  const menuRef = useRef(null);
+  const menuRef      = useRef(null);
+  const isFirstRender = useRef(true);
 
-  const fetchAll = () => {
-    setLoading(true);
-    fetch("/api/caisse-mouvements/", { credentials: "include" })
-      .then(r => r.json())
-      .then(d => { setMouvements(Array.isArray(d) ? d : (d.results ?? [])); setLoading(false); })
-      .catch(() => setLoading(false));
+  const fetchStats = () => {
+    fetch("/api/caisse-mouvements/stats/", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) {
+          setBalanceTotale(d.balance_totale ?? 0);
+          setAnnees(d.annees ?? []);
+        }
+      })
+      .catch(() => {});
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  const buildUrl = (extra = {}) => {
+    const params = new URLSearchParams();
+    const a = extra.annee ?? filterAnnee;
+    const m = extra.mois  ?? filterMois;
+    const t = extra.type  ?? filterType;
+    const s = extra.sens  ?? filterSens;
+    if (a) params.set("annee",          a);
+    if (m) params.set("mois",           m);
+    if (t) params.set("type_mouvement", t);
+    if (s) params.set("sens",           s);
+    return `/api/caisse-mouvements/?${params.toString()}`;
+  };
+
+  const fetchMouvements = (append = false) => {
+    if (append) setLoadingMore(true); else setLoading(true);
+    const url = append && nextUrl ? nextUrl : buildUrl();
+    fetch(url, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const results = d.results ?? [];
+        setMouvements(prev => append ? [...prev, ...results] : results);
+        setCaissTotal(d.count ?? 0);
+        setNextUrl(d.next ?? null);
+      })
+      .catch(() => {})
+      .finally(() => { setLoading(false); setLoadingMore(false); });
+  };
+
+  useEffect(() => {
+    fetchStats();
+    fetchMouvements(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    fetchMouvements(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterAnnee, filterMois, filterType, filterSens]);
 
   useEffect(() => {
     const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpenMenu(null); };
@@ -72,29 +120,13 @@ export default function CaissePage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const filtered = useMemo(() => {
-    return mouvements.filter(m => {
-      if (filterAnnee && !m.date_mouvement?.startsWith(filterAnnee)) return false;
-      if (filterMois  && m.mois !== filterMois)                       return false;
-      if (filterType  && m.type_mouvement !== filterType)             return false;
-      if (filterSens  && m.sens !== filterSens)                       return false;
-      return true;
-    });
-  }, [mouvements, filterAnnee, filterMois, filterType, filterSens]);
-
-  const balance = useMemo(() =>
-    mouvements.reduce((acc, m) => {
-      const v = parseFloat(m.montant) || 0;
-      return m.sens === "DEBIT" ? acc + v : acc - v;
-    }, 0), [mouvements]);
-
   const totalEntrees = useMemo(() =>
-    filtered.filter(m => m.sens === "DEBIT").reduce((s, m) => s + (parseFloat(m.montant) || 0), 0),
-    [filtered]);
+    mouvements.filter(m => m.sens === "DEBIT").reduce((s, m) => s + (parseFloat(m.montant) || 0), 0),
+    [mouvements]);
 
   const totalSorties = useMemo(() =>
-    filtered.filter(m => m.sens === "CREDIT").reduce((s, m) => s + (parseFloat(m.montant) || 0), 0),
-    [filtered]);
+    mouvements.filter(m => m.sens === "CREDIT").reduce((s, m) => s + (parseFloat(m.montant) || 0), 0),
+    [mouvements]);
 
   const handleSubmit = async () => {
     setError("");
@@ -109,7 +141,8 @@ export default function CaissePage() {
         body: JSON.stringify(form),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(JSON.stringify(d)); return; }
-      setShowForm(false); setForm(EMPTY_FORM); fetchAll();
+      setShowForm(false); setForm(EMPTY_FORM);
+      fetchStats(); fetchMouvements(false);
     } finally { setSaving(false); }
   };
 
@@ -119,16 +152,10 @@ export default function CaissePage() {
       method: "DELETE", credentials: "include",
       headers: { "X-CSRFToken": getCsrf() },
     });
-    fetchAll();
+    fetchStats(); fetchMouvements(false);
   };
 
-  const annees = useMemo(() => {
-    const set = new Set(mouvements.map(m => m.date_mouvement?.slice(0, 4)).filter(Boolean));
-    return [...set].sort().reverse();
-  }, [mouvements]);
-
   const fmt = (n) => Number(n).toLocaleString("fr-MA", { minimumFractionDigits: 2 });
-
   const isFiltered = filterAnnee || filterMois || filterType || filterSens;
 
   return (
@@ -143,7 +170,7 @@ export default function CaissePage() {
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Finances</p>
             <h1 className="text-white font-bold text-xl leading-tight">Caisse</h1>
             <p className="text-white/50 text-[10px] mt-0.5">
-              {isFiltered ? `${filtered.length} mouvement(s) filtrés` : `${mouvements.length} mouvement(s) au total`}
+              {mouvements.length} / {caissTotal} mouvement(s)
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -170,8 +197,8 @@ export default function CaissePage() {
         {/* Solde principal */}
         <div className="mb-5">
           <p className="text-white/60 text-xs mb-1">Solde actuel (total général)</p>
-          <p className={`text-4xl font-bold leading-none mb-1 ${balance >= 0 ? "text-white" : "text-red-200"}`}>
-            {fmt(balance)}
+          <p className={`text-4xl font-bold leading-none mb-1 ${balanceTotale >= 0 ? "text-white" : "text-red-200"}`}>
+            {fmt(balanceTotale)}
             <span className="text-base font-normal text-white/50 ml-2">MAD</span>
           </p>
         </div>
@@ -247,7 +274,7 @@ export default function CaissePage() {
           <div className="flex items-center justify-center py-16">
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : mouvements.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm py-16 text-center">
             <p className="text-slate-300 text-sm">Aucun mouvement</p>
           </div>
@@ -256,12 +283,12 @@ export default function CaissePage() {
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mouvements</p>
               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                {filtered.length}
+                {mouvements.length} / {caissTotal}
               </span>
             </div>
 
             <div className="divide-y divide-slate-100">
-              {filtered.map(m => {
+              {mouvements.map(m => {
                 const isEntree = m.sens === "DEBIT";
                 const isManual = MANUAL_TYPES.includes(m.type_mouvement);
                 return (
@@ -334,6 +361,16 @@ export default function CaissePage() {
                 );
               })}
             </div>
+
+            {/* Charger plus */}
+            {nextUrl && (
+              <div className="px-4 py-3 border-t border-slate-100 text-center">
+                <button onClick={() => fetchMouvements(true)} disabled={loadingMore}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                  {loadingMore ? "Chargement…" : `Charger plus (${caissTotal - mouvements.length} restants)`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
