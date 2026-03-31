@@ -3,11 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 const API = "/api";
 
-const STATUT_BADGE = {
-  NON_PAYE: "bg-red-100 text-red-700",
-  PARTIEL:  "bg-amber-100 text-amber-700",
-  PAYE:     "bg-emerald-100 text-emerald-700",
-};
+function getCsrf() {
+  return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
+}
 
 export default function DetailsAppelPage() {
   const location    = useLocation();
@@ -16,6 +14,8 @@ export default function DetailsAppelPage() {
   const appelId     = params.get("appel");
   const residenceId = params.get("residence") || localStorage.getItem("active_residence");
   const filtre      = params.get("filtre") || "CHARGE";
+
+  const modeHisto = params.get("mode") === "historique";
 
   const [appel, setAppel]                     = useState(null);
   const [details, setDetails]                 = useState([]);
@@ -30,6 +30,12 @@ export default function DetailsAppelPage() {
   const [showMontantFond, setShowMontantFond] = useState(false);
   const [montantFond, setMontantFond]         = useState("");
   const [sortDir, setSortDir]                 = useState("asc");
+
+  // ── Récupérer historique (mode=historique uniquement) ───
+  const [checkedIds,       setCheckedIds]       = useState(new Set());
+  const [showHistoConfirm, setShowHistoConfirm] = useState(false);
+  const [doingHisto,       setDoingHisto]       = useState(false);
+  const [histoResult,      setHistoResult]      = useState(null);
 
   const lotsDejaAjoutes = details.map((d) => d.lot);
 
@@ -47,7 +53,10 @@ export default function DetailsAppelPage() {
     setLoading(true);
     fetch(`${API}/details-appel/?appel=${appelId}`)
       .then((r) => r.json())
-      .then((data) => setDetails(Array.isArray(data) ? data : (data.results ?? [])))
+      .then((data) => {
+        setDetails(Array.isArray(data) ? data : (data.results ?? []));
+        setCheckedIds(new Set());
+      })
       .finally(() => setLoading(false));
   };
 
@@ -100,7 +109,6 @@ export default function DetailsAppelPage() {
         fetchDetails();
       } else {
         const data = await res.json();
-        console.error("Erreur API:", data);
         setErrors(data);
       }
     } finally {
@@ -158,6 +166,55 @@ export default function DetailsAppelPage() {
     }
   };
 
+  // ── Checkboxes ───────────────────────────────────────────
+  const toggleCheck = (id) => {
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    const elegibles = detailsTries.filter(d => parseFloat(d.montant) - parseFloat(d.montant_recu || 0) > 0.001);
+    const allChecked = elegibles.length > 0 && elegibles.every(d => checkedIds.has(d.id));
+    if (allChecked) {
+      setCheckedIds(new Set());
+    } else {
+      setCheckedIds(new Set(elegibles.map(d => d.id)));
+    }
+  };
+
+  // ── Récupérer historique ────────────────────────────────
+  const checkedWithSolde = details.filter(d => {
+    if (!checkedIds.has(d.id)) return false;
+    const solde = parseFloat(d.montant) - parseFloat(d.montant_recu || 0);
+    return solde > 0.001;
+  });
+
+  const handleHistoConfirm = async () => {
+    setDoingHisto(true);
+    try {
+      const res = await fetch(`${API}/details-appel/recuperer-historique/`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ detail_ids: checkedWithSolde.map(d => d.id) }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setHistoResult(data);
+        setShowHistoConfirm(false);
+        fetchDetails();
+      } else {
+        alert(data.detail || "Erreur lors de la récupération.");
+        setShowHistoConfirm(false);
+      }
+    } finally {
+      setDoingHisto(false);
+    }
+  };
+
   // ── Total ────────────────────────────────────────────────
   const total = details.reduce((sum, d) => sum + parseFloat(d.montant || 0), 0);
 
@@ -174,6 +231,13 @@ export default function DetailsAppelPage() {
     return sortDir === "asc" ? lCmp : -lCmp;
   });
 
+  const elegibles = detailsTries.filter(d => parseFloat(d.montant) - parseFloat(d.montant_recu || 0) > 0.001);
+  const allChecked = elegibles.length > 0 && elegibles.every(d => checkedIds.has(d.id));
+
+  const totalHisto = checkedWithSolde.reduce((s, d) =>
+    s + (parseFloat(d.montant) - parseFloat(d.montant_recu || 0)), 0);
+
+  const fmt = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 2 });
 
   // ── Render ───────────────────────────────────────────────
   return (
@@ -203,7 +267,17 @@ export default function DetailsAppelPage() {
               </p>
             )}
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex flex-wrap gap-2 shrink-0 justify-end">
+            {/* Récupérer historique — mode import uniquement */}
+            {modeHisto && (
+              <button
+                onClick={() => { setHistoResult(null); setShowHistoConfirm(true); }}
+                disabled={checkedWithSolde.length === 0}
+                className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded-xl disabled:opacity-40 transition"
+              >
+                ⟳ Historique ({checkedWithSolde.length})
+              </button>
+            )}
             <button
               onClick={handleAddAllLots}
               disabled={addingAll || lotsNonAjoutes.length === 0}
@@ -220,6 +294,17 @@ export default function DetailsAppelPage() {
             </button>
           </div>
         </div>
+
+        {/* Banner résultat historique — mode import uniquement */}
+        {modeHisto && histoResult && (
+          <div className="mt-3 bg-emerald-500/90 text-white text-xs rounded-xl px-3 py-2 flex items-center justify-between">
+            <span>
+              ✓ {histoResult.created} paiement{histoResult.created !== 1 ? "s" : ""} créé{histoResult.created !== 1 ? "s" : ""}
+              {histoResult.skipped > 0 ? ` · ${histoResult.skipped} ignoré(s)` : ""}
+            </span>
+            <button onClick={() => setHistoResult(null)} className="ml-2 text-white/70 hover:text-white">✕</button>
+          </div>
+        )}
       </div>
 
       {/* ── Liste lots (flat, triée par lot) ── */}
@@ -230,6 +315,26 @@ export default function DetailsAppelPage() {
           <p className="text-slate-400 text-sm py-8 text-center">Aucun détail pour cet appel.</p>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            {/* Header avec sélection globale — mode import uniquement */}
+            {modeHisto && elegibles.length > 0 && (
+              <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-3 bg-slate-50">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={toggleAll}
+                  className="w-3.5 h-3.5 rounded accent-amber-500 cursor-pointer"
+                />
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Sélectionner les impayés ({elegibles.length})
+                </span>
+                {checkedIds.size > 0 && (
+                  <span className="ml-auto text-[10px] font-semibold text-amber-600">
+                    {checkedIds.size} sélectionné{checkedIds.size > 1 ? "s" : ""} · {fmt(totalHisto)} MAD
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="divide-y divide-slate-100">
               {detailsTries.map(d => {
                 const montant  = parseFloat(d.montant || 0);
@@ -237,8 +342,26 @@ export default function DetailsAppelPage() {
                 const solde    = montant - recu;
                 const pct      = montant > 0 ? Math.min((recu / montant) * 100, 100) : 0;
                 const dotColor = { NON_PAYE: "bg-red-500", PARTIEL: "bg-amber-400", PAYE: "bg-emerald-500" }[d.statut] ?? "bg-slate-300";
+                const isElegible = solde > 0.001;
+                const isChecked  = checkedIds.has(d.id);
+
                 return (
-                  <div key={d.id} className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition">
+                  <div key={d.id} className={`px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition ${modeHisto && isChecked ? "bg-amber-50" : ""}`}>
+                    {/* Checkbox — mode import uniquement */}
+                    {modeHisto && (
+                      <div className="w-4 shrink-0 flex items-center justify-center">
+                        {isElegible ? (
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleCheck(d.id)}
+                            className="w-3.5 h-3.5 rounded accent-amber-500 cursor-pointer"
+                          />
+                        ) : (
+                          <div className="w-3.5 h-3.5" />
+                        )}
+                      </div>
+                    )}
                     {/* Dot statut */}
                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor}`} />
                     {/* Numéro lot */}
@@ -300,7 +423,6 @@ export default function DetailsAppelPage() {
             </h2>
 
             <div className="space-y-4">
-
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">
                   Lot <span className="text-red-400">*</span>
@@ -365,7 +487,6 @@ export default function DetailsAppelPage() {
                   <p className="text-red-600 text-xs">{errors.detail}</p>
                 </div>
               )}
-
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
@@ -432,6 +553,83 @@ export default function DetailsAppelPage() {
                 className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
               >
                 Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmation récupérer historique */}
+      {showHistoConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+
+            {/* Titre + icône */}
+            <div className="flex items-start gap-3 mb-4">
+              <div className="shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-lg">⟳</div>
+              <div>
+                <h2 className="text-base font-bold text-slate-800 leading-tight">Injection de l'historique des paiements</h2>
+                <p className="text-[11px] text-amber-600 font-semibold mt-0.5">Exercice {appel?.exercice} — {appel?.type_charge_label}</p>
+              </div>
+            </div>
+
+            {/* Explication principale */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-xs text-amber-900 space-y-2 leading-relaxed">
+              <p>
+                <strong>Vous vous apprêtez à injecter dans la caisse les paiements historiques de l'exercice {appel?.exercice}.</strong>
+              </p>
+              <p>
+                Cette opération suppose que les résidents sélectionnés ont <strong>déjà payé</strong> leurs charges
+                dans le passé, mais que ces paiements n'ont pas encore été enregistrés dans le système.
+              </p>
+              <p>
+                Pour chaque lot coché, un paiement de régularisation sera créé, daté du{" "}
+                <strong>1er janvier {appel?.exercice}</strong>, couvrant l'intégralité du solde dû et
+                affecté automatiquement à la dette correspondante.
+              </p>
+              <p className="text-amber-700">
+                ⚠ Cette action <strong>solde définitivement</strong> les lots sélectionnés pour cet appel.
+                Ne l'utilisez que si les paiements ont bien eu lieu dans la réalité.
+              </p>
+            </div>
+
+            {/* Récap lots */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 max-h-40 overflow-y-auto">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                {checkedWithSolde.length} lot{checkedWithSolde.length > 1 ? "s" : ""} concerné{checkedWithSolde.length > 1 ? "s" : ""}
+              </p>
+              <div className="space-y-1">
+                {checkedWithSolde.map(d => {
+                  const solde = parseFloat(d.montant) - parseFloat(d.montant_recu || 0);
+                  return (
+                    <div key={d.id} className="flex justify-between text-xs">
+                      <span className="font-semibold text-slate-700">Lot {d.lot_numero}</span>
+                      <span className="font-mono text-slate-600">{fmt(solde)} MAD</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="border-t border-slate-200 mt-2 pt-2 flex justify-between text-xs font-bold">
+                <span className="text-slate-700">Total injecté</span>
+                <span className="font-mono text-amber-700">{fmt(totalHisto)} MAD</span>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-xs text-blue-700 mb-5">
+              ℹ Les paiements seront référencés <em>"Régularisation historique"</em> et apparaîtront
+              dans la caisse à la date du 1er janvier {appel?.exercice}.
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowHistoConfirm(false)}
+                disabled={doingHisto}
+                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200">
+                Annuler
+              </button>
+              <button onClick={handleHistoConfirm}
+                disabled={doingHisto}
+                className="px-4 py-2 text-sm bg-amber-500 text-white rounded-xl hover:bg-amber-600 font-semibold disabled:opacity-60">
+                {doingHisto ? "Injection en cours…" : `Confirmer — ${fmt(totalHisto)} MAD`}
               </button>
             </div>
           </div>

@@ -23,6 +23,7 @@ export default function AppelsChargePage() {
     null;
 
   const filtre = searchParams.get("filtre") || "CHARGE"; // CHARGE | FOND — fixed per page
+  const mode   = searchParams.get("mode")   || "";       // "" | "historique"
 
   const [appels, setAppels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -211,6 +212,12 @@ export default function AppelsChargePage() {
         <p className="text-white/60 text-[11px] mt-0.5">
           {filtre === "FOND" ? "Gestion des fonds de réserve" : "Gestion des charges communes"}
         </p>
+        {mode === "historique" && (
+          <div className="mt-3 bg-amber-400/20 border border-amber-300/30 rounded-xl px-3 py-2 text-xs text-amber-100 flex items-center gap-2">
+            <span>⟳</span>
+            <span>Mode <strong>Récupération historique</strong> — cliquez Détails sur un appel pour sélectionner les lots impayés.</span>
+          </div>
+        )}
       </div>
       <div className="px-4 -mt-6 pb-24 max-w-5xl mx-auto">
 
@@ -262,7 +269,7 @@ export default function AppelsChargePage() {
                     </button>
                     {openMenu === a.id && (
                       <div className="absolute right-0 top-7 bg-white border border-slate-200 rounded-xl shadow-lg z-20 w-36 py-1 text-xs">
-                        <button onClick={() => { navigate(`/details-appel?appel=${a.id}&residence=${residenceId}&filtre=${filtre}`); setOpenMenu(null); }}
+                        <button onClick={() => { navigate(`/details-appel?appel=${a.id}&residence=${residenceId}&filtre=${filtre}${mode ? `&mode=${mode}` : ""}`); setOpenMenu(null); }}
                           className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-emerald-700 font-semibold">
                           Détails
                         </button>
@@ -293,7 +300,7 @@ export default function AppelsChargePage() {
                 {/* Lots + bouton détails */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400">{a.nombre_details ?? 0} lot{(a.nombre_details ?? 0) > 1 ? "s" : ""}</span>
-                  <button onClick={() => navigate(`/details-appel?appel=${a.id}&residence=${residenceId}&filtre=${filtre}`)}
+                  <button onClick={() => navigate(`/details-appel?appel=${a.id}&residence=${residenceId}&filtre=${filtre}${mode ? `&mode=${mode}` : ""}`)}
                     className="py-1 px-3 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition">
                     Détails
                   </button>

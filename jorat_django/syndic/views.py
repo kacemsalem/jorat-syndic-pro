@@ -520,6 +520,50 @@ class DetailAppelChargeViewSet(ModelViewSet):
 
         return qs
 
+    @action(detail=False, methods=["post"], url_path="recuperer-historique")
+    @transaction.atomic
+    def recuperer_historique(self, request):
+        from datetime import date as py_date
+        residence = get_user_residence(request)
+        if not residence:
+            return Response({"detail": "Aucune résidence associée."}, status=400)
+
+        detail_ids = request.data.get("detail_ids", [])
+        if not detail_ids:
+            return Response({"detail": "Aucun détail sélectionné."}, status=400)
+
+        details = DetailAppelCharge.objects.select_related("lot", "appel").filter(
+            id__in=detail_ids,
+            appel__residence=residence,
+        )
+
+        created = 0
+        skipped = 0
+
+        for detail in details:
+            solde = detail.montant - detail.montant_recu
+            if solde <= Decimal("0"):
+                skipped += 1
+                continue
+
+            date_paiement = py_date(int(detail.appel.exercice), 1, 1)
+
+            paiement = Paiement.objects.create(
+                lot=detail.lot,
+                residence=residence,
+                montant=solde,
+                date_paiement=date_paiement,
+                reference="Régularisation historique",
+            )
+            AffectationPaiement.objects.create(
+                paiement=paiement,
+                detail=detail,
+                montant_affecte=solde,
+            )
+            created += 1
+
+        return Response({"created": created, "skipped": skipped})
+
 
 # ============================================================
 # CategorieDepense

@@ -95,6 +95,20 @@ const KITS = [
     ],
     tip: null,
   },
+  {
+    key: "kit-histo",
+    label: "Historique Paiements",
+    icon: "⟳",
+    color: "border-amber-300 bg-amber-50",
+    activeColor: "ring-2 ring-amber-500",
+    desc: "Régulariser les soldes impayés",
+    navigate: true,
+    steps: [
+      { label: "Appels de charge", hint: "Lots CHARGE impayés", filtre: "CHARGE" },
+      { label: "Appels de fond",   hint: "Lots FOND impayés",   filtre: "FOND"   },
+    ],
+    tip: "Si l'appel de charge ou de fond ne figure pas encore, créez-le d'abord dans Gestion → Appels de charge / Appels de fond et vérifiez le montant dû par lot. Ensuite, cochez les lots avec un solde impayé et cliquez «⟳ Historique» pour créer un paiement de régularisation daté du 1er janvier de l'exercice.",
+  },
 ];
 
 const DATASETS = Object.values(ALL_DATASETS);
@@ -241,12 +255,14 @@ export default function ImportPage() {
         <div className="space-y-5">
 
           {/* Kit selector */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {KITS.map(kit => (
               <button key={kit.key} onClick={() => {
                   setActiveKit(kit.key);
-                  const firstImport = kit.steps.find(s => s.import);
-                  if (firstImport) setDataset(firstImport.dataset);
+                  if (!kit.navigate) {
+                    const firstImport = kit.steps.find(s => s.import);
+                    if (firstImport) setDataset(firstImport.dataset);
+                  }
                   setFile(null); setError("");
                   if (fileRef.current) fileRef.current.value = "";
                 }}
@@ -260,109 +276,147 @@ export default function ImportPage() {
             ))}
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-5">
+          {/* ── Kit historique — navigation uniquement ── */}
+          {selectedKit.navigate ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-6 space-y-5">
+              <div>
+                <p className="text-sm font-bold text-slate-700 mb-1">⟳ Récupérer l'historique des paiements</p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Ouvrez un appel de charge ou de fond, cochez les lots avec un solde impayé,
+                  puis cliquez <strong>«⟳ Historique»</strong> pour créer un paiement de régularisation
+                  daté du <strong>1er janvier de l'exercice</strong>.
+                </p>
+              </div>
 
-            {/* Kit steps guidance */}
-            <div>
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">
-                Ordre d'import recommandé
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {selectedKit.steps.map((s, idx) => (
-                  <div key={s.label} className="flex items-center gap-2">
-                    {s.import ? (
-                      <button
-                        onClick={() => { setDataset(s.dataset); setFile(null); setError(""); if (fileRef.current) fileRef.current.value = ""; }}
-                        className={`px-3 py-2 rounded-xl border text-xs font-semibold transition text-left ${
-                          dataset === s.dataset
-                            ? "border-amber-400 bg-amber-50 text-amber-800"
-                            : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
-                        }`}>
-                        <div>{s.label}</div>
-                        <div className="font-normal text-slate-400 mt-0.5">{s.hint}</div>
-                      </button>
-                    ) : (
-                      <div className="px-3 py-2 rounded-xl border border-dashed border-slate-200 text-xs text-left opacity-70">
-                        <div className="font-semibold text-slate-500">{s.label}</div>
-                        <div className="text-slate-400 mt-0.5">{s.hint}</div>
-                      </div>
-                    )}
-                    {idx < selectedKit.steps.length - 1 && (
-                      <span className="text-slate-300 text-lg">→</span>
-                    )}
-                  </div>
-                ))}
-              </div>
               {selectedKit.tip && (
-                <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                   <span className="text-amber-500 mt-0.5 shrink-0">💡</span>
                   <p className="text-xs text-amber-800">{selectedKit.tip}</p>
                 </div>
               )}
-            </div>
 
-            {/* Columns info */}
-            <div className="bg-slate-50 rounded-xl p-4">
-              <div className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
-                Colonnes pour : <span className="text-amber-700">{selectedDs.label}</span>
-              </div>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {selectedDs.columns.map(col => (
-                  <span key={col} className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    selectedDs.required.includes(col)
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-slate-100 text-slate-600"
-                  }`}>
-                    {col}{selectedDs.required.includes(col) ? " *" : ""}
-                  </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {selectedKit.steps.map(s => (
+                  <button
+                    key={s.filtre}
+                    onClick={() => navigate(`/appels-charge?filtre=${s.filtre}&mode=historique`)}
+                    className="flex items-center justify-between p-4 rounded-xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 transition text-left group"
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-amber-800">{s.label}</p>
+                      <p className="text-xs text-amber-600 mt-0.5">{s.hint}</p>
+                    </div>
+                    <span className="text-amber-500 text-xl group-hover:translate-x-1 transition-transform">→</span>
+                  </button>
                 ))}
               </div>
-              <p className="text-xs text-slate-400">* Obligatoire — {selectedDs.note}</p>
             </div>
+          ) : (
+            /* ── Kit import standard ── */
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-5">
 
-            {/* Template download */}
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
+              {/* Kit steps guidance */}
               <div>
-                <div className="text-sm font-semibold text-blue-800">Télécharger le modèle</div>
-                <div className="text-xs text-blue-500 mt-0.5">Fichier Excel pré-formaté — {selectedDs.label}</div>
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">
+                  Ordre d'import recommandé
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedKit.steps.map((s, idx) => (
+                    <div key={s.label} className="flex items-center gap-2">
+                      {s.import ? (
+                        <button
+                          onClick={() => { setDataset(s.dataset); setFile(null); setError(""); if (fileRef.current) fileRef.current.value = ""; }}
+                          className={`px-3 py-2 rounded-xl border text-xs font-semibold transition text-left ${
+                            dataset === s.dataset
+                              ? "border-amber-400 bg-amber-50 text-amber-800"
+                              : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
+                          }`}>
+                          <div>{s.label}</div>
+                          <div className="font-normal text-slate-400 mt-0.5">{s.hint}</div>
+                        </button>
+                      ) : (
+                        <div className="px-3 py-2 rounded-xl border border-dashed border-slate-200 text-xs text-left opacity-70">
+                          <div className="font-semibold text-slate-500">{s.label}</div>
+                          <div className="text-slate-400 mt-0.5">{s.hint}</div>
+                        </div>
+                      )}
+                      {idx < selectedKit.steps.length - 1 && (
+                        <span className="text-slate-300 text-lg">→</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {selectedKit.tip && (
+                  <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                    <span className="text-amber-500 mt-0.5 shrink-0">💡</span>
+                    <p className="text-xs text-amber-800">{selectedKit.tip}</p>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={downloadTemplate}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition">
-                ⬇ Modèle Excel
-              </button>
-            </div>
 
-            {/* File upload */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
-                Fichier Excel (.xlsx)
-              </label>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                onChange={handleFileChange}
-                className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
-              />
-              {file && (
-                <p className="text-xs text-slate-500 mt-1.5">
-                  Fichier sélectionné: <span className="font-semibold">{file.name}</span> ({(file.size / 1024).toFixed(1)} Ko)
-                </p>
-              )}
-            </div>
+              {/* Columns info */}
+              <div className="bg-slate-50 rounded-xl p-4">
+                <div className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
+                  Colonnes pour : <span className="text-amber-700">{selectedDs.label}</span>
+                </div>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedDs.columns.map(col => (
+                    <span key={col} className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      selectedDs.required.includes(col)
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-slate-100 text-slate-600"
+                    }`}>
+                      {col}{selectedDs.required.includes(col) ? " *" : ""}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-400">* Obligatoire — {selectedDs.note}</p>
+              </div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+              {/* Template download */}
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div>
+                  <div className="text-sm font-semibold text-blue-800">Télécharger le modèle</div>
+                  <div className="text-xs text-blue-500 mt-0.5">Fichier Excel pré-formaté — {selectedDs.label}</div>
+                </div>
+                <button
+                  onClick={downloadTemplate}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition">
+                  ⬇ Modèle Excel
+                </button>
+              </div>
 
-            <div className="flex justify-end">
-              <button
-                onClick={handleAnalyse}
-                disabled={!file || loading}
-                className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 disabled:opacity-50 transition shadow">
-                {loading ? "Analyse en cours…" : "Analyser le fichier →"}
-              </button>
+              {/* File upload */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
+                  Fichier Excel (.xlsx)
+                </label>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={handleFileChange}
+                  className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+                />
+                {file && (
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    Fichier sélectionné: <span className="font-semibold">{file.name}</span> ({(file.size / 1024).toFixed(1)} Ko)
+                  </p>
+                )}
+              </div>
+
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleAnalyse}
+                  disabled={!file || loading}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-amber-500 text-white rounded-xl font-semibold text-sm hover:bg-amber-600 disabled:opacity-50 transition shadow">
+                  {loading ? "Analyse en cours…" : "Analyser le fichier →"}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
