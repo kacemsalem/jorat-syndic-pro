@@ -5,6 +5,11 @@ function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
 }
 
+const relUrl = (url) => {
+  if (!url) return null;
+  try { const u = new URL(url); return u.pathname + u.search; } catch { return url; }
+};
+
 const MOIS_OPTIONS = [
   { value: "JAN", label: "Janvier" }, { value: "FEV", label: "Février" },
   { value: "MAR", label: "Mars" },    { value: "AVR", label: "Avril" },
@@ -106,7 +111,7 @@ export default function RecettesPage() {
         const results = d.results ?? [];
         setRecettes(prev => append ? [...prev, ...results] : results);
         setRecTotal(d.count ?? 0);
-        setNextUrl(d.next ?? null);
+        setNextUrl(relUrl(d.next));
         // Rebuild comptesUsed from loaded records
         if (!append) {
           const ids = new Set(results.map(r => String(r.compte)));

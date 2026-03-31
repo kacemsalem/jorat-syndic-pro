@@ -6,6 +6,11 @@ function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
 }
 
+const relUrl = (url) => {
+  if (!url) return null;
+  try { const u = new URL(url); return u.pathname + u.search; } catch { return url; }
+};
+
 const TYPE_LABELS = {
   SOLDE_INITIAL:      "Solde initial",
   PAIEMENT:           "Paiement",
@@ -96,7 +101,7 @@ export default function CaissePage() {
         const results = d.results ?? [];
         setMouvements(prev => append ? [...prev, ...results] : results);
         setCaissTotal(d.count ?? 0);
-        setNextUrl(d.next ?? null);
+        setNextUrl(relUrl(d.next));
       })
       .catch(() => {})
       .finally(() => { setLoading(false); setLoadingMore(false); });

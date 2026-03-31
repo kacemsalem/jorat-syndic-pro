@@ -6,6 +6,11 @@ function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
 }
 
+const relUrl = (url) => {
+  if (!url) return null;
+  try { const u = new URL(url); return u.pathname + u.search; } catch { return url; }
+};
+
 const MOIS_OPTIONS = [
   { value: "JAN", label: "Janvier" }, { value: "FEV", label: "Février" },
   { value: "MAR", label: "Mars" },    { value: "AVR", label: "Avril" },
@@ -451,7 +456,7 @@ export default function DepensesPage() {
         const rows = d.results ?? (Array.isArray(d) ? d : []);
         setDepenses(prev => append ? [...prev, ...rows] : rows);
         setDepTotal(d.count ?? rows.length);
-        setDepNextUrl(d.next ?? null);
+        setDepNextUrl(relUrl(d.next));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
