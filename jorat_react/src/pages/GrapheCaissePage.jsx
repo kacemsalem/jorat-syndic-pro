@@ -10,7 +10,7 @@ export default function GrapheCaissePage() {
   const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
-    fetch("/api/caisse-mouvements/", { credentials: "include" })
+    fetch("/api/caisse-mouvements/?page_size=9999", { credentials: "include" })
       .then(r => r.json())
       .then(d => setMouvements(Array.isArray(d) ? d : (d.results ?? [])))
       .catch(() => {})

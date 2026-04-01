@@ -12,7 +12,7 @@ export default function GrapheDepensesPage() {
   const [fetchError,  setFetchError]  = useState("");
 
   useEffect(() => {
-    fetch("/api/depenses/", { credentials: "include" })
+    fetch("/api/depenses/?page_size=9999", { credentials: "include" })
       .then(r => {
         if (!r.ok) { setFetchError(`Erreur API ${r.status}`); return null; }
         return r.json();

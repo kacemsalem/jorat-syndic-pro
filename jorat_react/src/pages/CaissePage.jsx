@@ -63,6 +63,7 @@ export default function CaissePage() {
   const [filterSens,  setFilterSens]  = useState("");
   const [openMenu,    setOpenMenu]    = useState(null);
   const [showChart,   setShowChart]   = useState(false);
+  const [chartMvt,    setChartMvt]    = useState([]);
   const menuRef      = useRef(null);
   const isFirstRender = useRef(true);
 
@@ -106,6 +107,15 @@ export default function CaissePage() {
       .catch(() => {})
       .finally(() => { setLoading(false); setLoadingMore(false); });
   };
+
+  // Fetch ALL mouvements (no filters) for chart — runs once when chart is first opened
+  const fetchChartMvt = () => {
+    fetch("/api/caisse-mouvements/?page_size=9999", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setChartMvt(d.results ?? (Array.isArray(d) ? d : [])); })
+      .catch(() => {});
+  };
+  useEffect(() => { if (showChart && chartMvt.length === 0) fetchChartMvt(); }, [showChart]);
 
   useEffect(() => {
     fetchStats();
@@ -270,7 +280,7 @@ export default function CaissePage() {
         {showChart && (
           <div className="bg-white rounded-2xl shadow-sm p-4">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Évolution du solde</p>
-            <ChartCaisse mouvements={mouvements} />
+            <ChartCaisse mouvements={chartMvt} />
           </div>
         )}
 

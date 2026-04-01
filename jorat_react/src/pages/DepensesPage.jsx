@@ -411,6 +411,7 @@ export default function DepensesPage() {
   const [filterFournisseur, setFilterFournisseur] = useState("");
   const [filterAttente,     setFilterAttente]     = useState(false);
   const [showChart,         setShowChart]         = useState(false);
+  const [chartDep,          setChartDep]          = useState([]);
 
   const [depTotal,    setDepTotal]    = useState(0);   // total records (server)
   const [depNextUrl,  setDepNextUrl]  = useState(null); // pagination next link
@@ -463,6 +464,15 @@ export default function DepensesPage() {
   };
 
   const fetchAll = () => { fetchMeta(); fetchDepenses(); };
+
+  // Fetch ALL depenses (no filters) for chart — runs once when chart is first opened
+  const fetchChartDep = () => {
+    fetch("/api/depenses/?page_size=9999", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setChartDep(d.results ?? (Array.isArray(d) ? d : [])))
+      .catch(() => {});
+  };
+  useEffect(() => { if (showChart && chartDep.length === 0) fetchChartDep(); }, [showChart]);
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -668,7 +678,7 @@ export default function DepensesPage() {
         {showChart && (
           <div className="bg-white rounded-2xl shadow-sm p-4">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Évolution des dépenses</p>
-            <ChartDepenses depenses={depenses} />
+            <ChartDepenses depenses={chartDep} />
           </div>
         )}
 

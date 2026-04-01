@@ -8,19 +8,20 @@ export default function GraphePaiementsPage() {
   const [year,        setYear]        = useState(new Date().getFullYear());
   const [loadingYears, setLoadingYears] = useState(true);
 
-  // Fetch available years from either type (CHARGE is most common)
+  // Fetch available years from both CHARGE and FOND (merged)
   useEffect(() => {
-    fetch("/api/situation-paiements/?type_charge=CHARGE", { credentials: "include" })
-      .then(r => r.json())
-      .then(d => {
-        const yrs = d.years || [];
+    Promise.all([
+      fetch("/api/situation-paiements/?type_charge=CHARGE", { credentials: "include" }).then(r => r.json()).catch(() => ({})),
+      fetch("/api/situation-paiements/?type_charge=FOND",   { credentials: "include" }).then(r => r.json()).catch(() => ({})),
+    ])
+      .then(([dc, df]) => {
+        const yrs = [...new Set([...(dc.years || []), ...(df.years || [])])].sort((a, b) => a - b);
         if (yrs.length > 0) {
           setYears(yrs);
           const cur = new Date().getFullYear();
           setYear(yrs.includes(cur) ? cur : yrs[yrs.length - 1]);
         }
       })
-      .catch(() => {})
       .finally(() => setLoadingYears(false));
   }, []);
 

@@ -227,9 +227,10 @@ export default function PaiementPage() {
   };
 
   const fetchPaiements = (lotId) => {
-    fetchJson(`${API}/paiements/?lot=${lotId}`).then(({ data }) =>
-      setPaiements(Array.isArray(data) ? data : (data?.results ?? []))
-    );
+    fetchJson(`${API}/paiements/?lot=${lotId}`).then(({ data }) => {
+      const rows = Array.isArray(data) ? data : (data?.results ?? []);
+      setPaiements([...rows].sort((a, b) => (a.date_paiement ?? "").localeCompare(b.date_paiement ?? "")));
+    });
   };
 
   useEffect(() => {
