@@ -10,6 +10,7 @@ from .views_comptabilite import (
     journal_export_excel, balance_export_excel, cpc_export_excel, bilan_export_excel,
     grand_livre_export_excel, grand_livre_export_pdf,
     journal_export_pdf, balance_export_pdf, cpc_export_pdf, bilan_export_pdf,
+    comptabilite_annees,
 )
 from .views_export import export_excel
 from .views_import import import_excel, import_template
@@ -154,6 +155,7 @@ urlpatterns = [
     path("comptabilite/balance/pdf/",          balance_export_pdf,    name="compta-balance-pdf"),
     path("comptabilite/cpc/pdf/",              cpc_export_pdf,        name="compta-cpc-pdf"),
     path("comptabilite/bilan/pdf/",            bilan_export_pdf,      name="compta-bilan-pdf"),
+    path("comptabilite/annees/",               comptabilite_annees,   name="compta-annees"),
 
     # ── Module IA ────────────────────────────────────────────
     path("ai/documents/",           ai_documents,         name="ai-documents"),

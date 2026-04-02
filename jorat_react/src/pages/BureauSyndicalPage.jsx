@@ -59,6 +59,10 @@ function ActiveMandatCard({ mandat, onEdit, onDelete, onDeleteMembre }) {
           </div>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => onEdit(mandat)}
+            className="text-xs text-indigo-500 hover:text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition">
+            ✏️ Modifier
+          </button>
           <button onClick={() => onDelete(mandat)}
             className="text-xs text-red-400 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
             Clore
@@ -101,8 +105,9 @@ function ActiveMandatCard({ mandat, onEdit, onDelete, onDeleteMembre }) {
 }
 
 // ── Historical mandate row ──────────────────────────────────
-function HistoricalMandat({ mandat }) {
-  const [open, setOpen] = useState(false);
+function HistoricalMandat({ mandat, onSaved }) {
+  const [open,    setOpen]    = useState(false);
+  const [editing, setEditing] = useState(false);
   const sorted = [...(mandat.membres || [])].sort(
     (a, b) => FONCTION_ORDER.indexOf(a.fonction) - FONCTION_ORDER.indexOf(b.fonction)
   );
@@ -126,10 +131,26 @@ function HistoricalMandat({ mandat }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-400">{mandat.nb_membres} membre{mandat.nb_membres !== 1 ? "s" : ""}</span>
+          <button onClick={e => { e.stopPropagation(); setEditing(v => !v); }}
+            className={`text-xs px-2 py-1 rounded-lg transition ${editing ? "bg-indigo-100 text-indigo-700" : "text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"}`}>
+            ✏️
+          </button>
           <span className="text-slate-400 text-xs">{open ? "▲" : "▼"}</span>
         </div>
       </button>
-      {open && sorted.length > 0 && (
+
+      {/* Inline edit form */}
+      {editing && (
+        <div className="border-t border-indigo-100 px-4 pb-4 pt-3">
+          <EditMandatForm
+            mandat={mandat}
+            onSave={() => { setEditing(false); onSaved(); }}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      )}
+
+      {open && !editing && sorted.length > 0 && (
         <div className="border-t border-slate-50 px-5 pb-3 pt-2">
           <div className="flex flex-wrap gap-2">
             {sorted.map(m => (
@@ -312,6 +333,57 @@ function NouveauMandatForm({ assemblees, personnes, allMandats, onSave, onCancel
   );
 }
 
+// ── Edit Mandate Form ───────────────────────────────────────
+function EditMandatForm({ mandat, onSave, onCancel }) {
+  const [dateDebut, setDateDebut] = useState(mandat.date_debut || "");
+  const [dateFin,   setDateFin]   = useState(mandat.date_fin   || "");
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState("");
+
+  const handleSave = async () => {
+    if (!dateDebut) { setError("La date de début est obligatoire."); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await fetch(`/api/mandats-bureau/${mandat.id}/`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ date_debut: dateDebut, date_fin: dateFin || null }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(Object.values(d).flat().join(" ") || "Erreur."); return;
+      }
+      onSave();
+    } catch { setError("Erreur réseau."); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-indigo-200 p-5 space-y-4">
+      <h2 className="text-sm font-bold text-slate-800">Modifier le mandat</h2>
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[10px] font-semibold text-slate-400 mb-1">Date début *</label>
+          <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold text-slate-400 mb-1">Date fin</label>
+          <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+        </div>
+      </div>
+      <div className="flex gap-3">
+        <button onClick={onCancel} className="flex-1 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition">Annuler</button>
+        <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-50">
+          {saving ? "Enregistrement…" : "Enregistrer"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ───────────────────────────────────────────────
 export default function BureauSyndicalPage() {
   const navigate = useNavigate();
@@ -320,6 +392,7 @@ export default function BureauSyndicalPage() {
   const [assemblees, setAssemblees] = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [showForm,   setShowForm]   = useState(false);
+  const [editMandat, setEditMandat] = useState(null); // mandat en cours de modif
   const [error,      setError]      = useState("");
 
   const fetchMandats = () => {
@@ -366,7 +439,8 @@ export default function BureauSyndicalPage() {
     fetchMandats();
   };
 
-  const handleFormSave = () => { setShowForm(false); fetchMandats(); };
+  const handleFormSave = () => { setShowForm(false); setEditMandat(null); fetchMandats(); };
+  const handleEditActive = (mandat) => { setEditMandat(mandat); setShowForm(false); };
 
   return (
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
@@ -396,9 +470,19 @@ export default function BureauSyndicalPage() {
         <>
           <ActiveMandatCard
             mandat={activeMandat}
+            onEdit={handleEditActive}
             onDelete={handleDelete}
             onDeleteMembre={handleDeleteMembre}
           />
+
+          {/* Edit mandate form */}
+          {editMandat && (
+            <EditMandatForm
+              mandat={editMandat}
+              onSave={handleFormSave}
+              onCancel={() => setEditMandat(null)}
+            />
+          )}
 
           {/* New mandate form — below active card */}
           {showForm && (
@@ -419,7 +503,7 @@ export default function BureauSyndicalPage() {
               </h3>
               <div className="space-y-2">
                 {historicalMandats.map(m => (
-                  <HistoricalMandat key={m.id} mandat={m} />
+                  <HistoricalMandat key={m.id} mandat={m} onSaved={fetchMandats} />
                 ))}
               </div>
             </div>

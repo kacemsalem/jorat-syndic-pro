@@ -60,6 +60,19 @@ export default function CpcPage() {
   const [loading, setLoading]     = useState(true);
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin]     = useState("");
+  const [years, setYears]         = useState([]);
+  const [year, setYear]           = useState(null);
+
+  useEffect(() => {
+    fetch("/api/comptabilite/annees/", { credentials: "include" })
+      .then(r => r.json()).then(d => setYears(d.annees || [])).catch(() => {});
+  }, []);
+
+  const selectYear = (y) => {
+    setYear(y);
+    if (y) { setDateDebut(`${y}-01-01`); setDateFin(`${y}-12-31`); }
+    else   { setDateDebut(""); setDateFin(""); }
+  };
 
   const load = () => {
     setLoading(true);
@@ -107,14 +120,26 @@ export default function CpcPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-5 py-4 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500 font-medium whitespace-nowrap">Du</label>
-            <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)}
+            <input type="date" value={dateDebut} onChange={e => { setDateDebut(e.target.value); setYear(null); }}
               className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-violet-400" />
           </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500 font-medium whitespace-nowrap">Au</label>
-            <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)}
+            <input type="date" value={dateFin} onChange={e => { setDateFin(e.target.value); setYear(null); }}
               className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-violet-400" />
           </div>
+          {years.length > 0 && (
+            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+              {years.map(y => (
+                <button key={y} onClick={() => selectYear(year === y ? null : y)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                    year === y ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}>
+                  {y}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

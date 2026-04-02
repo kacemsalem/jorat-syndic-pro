@@ -34,6 +34,8 @@ export default function PassationConsignesPage() {
   const [saving,     setSaving]     = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [error,      setError]      = useState("");
+  const [showForm,      setShowForm]      = useState(true);
+  const [situationOpen, setSituationOpen] = useState(false);
 
   const [form, setForm] = useState({
     date_passation:        toLocalInput(null),
@@ -83,6 +85,7 @@ export default function PassationConsignesPage() {
         if (list.length > 0) {
           const p = list[0];
           setPassation(p);
+          setShowForm(false);
           setForm({
             date_passation:        toLocalInput(p.date_passation),
             solde_banque:          p.solde_banque,
@@ -114,10 +117,8 @@ export default function PassationConsignesPage() {
     if (!form.nom_syndic_entrant)    { setError("Le syndic entrant est obligatoire.");     return; }
     if (!form.nom_tresorier_entrant) { setError("Le trésorier entrant est obligatoire.");  return; }
     setSaving(true); setError("");
-    // date_passation : figée côté serveur — exclure du payload
-    const { date_passation: _ignored, ...formFields } = form;
     const payload = {
-      ...formFields,
+      ...form,
       justification_ecart: JSON.stringify(justifs),
       assemblee: assembleeId || null,
     };
@@ -136,6 +137,7 @@ export default function PassationConsignesPage() {
         setPassation(p);
         setReserves(p.reserves || []);
         setJustifs(parseJustifs(p.justification_ecart));
+        setShowForm(false);
         const [rs] = await Promise.all([
           fetch(`/api/passations/${p.id}/situation/`, { credentials: "include" }),
           refreshCaisse(p.id),
@@ -153,6 +155,7 @@ export default function PassationConsignesPage() {
         }
         const p = await r.json();
         setPassation(prev => ({ ...prev, ...p }));
+        setShowForm(false);
       }
     } finally { setSaving(false); }
   };
@@ -481,16 +484,32 @@ export default function PassationConsignesPage() {
 
       {error && <div className="bg-white rounded-2xl shadow-sm text-xs text-red-600 border border-red-200 px-4 py-2">{error}</div>}
 
+      {/* ── Résumé passation (form fermé) ── */}
+      {!showForm && passation && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-center justify-between gap-3">
+          <div className="text-sm text-slate-700">
+            <span className="font-semibold">{form.nom_syndic || "—"}</span>
+            <span className="text-slate-400 mx-2">→</span>
+            <span className="font-semibold">{form.nom_syndic_entrant || "—"}</span>
+            <span className="ml-3 text-xs text-slate-400">{form.date_passation?.slice(0, 10)}</span>
+          </div>
+          <button onClick={() => setShowForm(true)}
+            className="text-xs text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition font-semibold">
+            ✏️ Modifier
+          </button>
+        </div>
+      )}
+
       {/* ── Formulaire principal ── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5">
+      {showForm && <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5">
 
         {/* Date — figée automatiquement à la création, non modifiable */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">Date et heure de passation</label>
-            <input type="datetime-local" className={INPUT + " bg-slate-50 cursor-not-allowed opacity-70"}
-              value={form.date_passation} disabled />
-            <p className="text-[10px] text-slate-400 mt-0.5">Définie automatiquement · non modifiable</p>
+            <input type="datetime-local" className={INPUT}
+              value={form.date_passation}
+              onChange={e => setForm(f => ({ ...f, date_passation: e.target.value }))} />
           </div>
         </div>
 
@@ -659,17 +678,26 @@ export default function PassationConsignesPage() {
             {saving ? "Enregistrement…" : passation ? "Mettre à jour" : "Créer la passation"}
           </button>
         </div>
-      </div>
+      </div>}
 
       {passation && (<>
 
         {/* ── Situation paiements ── */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 bg-slate-50 border-b border-slate-100">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">Situation des paiements par lot</span>
-            <span className="ml-2 text-[10px] text-slate-400">automatique</span>
-          </div>
-          {situation.length === 0 ? (
+          <button
+            onClick={() => setSituationOpen(v => !v)}
+            className="w-full flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">Situation des paiements par lot</span>
+              <span className="text-[10px] text-slate-400">automatique</span>
+              {situation.length > 0 && (
+                <span className="text-[10px] text-slate-400">· {situation.length} lot{situation.length > 1 ? "s" : ""}</span>
+              )}
+            </div>
+            <span className="text-slate-400 text-xs">{situationOpen ? "▲" : "▼"}</span>
+          </button>
+          {situationOpen && (situation.length === 0 ? (
             <p className="text-xs text-slate-400 text-center py-6">Aucune donnée de paiement.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -702,7 +730,7 @@ export default function PassationConsignesPage() {
                 </tbody>
               </table>
             </div>
-          )}
+          ))}
         </div>
 
         {/* ── Réserves ── */}

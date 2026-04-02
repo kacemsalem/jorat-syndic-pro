@@ -694,6 +694,19 @@ class DepenseViewSet(ModelViewSet):
             qs = qs.filter(compte__code="000")
         return qs
 
+    def list(self, request, *args, **kwargs):
+        qs = self.filter_queryset(self.get_queryset())
+        from django.db.models import Sum
+        total_montant = qs.aggregate(t=Sum("montant"))["t"] or 0
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            response = self.get_paginated_response(serializer.data)
+            response.data["total_montant"] = float(total_montant)
+            return response
+        serializer = self.get_serializer(qs, many=True)
+        return Response({"results": serializer.data, "total_montant": float(total_montant)})
+
     @action(detail=False, methods=["get"], url_path="stats")
     def stats(self, request):
         """Metadata for filter dropdowns: distinct years + pending count."""
@@ -1038,12 +1051,9 @@ class AssembleeGeneraleViewSet(ModelViewSet):
         residence = get_user_residence(self.request)
         if not residence:
             raise ValidationError("Aucune résidence associée.")
-        today = timezone.now().date()
-        date_ag = serializer.validated_data.get("date_ag")
-        # Interdire une date passée uniquement pour les AG planifiées
+        today = timezone.now().date()  # noqa: F841 — gardé pour la vérification doublon
+        date_ag = serializer.validated_data.get("date_ag")  # noqa: F841
         statut = serializer.validated_data.get("statut", "PLANIFIEE")
-        if statut == "PLANIFIEE" and date_ag and date_ag < today:
-            raise ValidationError({"date_ag": "La date ne peut pas être dans le passé pour une assemblée planifiée."})
         # Interdire deux AG planifiées simultanément
         if statut == "PLANIFIEE" and AssembleeGenerale.objects.filter(residence=residence, statut="PLANIFIEE").exists():
             raise ValidationError({
@@ -1066,9 +1076,6 @@ class AssembleeGeneraleViewSet(ModelViewSet):
                     "statut": "Une autre assemblée est déjà planifiée. "
                               "Clôturez-la d'abord avant de replanifier celle-ci."
                 })
-        # Interdire une date passée uniquement pour les AG planifiées
-        if new_statut == "PLANIFIEE" and date_ag and date_ag < today:
-            raise ValidationError({"date_ag": "La date ne peut pas être dans le passé pour une assemblée planifiée."})
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
@@ -1269,9 +1276,19 @@ def passation_list_create(request):
             qs = qs.filter(assemblee_id=assemblee_id)
         return Response(PassationConsignesSerializer(qs, many=True).data)
 
-    # POST — créer : la date est toujours l'instant présent (non modifiable)
+    # POST — créer : date fournie par le client, ou instant présent
     from django.utils import timezone as tz
-    date_passation = tz.now()
+    import datetime as _dt
+    raw_date = request.data.get("date_passation")
+    if raw_date:
+        try:
+            date_passation = _dt.datetime.fromisoformat(str(raw_date).replace("Z", "+00:00"))
+            if date_passation.tzinfo is None:
+                date_passation = tz.make_aware(date_passation)
+        except (ValueError, TypeError):
+            date_passation = tz.now()
+    else:
+        date_passation = tz.now()
     solde_caisse = _compute_solde_caisse(residence, date=date_passation)
     p = PassationConsignes.objects.create(
         residence       = residence,
@@ -1302,7 +1319,15 @@ def passation_detail(request, pk):
         return Response(PassationConsignesSerializer(p).data)
 
     if request.method == "PATCH":
-        # date_passation est figée — jamais modifiable après création
+        if "date_passation" in request.data:
+            from django.utils import timezone as tz
+            import datetime as _dt
+            raw = request.data["date_passation"]
+            try:
+                dt = _dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+                p.date_passation = tz.make_aware(dt) if dt.tzinfo is None else dt
+            except (ValueError, TypeError):
+                pass
         for field in ["justification_ecart","notes","nom_syndic","nom_tresorier","nom_syndic_entrant","nom_tresorier_entrant"]:
             if field in request.data:
                 setattr(p, field, request.data[field])

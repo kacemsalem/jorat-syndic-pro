@@ -82,20 +82,6 @@ const KITS = [
     tip: "Catégorie, fournisseur et compte sont optionnels. Si vide ou introuvable, «ND (non définie)» est attribué automatiquement.",
   },
   {
-    key: "kit-autres",
-    label: "Autres",
-    icon: "📋",
-    color: "border-slate-200 bg-slate-50",
-    activeColor: "ring-2 ring-slate-400",
-    desc: "Recettes, paiements, appels…",
-    steps: [
-      { dataset: "recettes",     label: "Recettes",      hint: "Produits et recettes", import: true },
-      { dataset: "paiements",    label: "Paiements",     hint: "Règlements copropriétaires", import: true },
-      { dataset: "appel-charge", label: "Appels charge", hint: "Appels de charge / fond", import: true },
-    ],
-    tip: null,
-  },
-  {
     key: "kit-histo",
     label: "Historique Paiements",
     icon: "⟳",
@@ -255,7 +241,7 @@ export default function ImportPage() {
         <div className="space-y-5">
 
           {/* Kit selector */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {KITS.map(kit => (
               <button key={kit.key} onClick={() => {
                   setActiveKit(kit.key);

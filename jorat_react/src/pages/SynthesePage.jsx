@@ -50,7 +50,7 @@ function buildSynthesePdf({ residence, exercice, colonnesCharge, colonnesFond, l
     if (colonnes.length === 0) return "";
 
     const colHeaders = colonnes.map(col =>
-      `<th style="padding:4px 5px;text-align:center;white-space:nowrap;font-size:8px;border:1px solid #94a3b8;min-width:70px">${col.code_fond ?? col.periode}<br/><span style="font-weight:400;color:#94a3b8">${col.exercice}</span></th>`
+      `<th style="padding:4px 5px;text-align:center;white-space:nowrap;font-size:8px;border:1px solid #94a3b8;min-width:70px">${col.type_charge === "FOND" ? (col.nom_fond || col.code_fond || col.periode) : col.periode}<br/><span style="font-weight:400;color:#94a3b8">${col.exercice}</span></th>`
     ).join("");
 
     const totauxRow = colonnes.map(col => {
@@ -202,6 +202,7 @@ export default function SynthesePage() {
   const [groupes,     setGroupes]     = useState([]);
   const [residence,   setResidence]   = useState(null);
   const [typeAppel,   setTypeAppel]   = useState("CHARGE");
+  const [filterAnnee, setFilterAnnee] = useState("");
   const [loading,     setLoading]     = useState(true);
   const [pdfLoading,  setPdfLoading]  = useState(false);
 
@@ -224,15 +225,21 @@ export default function SynthesePage() {
     }).catch(() => setLoading(false));
   }, []);
 
-  // ── Colonnes du type sélectionné, toutes années, triées exercice desc puis période ──
+  // ── Années disponibles pour le type sélectionné ──────────────
+  const anneeOptions = useMemo(() =>
+    [...new Set(appels.filter(a => a.type_charge === typeAppel).map(a => String(a.exercice)))]
+      .sort((a, b) => parseInt(b) - parseInt(a)),
+  [appels, typeAppel]);
+
+  // ── Colonnes du type sélectionné, filtrées par année, triées exercice desc puis période ──
   const colonnes = useMemo(() =>
     appels
-      .filter(a => a.type_charge === typeAppel)
+      .filter(a => a.type_charge === typeAppel && (!filterAnnee || String(a.exercice) === filterAnnee))
       .sort((a, b) => {
         if (b.exercice !== a.exercice) return parseInt(b.exercice) - parseInt(a.exercice);
         return (ORDRE_PERIODE[a.periode] ?? 99) - (ORDRE_PERIODE[b.periode] ?? 99);
       }),
-  [appels, typeAppel]);
+  [appels, typeAppel, filterAnnee]);
 
   const detailMap = useMemo(() => {
     const m = {};
@@ -396,7 +403,7 @@ export default function SynthesePage() {
                 { value: "CHARGE", label: "Charge" },
                 { value: "FOND",   label: "Fond"   },
               ].map(({ value, label }) => (
-                <button key={value} onClick={() => setTypeAppel(value)}
+                <button key={value} onClick={() => { setTypeAppel(value); setFilterAnnee(""); }}
                   className={`px-3 py-1.5 font-semibold transition ${
                     typeAppel === value ? "bg-white text-blue-700" : "text-white/80 hover:bg-white/10"
                   }`}>
@@ -421,6 +428,18 @@ export default function SynthesePage() {
           </div>
         </div>
         <p className="text-white/50 text-[10px] mt-1">Situation par lot — charges et fonds</p>
+        {anneeOptions.length > 1 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {anneeOptions.map(y => (
+              <button key={y} onClick={() => setFilterAnnee(filterAnnee === y ? "" : y)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                  filterAnnee === y ? "bg-white text-blue-700" : "text-white/70 border border-white/30 hover:bg-white/10"
+                }`}>
+                {y}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="px-4 -mt-5 pb-24 max-w-5xl mx-auto space-y-4">
 
@@ -585,8 +604,8 @@ export default function SynthesePage() {
                       <div key={col.id} className="flex items-center justify-between text-xs gap-2">
                         <span className="text-slate-500 truncate flex items-baseline gap-1">
                           <span>{col.exercice}</span>
-                          {col.type_charge === "FOND" && (col.libelle || col.code_fond) && (
-                            <span className="text-[10px] text-slate-400">{col.libelle || col.code_fond}</span>
+                          {col.type_charge === "FOND" && (col.nom_fond || col.code_fond) && (
+                            <span className="text-[10px] text-slate-400">{col.nom_fond || col.code_fond}</span>
                           )}
                         </span>
                         <div className={`flex items-center gap-1 font-mono rounded-md px-1.5 py-0.5 ${s.bg} shrink-0`}>

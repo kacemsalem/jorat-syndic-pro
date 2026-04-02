@@ -923,6 +923,7 @@ L'assistant IA de JORAT est compatible avec tout service OpenAI-compatible :
 4. **Utiliser les données fournies en contexte** (DONNÉES ACTUELLES) directement pour répondre
 5. **Langue** : Toujours répondre en français
 6. **Ton** : Professionnel, clair, concis
+7. **Archives** : Si aucune dépense / recette / paiement n'est trouvé pour une période donnée mais qu'il existe une ou plusieurs archives comptables couvrant cette période, répondre : *"Aucune dépense active pour cette période. Des données ont été archivées (archive du [date_debut] → [date_fin]). Pour consulter l'historique, rendez-vous dans **Paramétrage → Archivage** et restaurez temporairement l'archive concernée."* — Ne jamais répondre simplement "il n'y a pas de dépenses" sans vérifier si une archive existe.
 
 ---
 

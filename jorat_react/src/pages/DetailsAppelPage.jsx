@@ -254,12 +254,12 @@ export default function DetailsAppelPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-white font-bold text-base leading-tight">
-              {appel ? appel.code_fond : "Détail appel"}
+              {appel ? (appel.type_charge === "FOND" ? (appel.nom_fond || appel.code_fond) : appel.code_fond) : "Détail appel"}
             </h1>
             {appel && (
               <p className="text-white/60 text-[10px] mt-0.5">
                 {appel.type_charge_label} · Exercice {appel.exercice}
-                {appel.nom_fond ? ` · ${appel.nom_fond}` : ""}
+                {appel.type_charge === "FOND" && appel.code_fond ? ` · ${appel.code_fond}` : ""}
                 {" · "}
                 <span className="font-semibold text-white/80">{total.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} MAD</span>
                 {" · "}

@@ -1359,3 +1359,30 @@ def grand_livre_export_pdf(request):
     resp  = HttpResponse(buf.read(), content_type="application/pdf")
     resp["Content-Disposition"] = f'attachment; filename="grand_livre_{slug}_{today}.pdf"'
     return resp
+
+
+# ============================================================
+# Années disponibles (pour le sélecteur d'exercice)
+# ============================================================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def comptabilite_annees(request):
+    """Retourne les années pour lesquelles des dépenses ou recettes existent."""
+    residence = get_user_residence(request)
+    if not residence:
+        return Response({"annees": []})
+    from django.db.models.functions import ExtractYear
+    dep_years = (
+        Depense.objects.filter(residence=residence)
+        .annotate(y=ExtractYear("date_depense"))
+        .values_list("y", flat=True)
+        .distinct()
+    )
+    rec_years = (
+        Recette.objects.filter(residence=residence)
+        .annotate(y=ExtractYear("date_recette"))
+        .values_list("y", flat=True)
+        .distinct()
+    )
+    years = sorted({y for y in list(dep_years) + list(rec_years) if y}, reverse=True)
+    return Response({"annees": years})

@@ -190,13 +190,14 @@ export default function SituationPaiementsPage() {
         </div>
         {/* Ligne 2 : année + filtre statut + recherche */}
         <div className="flex flex-wrap items-center gap-2 mt-2">
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="text-xs border border-white/30 rounded-xl px-3 py-1.5 bg-white/20 text-white focus:outline-none"
-          >
-            {yearOptions.map((y) => <option key={y} value={y} className="text-slate-800">{y}</option>)}
-          </select>
+          {yearOptions.map(y => (
+            <button key={y} onClick={() => setYear(y)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                y === year ? "bg-white text-blue-700" : "text-white/80 border border-white/30 hover:bg-white/10"
+              }`}>
+              {y}
+            </button>
+          ))}
 
           {[
             { key: "TOUS",    label: "Tous"    },

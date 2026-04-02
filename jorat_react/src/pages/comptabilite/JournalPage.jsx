@@ -16,6 +16,19 @@ export default function JournalPage() {
   const [search, setSearch]             = useState("");
   const [filterType, setFilterType]     = useState("");
   const [filterAttente, setFilterAttente] = useState(false);
+  const [years, setYears]               = useState([]);
+  const [year, setYear]                 = useState(null);
+
+  useEffect(() => {
+    fetch("/api/comptabilite/annees/", { credentials: "include" })
+      .then(r => r.json()).then(d => setYears(d.annees || [])).catch(() => {});
+  }, []);
+
+  const selectYear = (y) => {
+    setYear(y);
+    if (y) { setDateDebut(`${y}-01-01`); setDateFin(`${y}-12-31`); }
+    else   { setDateDebut(""); setDateFin(""); }
+  };
 
   const load = () => {
     setLoading(true);
@@ -113,6 +126,19 @@ export default function JournalPage() {
             >
               ⚠ À affecter ({nbAttente})
             </button>
+          )}
+          {years.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap border-l border-slate-200 pl-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">Exercice</span>
+              {[null, ...years].map(y => (
+                <button key={y ?? "all"} onClick={() => selectYear(y)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                    year === y ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}>
+                  {y ?? "Tous"}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>

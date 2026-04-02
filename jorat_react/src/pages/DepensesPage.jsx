@@ -413,8 +413,9 @@ export default function DepensesPage() {
   const [showChart,         setShowChart]         = useState(false);
   const [chartDep,          setChartDep]          = useState([]);
 
-  const [depTotal,    setDepTotal]    = useState(0);   // total records (server)
-  const [depNextUrl,  setDepNextUrl]  = useState(null); // pagination next link
+  const [depTotal,       setDepTotal]       = useState(0);   // total records (server)
+  const [depTotalAmount, setDepTotalAmount] = useState(0);   // total montant (server, all pages)
+  const [depNextUrl,     setDepNextUrl]     = useState(null); // pagination next link
   const [nbAttente,   setNbAttente]   = useState(0);
   const [annees,      setAnnees]      = useState([]);
 
@@ -457,6 +458,7 @@ export default function DepensesPage() {
         const rows = d.results ?? (Array.isArray(d) ? d : []);
         setDepenses(prev => append ? [...prev, ...rows] : rows);
         setDepTotal(d.count ?? rows.length);
+        if (!append) setDepTotalAmount(d.total_montant ?? 0);
         setDepNextUrl(relUrl(d.next));
       })
       .catch(() => {})
@@ -579,7 +581,6 @@ export default function DepensesPage() {
 
   // Filters are now server-side — depenses already filtered by backend
   const filtered     = depenses;
-  const totalFiltered = filtered.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
   const famillesList  = useMemo(() =>
     categories.map(c => c.nom).filter(n => n !== "ND (non définie)").sort()
   , [categories]);
@@ -666,7 +667,7 @@ export default function DepensesPage() {
         </div>
         <p className="text-white/60 text-xs mb-1">Total dépenses</p>
         <p className="text-4xl font-bold text-white leading-none mb-1">
-          {fmt(totalFiltered)}
+          {fmt(depTotalAmount)}
           <span className="text-base font-normal text-white/50 ml-2">MAD</span>
         </p>
       </div>
