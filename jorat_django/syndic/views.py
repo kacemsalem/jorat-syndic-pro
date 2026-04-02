@@ -480,6 +480,51 @@ class AppelChargeViewSet(ModelViewSet):
         except Exception as exc:
             self._wrap_django_validation(exc)
 
+    @action(detail=True, methods=["post"], url_path="repartir-tantiemes")
+    def repartir_tantiemes(self, request, pk=None):
+        """Calcule et applique la répartition tantième pour tous les lots de l'appel.
+        Accepte un montant_total optionnel en body (sinon utilise montant_total_appel de l'appel).
+        Ne touche pas aux lots déjà payés partiellement ou totalement.
+        """
+        appel = self.get_object()
+        montant_total = request.data.get("montant_total")
+        if montant_total is not None:
+            try:
+                montant_total = Decimal(str(montant_total))
+                appel.montant_total_appel = montant_total
+                appel.save(update_fields=["montant_total_appel"])
+            except Exception:
+                return Response({"detail": "montant_total invalide."}, status=400)
+        else:
+            montant_total = appel.montant_total_appel
+
+        if not montant_total or montant_total <= 0:
+            return Response({"detail": "Aucun montant total défini pour cet appel."}, status=400)
+
+        lots = Lot.objects.filter(residence=appel.residence).exclude(tantiemes__isnull=True)
+        if not lots.exists():
+            return Response({"detail": "Aucun lot avec tantièmes définis dans cette résidence."}, status=400)
+
+        updated = 0
+        created = 0
+        from decimal import ROUND_HALF_UP
+        for lot in lots:
+            part = (Decimal(str(lot.tantiemes)) / Decimal("1000")) * montant_total
+            part = part.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            detail, is_new = DetailAppelCharge.objects.get_or_create(
+                appel=appel, lot=lot,
+                defaults={"montant": part},
+            )
+            if is_new:
+                created += 1
+            else:
+                # Ne pas écraser si déjà partiellement payé
+                detail.montant = part
+                detail.save(update_fields=["montant"])
+                updated += 1
+
+        return Response({"created": created, "updated": updated, "montant_total": float(montant_total)})
+
 
 # ============================================================
 # DetailAppelCharge

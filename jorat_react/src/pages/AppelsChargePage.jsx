@@ -9,6 +9,7 @@ const EMPTY_FORM = {
   nom_fond: "",
   description_appel: "",
   date_emission: new Date().toISOString().split("T")[0],
+  montant_total_appel: "",
 };
 
 export default function AppelsChargePage() {
@@ -98,12 +99,13 @@ export default function AppelsChargePage() {
   const openEdit = (appel) => {
     setEditing(appel.id);
     setForm({
-      type_charge:       appel.type_charge,
-      exercice:          appel.exercice,
-      nom_fond:          appel.nom_fond ?? "",
-      description_appel: appel.description_appel ?? "",
-      date_emission:     appel.date_emission,
-      _code_fond:        appel.code_fond ?? "",
+      type_charge:         appel.type_charge,
+      exercice:            appel.exercice,
+      nom_fond:            appel.nom_fond ?? "",
+      description_appel:   appel.description_appel ?? "",
+      date_emission:       appel.date_emission,
+      montant_total_appel: appel.montant_total_appel ?? "",
+      _code_fond:          appel.code_fond ?? "",
     });
     setErrors({});
     setShowModal(true);
@@ -130,6 +132,7 @@ export default function AppelsChargePage() {
     const payload = {
       ...formData,
       periode: form.type_charge === "FOND" ? "FOND" : "ANNEE",
+      montant_total_appel: formData.montant_total_appel !== "" ? parseFloat(formData.montant_total_appel) : null,
     };
 
     try {
@@ -401,6 +404,27 @@ export default function AppelsChargePage() {
                 value={form.description_appel}
                 onChange={(e) => setForm((p) => ({ ...p, description_appel: e.target.value }))}
               />
+            </div>
+
+            {/* Montant total (mode tantième) */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                Montant total à répartir
+                <span className="ml-1 text-slate-300 font-normal normal-case">(optionnel — mode tantième)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number" min={0} step="0.01"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  placeholder="ex : 48000"
+                  value={form.montant_total_appel}
+                  onChange={(e) => setForm((p) => ({ ...p, montant_total_appel: e.target.value }))}
+                />
+                <span className="absolute right-3 top-2 text-xs text-slate-400">MAD</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Si défini, utilisable dans Détail appel → «&nbsp;Répartir tantièmes&nbsp;» pour calculer automatiquement la part de chaque lot.
+              </p>
             </div>
 
             {/* Erreurs globales */}

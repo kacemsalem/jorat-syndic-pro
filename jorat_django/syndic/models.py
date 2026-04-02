@@ -48,6 +48,12 @@ class Residence(TimeStampedModel):
         ("ANNUEL", "Annuel"),
     ]
 
+    MODE_REPARTITION_CHOICES = [
+        ("PART_EGALE", "Part égale"),
+        ("MANUEL",     "Montant manuel"),
+        ("TANTIEME",   "Tantième (‰)"),
+    ]
+
     nom_residence = models.CharField(max_length=150)
     ville_residence = models.CharField(max_length=100)
 
@@ -85,6 +91,13 @@ class Residence(TimeStampedModel):
     partage_rapport_resident = models.BooleanField(
         default=False,
         help_text="Partager le rapport financier avec les résidents"
+    )
+
+    mode_repartition = models.CharField(
+        max_length=12,
+        choices=MODE_REPARTITION_CHOICES,
+        default="PART_EGALE",
+        help_text="Méthode de répartition des charges entre les lots",
     )
 
     class Meta:
@@ -209,6 +222,15 @@ class Lot(TimeStampedModel):
         max_length=20,
         choices=TYPE_CHOICES,
         default="APPARTEMENT",
+    )
+
+    tantiemes = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text="Quote-part en millièmes (ex : 85.50 pour 85.50/1000)",
     )
 
     remarque_lot = models.TextField(blank=True)
@@ -469,6 +491,14 @@ class AppelCharge(TimeStampedModel):
     date_emission = models.DateField(default=timezone.now)
 
     libelle = models.CharField(max_length=200, blank=True, help_text="Nom descriptif de l'appel (ex: Travaux ravalement 2026)")
+
+    montant_total_appel = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Montant total de l'appel (utilisé en mode Tantième pour calculer la part de chaque lot)",
+    )
 
     # Archivage : si non-null, cet appel est archivé dans cette ArchiveComptable.
     # SET_NULL au moment de la restauration (archive.delete()) = restauration automatique.

@@ -68,6 +68,7 @@ export default function Residences() {
         email:                 r.email                 ?? "",
         email_password:        r.email_password        ?? "",
         statut_residence:      r.statut_residence      ?? "ACTIF",
+        mode_repartition:      r.mode_repartition      ?? "PART_EGALE",
         description:           r.description           ?? "",
         logo_base64:           null,
       });
@@ -110,6 +111,7 @@ export default function Residences() {
         email:                 form.email,
         email_password:        form.email_password || null,
         statut_residence:      form.statut_residence,
+        mode_repartition:      form.mode_repartition,
         description:           form.description,
       };
       if (form.logo_base64) payload.logo_base64 = form.logo_base64;
@@ -263,6 +265,20 @@ export default function Residences() {
                 </div>
               </Field>
             </div>
+
+            {/* Mode de répartition des charges */}
+            <Field label="Mode de répartition des charges">
+              <select className={inputCls} value={form.mode_repartition} onChange={set("mode_repartition")}>
+                <option value="PART_EGALE">Part égale (montant_ref par lot)</option>
+                <option value="MANUEL">Montant manuel (défini lot par lot)</option>
+                <option value="TANTIEME">Tantième ‰ (calcul proportionnel)</option>
+              </select>
+              {form.mode_repartition === "TANTIEME" && (
+                <p className="text-[10px] text-amber-600 mt-1">
+                  En mode tantième, saisissez la quote-part (‰) sur chaque lot, puis dans chaque appel de charge/fond, entrez le montant total à répartir et cliquez «&nbsp;Répartir&nbsp;».
+                </p>
+              )}
+            </Field>
 
             <div className="flex justify-end gap-3 pt-1">
               <button type="button" onClick={() => load()}

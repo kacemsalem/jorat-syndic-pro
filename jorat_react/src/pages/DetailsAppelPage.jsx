@@ -29,6 +29,10 @@ export default function DetailsAppelPage() {
   const [addingAll, setAddingAll]             = useState(false);
   const [showMontantFond, setShowMontantFond] = useState(false);
   const [montantFond, setMontantFond]         = useState("");
+  const [showTantieme, setShowTantieme]       = useState(false);
+  const [tantiemeTotal, setTantiemeTotal]     = useState("");
+  const [repartissant, setRepartissant]       = useState(false);
+  const [tantiemeResult, setTantiemeResult]   = useState(null);
   const [sortDir, setSortDir]                 = useState("asc");
 
   // ── Récupérer historique (mode=historique uniquement) ───
@@ -166,6 +170,31 @@ export default function DetailsAppelPage() {
     }
   };
 
+  // ── Répartition tantièmes ────────────────────────────────
+  const handleRepartirTantiemes = async () => {
+    setRepartissant(true); setTantiemeResult(null);
+    try {
+      const csrf = document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
+      const body = tantiemeTotal ? { montant_total: parseFloat(tantiemeTotal) } : {};
+      const res = await fetch(`${API}/appels-charge/${appelId}/repartir-tantiemes/`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTantiemeResult({ ok: true, ...data });
+        setShowTantieme(false);
+        fetchDetails();
+        // Recharger l'appel pour le montant_total_appel mis à jour
+        fetch(`${API}/appels-charge/${appelId}/`).then(r => r.json()).then(setAppel);
+      } else {
+        setTantiemeResult({ ok: false, msg: data.detail || "Erreur" });
+      }
+    } catch { setTantiemeResult({ ok: false, msg: "Erreur réseau" }); }
+    finally { setRepartissant(false); }
+  };
+
   // ── Checkboxes ───────────────────────────────────────────
   const toggleCheck = (id) => {
     setCheckedIds(prev => {
@@ -279,6 +308,13 @@ export default function DetailsAppelPage() {
               </button>
             )}
             <button
+              onClick={() => { setShowTantieme(v => !v); setTantiemeResult(null); setTantiemeTotal(appel?.montant_total_appel ?? ""); }}
+              className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-xl border border-white/20 transition"
+              title="Répartir par tantièmes"
+            >
+              ‰ Répartir
+            </button>
+            <button
               onClick={handleAddAllLots}
               disabled={addingAll || lotsNonAjoutes.length === 0}
               className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-xl border border-white/20 disabled:opacity-40 transition"
@@ -306,6 +342,48 @@ export default function DetailsAppelPage() {
           </div>
         )}
       </div>
+
+      {/* ── Panel répartition tantièmes ── */}
+      {showTantieme && (
+        <div className="px-4 pt-3 max-w-5xl mx-auto">
+          <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-700">Répartition par tantièmes (‰)</h3>
+              <button onClick={() => setShowTantieme(false)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Calcule le montant dû de chaque lot selon sa quote-part en millièmes.<br/>
+              Les lots sans tantième défini sont ignorés. Les montants existants sont écrasés.
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <input
+                  type="number" min={0} step="0.01"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 pr-14 text-sm focus:outline-none focus:border-amber-400"
+                  placeholder={appel?.montant_total_appel ? String(appel.montant_total_appel) : "Montant total MAD…"}
+                  value={tantiemeTotal}
+                  onChange={e => setTantiemeTotal(e.target.value)}
+                />
+                <span className="absolute right-3 top-2 text-xs text-slate-400">MAD</span>
+              </div>
+              <button
+                onClick={handleRepartirTantiemes}
+                disabled={repartissant}
+                className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition whitespace-nowrap"
+              >
+                {repartissant ? "Calcul…" : "Répartir"}
+              </button>
+            </div>
+            {tantiemeResult && (
+              <div className={`text-xs px-3 py-2 rounded-lg ${tantiemeResult.ok ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
+                {tantiemeResult.ok
+                  ? `✓ ${tantiemeResult.created} créé(s), ${tantiemeResult.updated} mis à jour — total ${Number(tantiemeResult.montant_total).toLocaleString("fr-MA")} MAD`
+                  : `✕ ${tantiemeResult.msg}`}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Liste lots (flat, triée par lot) ── */}
       <div className="px-4 -mt-4 pb-24 max-w-5xl mx-auto">

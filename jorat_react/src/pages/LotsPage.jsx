@@ -10,6 +10,7 @@ const emptyLot = {
   type_lot:      "APPARTEMENT",
   statut_lot:    "A_JOUR",
   montant_ref:   "",
+  tantiemes:     "",
   remarque_lot:  "",
   groupe:        "",
   representant:  "",
@@ -82,6 +83,7 @@ export default function LotsPage() {
         type_lot:     data.type_lot     ?? "APPARTEMENT",
         statut_lot:   data.statut_lot   ?? "A_JOUR",
         montant_ref:  data.montant_ref  ?? "",
+        tantiemes:    data.tantiemes    ?? "",
         remarque_lot: data.remarque_lot ?? "",
         groupe:       data.groupe       ?? "",
         representant: data.representant?.id ?? "",
@@ -116,6 +118,7 @@ export default function LotsPage() {
       type_lot:         form.type_lot,
       statut_lot:       form.statut_lot,
       montant_ref:      form.montant_ref  || 0,
+      tantiemes:        form.tantiemes !== "" ? parseFloat(form.tantiemes) : null,
       remarque_lot:     form.remarque_lot || "",
       groupe:           form.groupe       || null,
       residence:        residenceId,
@@ -255,6 +258,17 @@ export default function LotsPage() {
                     onChange={(e) => setForm({ ...form, montant_ref: e.target.value })}
                   />
                   <span className="absolute right-3 top-2 text-xs text-slate-400">MAD</span>
+                </div>
+              </Field>
+              <Field label="Tantième (‰)">
+                <div className="relative">
+                  <input
+                    type="number" min={0} max={1000} step="0.01"
+                    className={`${inputCls} pr-10`} placeholder="ex : 85.50"
+                    value={form.tantiemes}
+                    onChange={(e) => setForm({ ...form, tantiemes: e.target.value })}
+                  />
+                  <span className="absolute right-3 top-2 text-xs text-slate-400">‰</span>
                 </div>
               </Field>
             </div>
