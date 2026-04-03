@@ -47,6 +47,8 @@ export default function CaissePage() {
   const navigate = useNavigate();
   const [mouvements,         setMouvements]         = useState([]);
   const [caissTotal,         setCaissTotal]         = useState(0);
+  const [totalEntrees,       setTotalEntrees]       = useState(0);
+  const [totalSorties,       setTotalSorties]       = useState(0);
   const [nextUrl,            setNextUrl]            = useState(null);
   const [balanceTotale,      setBalanceTotale]      = useState(0);
   const [annees,             setAnnees]             = useState([]);
@@ -102,6 +104,10 @@ export default function CaissePage() {
         const results = d.results ?? [];
         setMouvements(prev => append ? [...prev, ...results] : results);
         setCaissTotal(d.count ?? 0);
+        if (!append) {
+          setTotalEntrees(d.total_entrees ?? 0);
+          setTotalSorties(d.total_sorties ?? 0);
+        }
         setNextUrl(relUrl(d.next));
       })
       .catch(() => {})
@@ -135,13 +141,6 @@ export default function CaissePage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const totalEntrees = useMemo(() =>
-    mouvements.filter(m => m.sens === "DEBIT").reduce((s, m) => s + (parseFloat(m.montant) || 0), 0),
-    [mouvements]);
-
-  const totalSorties = useMemo(() =>
-    mouvements.filter(m => m.sens === "CREDIT").reduce((s, m) => s + (parseFloat(m.montant) || 0), 0),
-    [mouvements]);
 
   const handleSubmit = async () => {
     setError("");
