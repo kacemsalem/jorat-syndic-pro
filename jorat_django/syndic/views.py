@@ -1019,12 +1019,16 @@ class CaisseMouvementViewSet(ModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
 
         from django.db.models import Sum, Q as DQ
+        IS_ARCH = DQ(type_mouvement="ARCHIVE_ADJUSTMENT")
         agg = queryset.aggregate(
-            te=Sum("montant", filter=DQ(sens="DEBIT")),
-            ts=Sum("montant", filter=DQ(sens="CREDIT")),
+            te=Sum("montant",  filter=DQ(sens="DEBIT")  & ~IS_ARCH),
+            ts=Sum("montant",  filter=DQ(sens="CREDIT") & ~IS_ARCH),
+            ta_d=Sum("montant", filter=DQ(sens="DEBIT")  & IS_ARCH),
+            ta_c=Sum("montant", filter=DQ(sens="CREDIT") & IS_ARCH),
         )
         total_entrees = float(agg["te"] or 0)
         total_sorties = float(agg["ts"] or 0)
+        total_archive = float(agg["ta_d"] or 0) - float(agg["ta_c"] or 0)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -1033,11 +1037,12 @@ class CaisseMouvementViewSet(ModelViewSet):
             response = self.get_paginated_response(data)
             response.data["total_entrees"] = total_entrees
             response.data["total_sorties"] = total_sorties
+            response.data["total_archive"] = total_archive
             return response
 
         serializer = self.get_serializer(queryset, many=True)
         data = [dict(item, running_balance=balance_map.get(item["id"])) for item in serializer.data]
-        return Response({"results": data, "total_entrees": total_entrees, "total_sorties": total_sorties})
+        return Response({"results": data, "total_entrees": total_entrees, "total_sorties": total_sorties, "total_archive": total_archive})
 
     @action(detail=False, methods=["get"], url_path="stats")
     def stats(self, request):

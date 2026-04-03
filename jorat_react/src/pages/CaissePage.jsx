@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ChartCaisse from "../components/ChartCaisse";
 
@@ -49,6 +49,7 @@ export default function CaissePage() {
   const [caissTotal,         setCaissTotal]         = useState(0);
   const [totalEntrees,       setTotalEntrees]       = useState(0);
   const [totalSorties,       setTotalSorties]       = useState(0);
+  const [totalArchive,       setTotalArchive]       = useState(0);
   const [nextUrl,            setNextUrl]            = useState(null);
   const [balanceTotale,      setBalanceTotale]      = useState(0);
   const [annees,             setAnnees]             = useState([]);
@@ -107,6 +108,7 @@ export default function CaissePage() {
         if (!append) {
           setTotalEntrees(d.total_entrees ?? 0);
           setTotalSorties(d.total_sorties ?? 0);
+          setTotalArchive(d.total_archive ?? 0);
         }
         setNextUrl(relUrl(d.next));
       })
@@ -229,11 +231,22 @@ export default function CaissePage() {
             <p className="text-red-300 font-bold text-sm">− {fmt(totalSorties)}</p>
             <p className="text-white/30 text-[9px]">MAD</p>
           </div>
+          {totalArchive !== 0 && (
+            <div className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-3 py-2.5">
+              <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1">Archive</p>
+              <p className={`font-bold text-sm ${totalArchive >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                {totalArchive >= 0 ? "+" : "−"} {fmt(Math.abs(totalArchive))}
+              </p>
+              <p className="text-white/30 text-[9px]">MAD</p>
+            </div>
+          )}
           <div className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-3 py-2.5">
             <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1">Solde</p>
-            <p className={`font-bold text-sm ${totalEntrees - totalSorties >= 0 ? "text-white" : "text-red-300"}`}>
-              {totalEntrees - totalSorties >= 0 ? "+" : "−"} {fmt(Math.abs(totalEntrees - totalSorties))}
-            </p>
+            {(() => { const s = totalEntrees - totalSorties + totalArchive; return (
+              <p className={`font-bold text-sm ${s >= 0 ? "text-white" : "text-red-300"}`}>
+                {s >= 0 ? "+" : "−"} {fmt(Math.abs(s))}
+              </p>
+            ); })()}
             <p className="text-white/30 text-[9px]">MAD</p>
           </div>
           <button onClick={() => setShowRecetteConfirm(true)}
