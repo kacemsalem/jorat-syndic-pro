@@ -220,7 +220,7 @@ export default function CaissePage() {
         </div>
 
         {/* Mini KPIs en ligne */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-stretch">
           <div className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-3 py-2.5">
             <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1">Entrées</p>
             <p className="text-emerald-300 font-bold text-sm">+ {fmt(totalEntrees)}</p>
@@ -231,26 +231,15 @@ export default function CaissePage() {
             <p className="text-red-300 font-bold text-sm">− {fmt(totalSorties)}</p>
             <p className="text-white/30 text-[9px]">MAD</p>
           </div>
-          {totalArchive !== 0 && (
-            <div className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-3 py-2.5">
-              <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1">Archive</p>
-              <p className={`font-bold text-sm ${totalArchive >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                {totalArchive >= 0 ? "+" : "−"} {fmt(Math.abs(totalArchive))}
-              </p>
-              <p className="text-white/30 text-[9px]">MAD</p>
-            </div>
-          )}
           <div className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-3 py-2.5">
-            <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1">Solde</p>
-            {(() => { const s = totalEntrees - totalSorties + totalArchive; return (
-              <p className={`font-bold text-sm ${s >= 0 ? "text-white" : "text-red-300"}`}>
-                {s >= 0 ? "+" : "−"} {fmt(Math.abs(s))}
-              </p>
-            ); })()}
+            <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1">Archive</p>
+            <p className={`font-bold text-sm ${totalArchive >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+              {totalArchive >= 0 ? "+" : "−"} {fmt(Math.abs(totalArchive))}
+            </p>
             <p className="text-white/30 text-[9px]">MAD</p>
           </div>
           <button onClick={() => setShowRecetteConfirm(true)}
-            className="bg-white/10 border border-white/10 rounded-2xl px-3 py-2.5 hover:bg-white/20 transition flex flex-col items-center justify-center gap-1">
+            className="bg-white/10 border border-white/10 rounded-2xl px-3 py-2.5 hover:bg-white/20 transition flex flex-col items-start justify-start gap-1">
             <p className="text-white/70 text-[10px] font-semibold leading-none">Recettes</p>
             <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"
               strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
