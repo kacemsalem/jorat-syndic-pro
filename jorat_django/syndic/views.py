@@ -742,21 +742,7 @@ class DepenseViewSet(ModelViewSet):
     def list(self, request, *args, **kwargs):
         qs = self.filter_queryset(self.get_queryset())
         from django.db.models import Sum
-        from .models import ArchiveDepense
         total_montant = qs.aggregate(t=Sum("montant"))["t"] or 0
-
-        # Ajouter les dépenses archivées (supprimées lors de l'archivage) pour cohérence avec la Caisse
-        # Ne pas inclure si filtre "a_affecter" actif (dépenses en attente uniquement)
-        p = request.query_params
-        if not p.get("a_affecter"):
-            residence = get_user_residence(request)
-            arch_qs = ArchiveDepense.objects.filter(residence=residence)
-            if p.get("annee"):    arch_qs = arch_qs.filter(date_depense__year=p["annee"])
-            if p.get("mois"):     arch_qs = arch_qs.filter(mois=p["mois"])
-            if p.get("famille"):  arch_qs = arch_qs.filter(categorie__famille=p["famille"])
-            if p.get("fournisseur"): arch_qs = arch_qs.filter(fournisseur_id=p["fournisseur"])
-            total_montant += arch_qs.aggregate(t=Sum("montant"))["t"] or 0
-
         page = self.paginate_queryset(qs)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
