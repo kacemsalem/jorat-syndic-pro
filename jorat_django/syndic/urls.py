@@ -25,7 +25,11 @@ from .views_init import init_complete, init_assemblees
 from .views import passation_list_create, passation_detail, passation_refresh_caisse, passation_reserves, passation_situation_lots
 from .views_archive import archive_list, archive_create, archive_restore
 from .views_ai import ai_documents, ai_document_detail, ai_config_view, ai_chat, ai_load_app_docs
-from .views_superuser import superuser_residences, superuser_set_password, superuser_ai_config
+from .views_superuser import (
+    superuser_residences, superuser_residence_detail, superuser_set_password,
+    superuser_ai_config, superuser_add_admin, superuser_toggle_admin,
+    superuser_backup, superuser_restore,
+)
 from .views_vote import (
     resolution_vote_list_create, resolution_vote_detail,
     resolution_vote_envoyer_notifs, resolution_vote_resultats,
@@ -167,7 +171,12 @@ urlpatterns = [
     path("ai/chat/",                ai_chat,              name="ai-chat"),
 
     # ── Superuser ─────────────────────────────────────────────
-    path("superuser/residences/",   superuser_residences,   name="su-residences"),
-    path("superuser/set-password/", superuser_set_password, name="su-set-password"),
-    path("superuser/ai-config/",    superuser_ai_config,    name="su-ai-config"),
+    path("superuser/residences/",                          superuser_residences,       name="su-residences"),
+    path("superuser/residences/<int:pk>/",                 superuser_residence_detail, name="su-residence-detail"),
+    path("superuser/residences/<int:pk>/add-admin/",       superuser_add_admin,        name="su-add-admin"),
+    path("superuser/residences/<int:pk>/toggle-admin/<int:user_id>/", superuser_toggle_admin, name="su-toggle-admin"),
+    path("superuser/residences/<int:pk>/backup/",          superuser_backup,           name="su-backup"),
+    path("superuser/residences/<int:pk>/restore/",         superuser_restore,          name="su-restore"),
+    path("superuser/set-password/",                        superuser_set_password,     name="su-set-password"),
+    path("superuser/ai-config/",                           superuser_ai_config,        name="su-ai-config"),
 ]

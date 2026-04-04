@@ -727,7 +727,7 @@ class DepenseViewSet(ModelViewSet):
         qs = Depense.objects.select_related(
             "compte", "categorie", "fournisseur",
             "modele_depense", "modele_depense__categorie",   # fix N+1
-        ).filter(residence=residence).order_by("-date_depense", "-id")
+        ).filter(residence=residence)
 
         p = self.request.query_params
         if p.get("compte"):       qs = qs.filter(compte_id=p["compte"])
@@ -738,6 +738,22 @@ class DepenseViewSet(ModelViewSet):
         if p.get("mois"):         qs = qs.filter(mois=p["mois"])
         if p.get("a_affecter") == "true":
             qs = qs.filter(compte__code="000")
+
+        ALLOWED_SORT = {
+            "date_depense":    "date_depense",
+            "libelle":         "libelle",
+            "montant":         "montant",
+            "categorie":       "categorie__nom",
+            "fournisseur":     "fournisseur__nom",
+        }
+        ordering = p.get("ordering", "")
+        desc = ordering.startswith("-")
+        field = ALLOWED_SORT.get(ordering.lstrip("-"))
+        if field:
+            qs = qs.order_by(f"-{field}" if desc else field, "id")
+        else:
+            qs = qs.order_by("-date_depense", "-id")
+
         return qs
 
     def list(self, request, *args, **kwargs):

@@ -498,9 +498,12 @@ export default function DepensesPage() {
   // Filters
   const [filterAnnee,       setFilterAnnee]       = useState("");
   const [filterMois,        setFilterMois]        = useState("");
-  const [filterFamille,     setFilterFamille]     = useState("");
-  const [filterFournisseur, setFilterFournisseur] = useState("");
+  const [filterCategorie,   setFilterCategorie]   = useState("");
   const [filterAttente,     setFilterAttente]     = useState(false);
+
+  // Sort
+  const [sortField, setSortField] = useState("date_depense");
+  const [sortDir,   setSortDir]   = useState("desc"); // "asc" | "desc"
   const [showChart,         setShowChart]         = useState(false);
   const [chartDep,          setChartDep]          = useState([]);
 
@@ -533,11 +536,11 @@ export default function DepensesPage() {
   // ── Dépenses (paginated, re-fetched on filter change) ────────────────────────
   const buildUrl = (extra = {}) => {
     const p = new URLSearchParams();
-    if (filterAnnee)       p.set("annee",       filterAnnee);
-    if (filterMois)        p.set("mois",         filterMois);
-    if (filterFamille)     p.set("famille",      filterFamille);
-    if (filterFournisseur) p.set("fournisseur",  filterFournisseur);
-    if (filterAttente)     p.set("a_affecter",   "true");
+    if (filterAnnee)     p.set("annee",      filterAnnee);
+    if (filterMois)      p.set("mois",       filterMois);
+    if (filterCategorie) p.set("categorie",  filterCategorie);
+    if (filterAttente)   p.set("a_affecter", "true");
+    p.set("ordering", sortDir === "desc" ? `-${sortField}` : sortField);
     Object.entries(extra).forEach(([k, v]) => p.set(k, v));
     return `/api/depenses/?${p.toString()}`;
   };
@@ -577,7 +580,7 @@ export default function DepensesPage() {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     setDepNextUrl(null);
     fetchDepenses();
-  }, [filterAnnee, filterMois, filterFamille, filterFournisseur, filterAttente]);
+  }, [filterAnnee, filterMois, filterCategorie, filterAttente, sortField, sortDir]);
 
   useEffect(() => {
     if (location.state?.openForm) {
@@ -674,13 +677,6 @@ export default function DepensesPage() {
 
   // Filters are now server-side — depenses already filtered by backend
   const filtered     = depenses;
-  const famillesList  = useMemo(() =>
-    categories.map(c => c.nom).filter(n => n !== "ND (non définie)").sort()
-  , [categories]);
-  const fournisseursUsed = useMemo(() =>
-    fournisseurs.filter(f => f.nom_societe !== "ND (non définie)")
-  , [fournisseurs]);
-
   const modelesByFamille = useMemo(() => {
     const map = {};
     modeles.forEach(m => { const k = m.categorie_nom || "—"; if (!map[k]) map[k] = []; map[k].push(m); });
@@ -713,7 +709,7 @@ export default function DepensesPage() {
   };
 
   const fmt = (n) => Number(n).toLocaleString("fr-MA", { minimumFractionDigits: 2 });
-  const isFiltered = filterAnnee || filterMois || filterFamille || filterFournisseur || filterAttente;
+  const isFiltered = filterAnnee || filterMois || filterCategorie || filterAttente;
 
   return (
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6">
@@ -796,31 +792,59 @@ export default function DepensesPage() {
         )}
 
         {/* Filtres */}
-        <div className="bg-white rounded-2xl shadow-sm p-3">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Filtres</p>
-          <div className="grid grid-cols-2 gap-2">
-            <select value={filterAnnee} onChange={e => setFilterAnnee(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600">
-              <option value="">Toutes années</option>
-              {annees.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-            <select value={filterMois} onChange={e => setFilterMois(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600">
-              <option value="">Tous mois</option>
-              {MOIS_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-            <select value={filterFamille} onChange={e => setFilterFamille(e.target.value)}
+        <div className="bg-white rounded-2xl shadow-sm p-3 space-y-2.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filtres</p>
+
+          {/* Année — étiquettes */}
+          {annees.length > 0 && (
+            <div>
+              <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Année</p>
+              <div className="flex flex-wrap gap-1">
+                {annees.map(a => (
+                  <button key={a} onClick={() => setFilterAnnee(filterAnnee === String(a) ? "" : String(a))}
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition ${
+                      filterAnnee === String(a)
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600"
+                    }`}>
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Mois — étiquettes */}
+          <div>
+            <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Mois</p>
+            <div className="flex flex-wrap gap-1">
+              {MOIS_OPTIONS.map(m => (
+                <button key={m.value} onClick={() => setFilterMois(filterMois === m.value ? "" : m.value)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition ${
+                    filterMois === m.value
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
+                  }`}>
+                  {m.label.slice(0, 3)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Catégorie — select par ID */}
+          <div>
+            <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Catégorie</p>
+            <select value={filterCategorie} onChange={e => setFilterCategorie(e.target.value)}
               className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600">
               <option value="">Toutes catégories</option>
-              {famillesList.map(f => <option key={f} value={f}>{f}</option>)}
-            </select>
-            <select value={filterFournisseur} onChange={e => setFilterFournisseur(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-slate-600">
-              <option value="">Tous fournisseurs</option>
-              {fournisseursUsed.map(f => <option key={f.id} value={String(f.id)}>{f.nom_complet || f.nom}</option>)}
+              {categories.filter(c => c.nom !== "ND (non définie)").sort((a, b) => a.nom.localeCompare(b.nom)).map(c => (
+                <option key={c.id} value={String(c.id)}>{c.nom}</option>
+              ))}
             </select>
           </div>
-          <div className="flex items-center gap-3 mt-2.5 flex-wrap">
+
+          {/* Boutons état */}
+          <div className="flex items-center gap-3 flex-wrap">
             {nbAttente > 0 && (
               <button onClick={() => setFilterAttente(v => !v)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition ${
@@ -830,7 +854,7 @@ export default function DepensesPage() {
               </button>
             )}
             {isFiltered && (
-              <button onClick={() => { setFilterAnnee(""); setFilterMois(""); setFilterFamille(""); setFilterFournisseur(""); setFilterAttente(false); }}
+              <button onClick={() => { setFilterAnnee(""); setFilterMois(""); setFilterCategorie(""); setFilterAttente(false); }}
                 className="text-[10px] text-blue-600 font-semibold hover:text-blue-700">
                 ✕ Réinitialiser
               </button>
@@ -849,11 +873,35 @@ export default function DepensesPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">
                 Dépenses {listMode && <span className="text-blue-500 ml-1">— mode liste</span>}
               </p>
-              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              {/* Sort selector (card mode) */}
+              {!listMode && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">Tri</span>
+                  <select
+                    value={sortField}
+                    onChange={e => { setSortField(e.target.value); setSortDir("asc"); }}
+                    className="border border-slate-200 rounded-lg px-2 py-0.5 text-[10px] bg-white focus:outline-none focus:border-blue-400 text-slate-600"
+                  >
+                    <option value="date_depense">Date</option>
+                    <option value="libelle">Libellé A→Z</option>
+                    <option value="montant">Montant</option>
+                    <option value="categorie">Catégorie</option>
+                    <option value="fournisseur">Fournisseur</option>
+                  </select>
+                  <button
+                    onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+                    className="px-1.5 py-0.5 rounded-lg border border-slate-200 text-[10px] text-slate-500 hover:bg-slate-50 transition font-mono"
+                    title={sortDir === "asc" ? "Croissant" : "Décroissant"}
+                  >
+                    {sortDir === "asc" ? "↑" : "↓"}
+                  </button>
+                </div>
+              )}
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full ml-auto">
                 {filtered.length}
               </span>
             </div>
@@ -861,14 +909,33 @@ export default function DepensesPage() {
             {/* ── Mode liste compact avec édition inline ── */}
             {listMode ? (
               <div>
-                {/* En-tête colonnes */}
-                <div className="grid grid-cols-[80px_1fr_90px_80px_36px] gap-1 px-3 py-1.5 bg-slate-50 border-b border-slate-100">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Date</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Libellé / Catégorie</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Fournisseur</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide text-right">Montant</span>
-                  <span />
-                </div>
+                {/* En-tête colonnes — cliquables pour trier */}
+                {(() => {
+                  const SortHd = ({ field, label, className = "" }) => {
+                    const active = sortField === field;
+                    return (
+                      <button
+                        onClick={() => {
+                          if (active) setSortDir(d => d === "asc" ? "desc" : "asc");
+                          else { setSortField(field); setSortDir("asc"); }
+                        }}
+                        className={`text-[9px] font-bold uppercase tracking-wide flex items-center gap-0.5 transition ${active ? "text-blue-600" : "text-slate-400 hover:text-slate-600"} ${className}`}
+                      >
+                        {label}
+                        {active && <span className="font-mono">{sortDir === "asc" ? "↑" : "↓"}</span>}
+                      </button>
+                    );
+                  };
+                  return (
+                    <div className="grid grid-cols-[80px_1fr_90px_80px_36px] gap-1 px-3 py-1.5 bg-slate-50 border-b border-slate-100">
+                      <SortHd field="date_depense" label="Date" />
+                      <SortHd field="libelle"      label="Libellé / Catégorie" />
+                      <SortHd field="fournisseur"  label="Fournisseur" />
+                      <SortHd field="montant"      label="Montant" className="justify-end" />
+                      <span />
+                    </div>
+                  );
+                })()}
                 <div className="divide-y divide-slate-100">
                   {filtered.map(dep => (
                     <div key={dep.id}>
