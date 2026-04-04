@@ -288,8 +288,8 @@ function ChargesSection({ details, typeLabel, accent = "indigo" }) {
             <div className="w-28 shrink-0">
               {isFond ? (
                 <>
-                  <span className="text-xs font-semibold text-slate-700 block truncate" title={d.appel_libelle || d.appel_code}>
-                    {d.appel_libelle || d.appel_code || "—"}
+                  <span className="text-xs font-semibold text-slate-700 block truncate" title={d.appel_libelle || d.appel_nom_fond || d.appel_code}>
+                    {d.appel_libelle || d.appel_nom_fond || d.appel_code || "—"}
                   </span>
                   <span className="text-[10px] text-slate-400 block leading-tight">{d.appel_exercice ?? ""}</span>
                 </>

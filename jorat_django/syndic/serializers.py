@@ -205,6 +205,7 @@ class DetailAppelChargeSerializer(serializers.ModelSerializer):
     appel_periode     = serializers.CharField(source="appel.periode",     read_only=True)
     appel_type_charge = serializers.CharField(source="appel.type_charge", read_only=True)
     appel_libelle     = serializers.CharField(source="appel.libelle",     read_only=True)
+    appel_nom_fond    = serializers.CharField(source="appel.nom_fond",    read_only=True)
 
     class Meta:
         model  = DetailAppelCharge
