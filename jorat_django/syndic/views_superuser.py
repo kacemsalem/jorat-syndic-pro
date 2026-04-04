@@ -80,10 +80,14 @@ def superuser_residence_detail(request, pk):
         from .models import (
             ResidenceMembership,
             ArchiveAffectationPaiement, ArchiveRecette, ArchivePaiement,
-            ArchiveDepense, ArchiveComptable, SuiviLot, PassationConsignes,
-            MandatBureauMembre, MandatBureauSyndical, Resolution,
-            AssembleeGenerale, Contrat, CaisseMouvement, Recette, Depense,
-            AffectationPaiement, Paiement, DetailAppelCharge, AppelCharge,
+            ArchiveDepense, ArchiveComptable,
+            SuiviLot, PassationConsignes,
+            MandatBureauMembre, MandatBureauSyndical, BureauSyndical,
+            Resolution, ResolutionVote, AssembleeGenerale,
+            Contrat, ModeleDepense,
+            CaisseMouvement, Recette, Depense,
+            AffectationPaiement, Paiement,
+            DetailAppelCharge, AppelCharge,
             Lot, Groupe, Personne, Fournisseur, FamilleDepense,
             CategorieDepense, CompteComptable,
         )
@@ -92,36 +96,52 @@ def superuser_residence_detail(request, pk):
         users_to_check = [m.user for m in memberships if not m.user.is_superuser]
 
         with transaction.atomic():
-            # Supprimer dans l'ordre inverse des dépendances FK (PROTECT en tête)
+            # ── Archives (PROTECT vers Residence, CompteComptable, DetailAppelCharge)
             ArchiveAffectationPaiement.objects.filter(archive_paiement__archive__residence=r).delete()
             ArchiveRecette.objects.filter(archive__residence=r).delete()
             ArchivePaiement.objects.filter(archive__residence=r).delete()
             ArchiveDepense.objects.filter(archive__residence=r).delete()
             ArchiveComptable.objects.filter(residence=r).delete()
+            # ── Suivi + passation
             SuiviLot.objects.filter(lot__residence=r).delete()
             PassationConsignes.objects.filter(assemblee__residence=r).delete()
+            # ── Bureau (MandatBureauMembre et BureauSyndical ont PROTECT vers Personne)
             MandatBureauMembre.objects.filter(mandat__residence=r).delete()
             MandatBureauSyndical.objects.filter(residence=r).delete()
+            BureauSyndical.objects.filter(residence=r).delete()
+            # ── Assemblées et résolutions
             Resolution.objects.filter(assemblee_generale__residence=r).delete()
+            ResolutionVote.objects.filter(residence=r).delete()
             AssembleeGenerale.objects.filter(residence=r).delete()
+            # ── Contrats (PROTECT vers Fournisseur, CompteComptable, CategorieDepense)
             Contrat.objects.filter(residence=r).delete()
+            # ── Mouvements financiers
             CaisseMouvement.objects.filter(residence=r).delete()
             Recette.objects.filter(residence=r).delete()
+            # ── Dépenses (PROTECT vers CompteComptable, CategorieDepense, Fournisseur, ModeleDepense)
             Depense.objects.filter(residence=r).delete()
+            # ── Modèles de dépense (PROTECT vers CategorieDepense, CompteComptable)
+            ModeleDepense.objects.filter(residence=r).delete()
+            # ── Paiements et affectations
             AffectationPaiement.objects.filter(paiement__residence=r).delete()
             Paiement.objects.filter(residence=r).delete()
+            # ── Appels de charge (DetailAppelCharge avant AppelCharge)
             DetailAppelCharge.objects.filter(appel__residence=r).delete()
             AppelCharge.objects.filter(residence=r).delete()
+            # ── Lots (PROTECT vers Personne via proprietaire)
             Lot.objects.filter(residence=r).delete()
             Groupe.objects.filter(residence=r).delete()
+            # ── Contacts et fournisseurs
             Personne.objects.filter(residence=r).delete()
             Fournisseur.objects.filter(residence=r).delete()
+            # ── Référentiels comptables
             FamilleDepense.objects.filter(residence=r).delete()
             CategorieDepense.objects.filter(residence=r).delete()
             CompteComptable.objects.filter(residence=r).delete()
+            # ── Memberships puis Residence
             ResidenceMembership.objects.filter(residence=r).delete()
             r.delete()
-            # Supprimer les comptes admin devenus orphelins
+            # ── Comptes admin orphelins
             for u in users_to_check:
                 if not ResidenceMembership.objects.filter(user=u).exists():
                     u.delete()
