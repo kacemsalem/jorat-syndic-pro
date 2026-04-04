@@ -198,14 +198,21 @@ function ResidenceDrawer({ residenceId, onClose, onRefresh, showToast }) {
 
   const handleDelete = async () => {
     setDeleting(true);
-    const r = await fetch(`/api/superuser/residences/${residenceId}/`, {
-      method: "DELETE", credentials: "include",
-      headers: { "X-CSRFToken": getCsrf() },
-    });
-    const d = await r.json();
-    setDeleting(false);
-    if (r.ok) { showToast(d.detail); onRefresh(); onClose(); }
-    else { showToast(d.detail || "Erreur.", false); setConfirmDel(false); }
+    try {
+      const r = await fetch(`/api/superuser/residences/${residenceId}/`, {
+        method: "DELETE", credentials: "include",
+        headers: { "X-CSRFToken": getCsrf() },
+      });
+      const text = await r.text();
+      const d = text ? JSON.parse(text) : {};
+      setDeleting(false);
+      if (r.ok) { showToast(d.detail || "Résidence supprimée."); onRefresh(); onClose(); }
+      else { showToast(d.detail || `Erreur ${r.status}`, false); setConfirmDel(false); }
+    } catch (e) {
+      setDeleting(false);
+      showToast("Erreur réseau : " + e.message, false);
+      setConfirmDel(false);
+    }
   };
 
   const handleAddAdmin = async () => {

@@ -77,16 +77,55 @@ def superuser_residence_detail(request, pk):
 
     if request.method == "DELETE":
         nom = r.nom_residence
-        # CASCADE sur Residence supprime toutes les données liées (lots, paiements, etc.)
-        # On supprime aussi les utilisateurs exclusivement liés à cette résidence
-        from .models import ResidenceMembership
+        from .models import (
+            ResidenceMembership,
+            ArchiveAffectationPaiement, ArchiveRecette, ArchivePaiement,
+            ArchiveDepense, ArchiveComptable, SuiviLot, PassationConsignes,
+            MandatBureauMembre, MandatBureauSyndical, Resolution,
+            AssembleeGenerale, Contrat, CaisseMouvement, Recette, Depense,
+            AffectationPaiement, Paiement, DetailAppelCharge, AppelCharge,
+            Lot, Groupe, Personne, Fournisseur, FamilleDepense,
+            CategorieDepense, CompteComptable,
+        )
+        from django.db import transaction
         memberships = ResidenceMembership.objects.filter(residence=r).select_related("user")
         users_to_check = [m.user for m in memberships if not m.user.is_superuser]
-        r.delete()  # déclenche le CASCADE
-        # Supprimer les utilisateurs qui n'appartiennent plus à aucune résidence
-        for u in users_to_check:
-            if not ResidenceMembership.objects.filter(user=u).exists():
-                u.delete()
+
+        with transaction.atomic():
+            # Supprimer dans l'ordre inverse des dépendances FK (PROTECT en tête)
+            ArchiveAffectationPaiement.objects.filter(archive_paiement__archive__residence=r).delete()
+            ArchiveRecette.objects.filter(archive__residence=r).delete()
+            ArchivePaiement.objects.filter(archive__residence=r).delete()
+            ArchiveDepense.objects.filter(archive__residence=r).delete()
+            ArchiveComptable.objects.filter(residence=r).delete()
+            SuiviLot.objects.filter(lot__residence=r).delete()
+            PassationConsignes.objects.filter(assemblee__residence=r).delete()
+            MandatBureauMembre.objects.filter(mandat__residence=r).delete()
+            MandatBureauSyndical.objects.filter(residence=r).delete()
+            Resolution.objects.filter(assemblee_generale__residence=r).delete()
+            AssembleeGenerale.objects.filter(residence=r).delete()
+            Contrat.objects.filter(residence=r).delete()
+            CaisseMouvement.objects.filter(residence=r).delete()
+            Recette.objects.filter(residence=r).delete()
+            Depense.objects.filter(residence=r).delete()
+            AffectationPaiement.objects.filter(paiement__residence=r).delete()
+            Paiement.objects.filter(residence=r).delete()
+            DetailAppelCharge.objects.filter(appel__residence=r).delete()
+            AppelCharge.objects.filter(residence=r).delete()
+            Lot.objects.filter(residence=r).delete()
+            Groupe.objects.filter(residence=r).delete()
+            Personne.objects.filter(residence=r).delete()
+            Fournisseur.objects.filter(residence=r).delete()
+            FamilleDepense.objects.filter(residence=r).delete()
+            CategorieDepense.objects.filter(residence=r).delete()
+            CompteComptable.objects.filter(residence=r).delete()
+            ResidenceMembership.objects.filter(residence=r).delete()
+            r.delete()
+            # Supprimer les comptes admin devenus orphelins
+            for u in users_to_check:
+                if not ResidenceMembership.objects.filter(user=u).exists():
+                    u.delete()
+
         return Response({"detail": f"Résidence « {nom} » et toutes ses données supprimées."})
 
     admins = (
