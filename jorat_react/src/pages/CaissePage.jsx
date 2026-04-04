@@ -190,6 +190,11 @@ export default function CaissePage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={() => setShowRecetteConfirm(true)}
+              title="Ajouter une recette"
+              className="w-10 h-10 bg-white/20 border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition shadow text-white text-xs font-bold">
+              R+
+            </button>
             <button onClick={() => setShowChart(v => !v)}
               title="Évolution de la caisse"
               className={`w-10 h-10 border rounded-full flex items-center justify-center transition shadow ${
@@ -238,14 +243,6 @@ export default function CaissePage() {
             </p>
             <p className="text-white/30 text-[9px]">MAD</p>
           </div>
-          <button onClick={() => setShowRecetteConfirm(true)}
-            className="bg-white/10 border border-white/10 rounded-2xl px-3 py-2.5 hover:bg-white/20 transition flex flex-col items-start justify-start gap-1">
-            <p className="text-white/70 text-[10px] font-semibold leading-none">Recettes</p>
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"
-              strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -302,7 +299,7 @@ export default function CaissePage() {
             <p className="text-slate-300 text-sm">Aucun mouvement</p>
           </div>
         ) : (
-          <div ref={menuRef} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div ref={menuRef} className="bg-white rounded-2xl shadow-sm">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mouvements</p>
               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
@@ -385,12 +382,33 @@ export default function CaissePage() {
               })}
             </div>
 
-            {/* Charger plus */}
+            {/* Charger plus / Afficher tout */}
             {nextUrl && (
-              <div className="px-4 py-3 border-t border-slate-100 text-center">
+              <div className="px-4 py-3 border-t border-slate-100 flex gap-2">
                 <button onClick={() => fetchMouvements(true)} disabled={loadingMore}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                  className="flex-1 py-2 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition disabled:opacity-50">
                   {loadingMore ? "Chargement…" : `Charger plus (${caissTotal - mouvements.length} restants)`}
+                </button>
+                <button
+                  onClick={() => {
+                    setLoadingMore(true);
+                    fetch(buildUrl({ page_size: 9999 }), { credentials: "include" })
+                      .then(r => r.ok ? r.json() : null)
+                      .then(d => {
+                        if (!d) return;
+                        const results = d.results ?? [];
+                        setMouvements(results);
+                        setCaissTotal(d.count ?? results.length);
+                        setTotalEntrees(d.total_entrees ?? 0);
+                        setTotalSorties(d.total_sorties ?? 0);
+                        setTotalArchive(d.total_archive ?? 0);
+                        setNextUrl(null);
+                      })
+                      .finally(() => setLoadingMore(false));
+                  }}
+                  disabled={loadingMore}
+                  className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition disabled:opacity-50 whitespace-nowrap">
+                  Afficher tout
                 </button>
               </div>
             )}

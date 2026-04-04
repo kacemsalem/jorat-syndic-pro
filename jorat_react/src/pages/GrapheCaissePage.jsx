@@ -55,19 +55,19 @@ export default function GrapheCaissePage() {
         <div className="grid grid-cols-3 gap-3">
           <div className={`rounded-2xl border px-4 py-3 ${balance >= 0 ? "bg-white border-slate-200" : "bg-red-50 border-red-200"}`}>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Solde actuel</p>
-            <p className={`text-xl font-bold leading-none ${balance >= 0 ? "text-slate-800" : "text-red-600"}`}>
+            <p className={`text-sm font-bold leading-none truncate ${balance >= 0 ? "text-slate-800" : "text-red-600"}`}>
               {fmt(balance)}
             </p>
             <p className="text-[10px] text-slate-400 mt-0.5">MAD</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 px-4 py-3">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entrées</p>
-            <p className="text-xl font-bold text-emerald-600 leading-none">+{fmt(totalEntrees)}</p>
+            <p className="text-sm font-bold text-emerald-600 leading-none truncate">+{fmt(totalEntrees)}</p>
             <p className="text-[10px] text-slate-400 mt-0.5">MAD</p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 px-4 py-3">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Sorties</p>
-            <p className="text-xl font-bold text-red-500 leading-none">−{fmt(totalSorties)}</p>
+            <p className="text-sm font-bold text-red-500 leading-none truncate">−{fmt(totalSorties)}</p>
             <p className="text-[10px] text-slate-400 mt-0.5">MAD</p>
           </div>
         </div>

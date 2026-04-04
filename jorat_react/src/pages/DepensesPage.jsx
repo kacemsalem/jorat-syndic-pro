@@ -40,6 +40,97 @@ const EMPTY_FORM = {
 
 const EMPTY_AUTO = { libelle: false, categorie: false, compte: false, fournisseur: false };
 
+// ── Inline row editing ───────────────────────────────────────────────────────
+function InlineRowEdit({ dep, categories, comptes, fournisseurs, onSave, onCancel }) {
+  const [form, setForm] = useState({
+    libelle:           dep.libelle           || "",
+    date_depense:      dep.date_depense,
+    montant:           dep.montant,
+    mois:              dep.mois              || "",
+    categorie:         String(dep.categorie  || ""),
+    fournisseur:       String(dep.fournisseur|| ""),
+    compte:            String(dep.compte     || ""),
+    facture_reference: dep.facture_reference || "",
+    commentaire:       dep.commentaire       || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState("");
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.libelle.trim()) { setError("Libellé requis."); return; }
+    if (!form.montant || parseFloat(form.montant) <= 0) { setError("Montant invalide."); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await fetch(`/api/depenses/${dep.id}/`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({
+          libelle:           form.libelle,
+          date_depense:      form.date_depense,
+          montant:           form.montant,
+          mois:              form.mois              || null,
+          categorie:         form.categorie         || null,
+          fournisseur:       form.fournisseur       || null,
+          compte:            form.compte            || null,
+          facture_reference: form.facture_reference,
+          commentaire:       form.commentaire,
+        }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
+      const updated = await res.json();
+      onSave(updated);
+    } catch { setError("Erreur réseau."); }
+    finally { setSaving(false); }
+  };
+
+  const INP = "w-full border border-blue-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-blue-400 bg-white";
+  const SEL = `${INP} text-slate-600`;
+
+  return (
+    <div className="bg-blue-50 border-t border-blue-100 px-4 py-3 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="col-span-2">
+          <input value={form.libelle} onChange={e => set("libelle", e.target.value)}
+            placeholder="Libellé *" className={INP} autoFocus />
+        </div>
+        <input type="date" value={form.date_depense} onChange={e => set("date_depense", e.target.value)} className={INP} />
+        <input type="number" value={form.montant} onChange={e => set("montant", e.target.value)}
+          placeholder="Montant *" min="0" step="0.01" className={INP} />
+        <select value={form.mois} onChange={e => set("mois", e.target.value)} className={SEL}>
+          <option value="">Mois —</option>
+          {MOIS_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+        <select value={form.categorie} onChange={e => set("categorie", e.target.value)} className={SEL}>
+          <option value="">Catégorie —</option>
+          {categories.map(c => <option key={c.id} value={String(c.id)}>{c.nom}</option>)}
+        </select>
+        <select value={form.fournisseur} onChange={e => set("fournisseur", e.target.value)} className={SEL}>
+          <option value="">Fournisseur —</option>
+          {fournisseurs.map(f => <option key={f.id} value={String(f.id)}>{f.nom_complet || f.nom}</option>)}
+        </select>
+        <select value={form.compte} onChange={e => set("compte", e.target.value)} className={SEL}>
+          <option value="">Compte —</option>
+          {comptes.map(c => <option key={c.id} value={String(c.id)}>{c.code} — {c.libelle}</option>)}
+        </select>
+        <input value={form.facture_reference} onChange={e => set("facture_reference", e.target.value)}
+          placeholder="Réf. facture" className={`${INP} col-span-2`} />
+      </div>
+      {error && <p className="text-[11px] text-red-500">{error}</p>}
+      <div className="flex gap-2">
+        <button onClick={onCancel}
+          className="flex-1 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 bg-white transition">
+          Annuler
+        </button>
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 py-1.5 text-xs bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
+          {saving ? "…" : "Enregistrer"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Mini sub-form quick-add ──────────────────────────────────────────────────
 function SubFormFamille({ onBack, onCreated }) {
   const [nom, setNom] = useState("");
@@ -416,8 +507,10 @@ export default function DepensesPage() {
   const [depTotal,       setDepTotal]       = useState(0);   // total records (server)
   const [depTotalAmount, setDepTotalAmount] = useState(0);   // total montant (server, all pages)
   const [depNextUrl,     setDepNextUrl]     = useState(null); // pagination next link
-  const [nbAttente,   setNbAttente]   = useState(0);
-  const [annees,      setAnnees]      = useState([]);
+  const [nbAttente,     setNbAttente]     = useState(0);
+  const [annees,        setAnnees]        = useState([]);
+  const [listMode,      setListMode]      = useState(false);
+  const [editingRowId,  setEditingRowId]  = useState(null);
 
   // ── Reference data (fetched once) ───────────────────────────────────────────
   const fetchMeta = () => {
@@ -644,6 +737,25 @@ export default function DepensesPage() {
               className="px-2.5 py-1.5 bg-white/15 border border-white/20 rounded-xl text-[10px] font-bold text-white/80 hover:bg-white/25 transition">
               Modèles
             </button>
+            <button onClick={() => { setListMode(v => !v); setEditingRowId(null); }}
+              title={listMode ? "Mode cartes" : "Mode liste"}
+              className={`w-10 h-10 border rounded-full flex items-center justify-center transition shadow ${
+                listMode ? "bg-white/90 border-white/90" : "bg-white/20 border-white/20 hover:bg-white/30"
+              }`}>
+              {listMode ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/>
+                  <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+              )}
+            </button>
             <button onClick={() => setShowChart(v => !v)}
               title="Évolution des dépenses"
               className={`w-10 h-10 border rounded-full flex items-center justify-center transition shadow ${
@@ -738,11 +850,82 @@ export default function DepensesPage() {
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dépenses</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Dépenses {listMode && <span className="text-blue-500 ml-1">— mode liste</span>}
+              </p>
               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
                 {filtered.length}
               </span>
             </div>
+
+            {/* ── Mode liste compact avec édition inline ── */}
+            {listMode ? (
+              <div>
+                {/* En-tête colonnes */}
+                <div className="grid grid-cols-[80px_1fr_90px_80px_36px] gap-1 px-3 py-1.5 bg-slate-50 border-b border-slate-100">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Date</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Libellé / Catégorie</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Fournisseur</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide text-right">Montant</span>
+                  <span />
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {filtered.map(dep => (
+                    <div key={dep.id}>
+                      {/* Ligne */}
+                      <div
+                        className={`grid grid-cols-[80px_1fr_90px_80px_36px] gap-1 px-3 py-2 items-center cursor-pointer transition ${
+                          editingRowId === dep.id ? "bg-blue-50" : "hover:bg-slate-50"
+                        }`}
+                        onClick={() => setEditingRowId(editingRowId === dep.id ? null : dep.id)}
+                      >
+                        <span className="text-[10px] font-mono text-slate-500 truncate">{dep.date_depense}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-800 truncate leading-tight">{dep.libelle}</p>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {dep.mois && <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">{dep.mois}</span>}
+                            {(() => { const cat = dep.modele_categorie_nom || dep.categorie_nom; return cat && cat !== "ND (non définie)" && <span className="text-[8px] px-1 py-0.5 rounded bg-slate-100 text-slate-500">{cat}</span>; })()}
+                            {dep.compte_code && dep.compte_code !== "ND" && (
+                              <span className={`text-[8px] font-mono px-1 py-0.5 rounded ${dep.compte_code === "000" ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-400"}`}>
+                                {dep.compte_code}{dep.compte_code === "000" ? " ⚠" : ""}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-slate-400 truncate">
+                          {dep.fournisseur_nom && dep.fournisseur_nom !== "ND (non définie)" ? dep.fournisseur_nom : "—"}
+                        </span>
+                        <span className="text-xs font-bold text-red-600 text-right">−{fmt(dep.montant)}</span>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDelete(dep); }}
+                          className="p-1 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition"
+                          title="Supprimer">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                            strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                          </svg>
+                        </button>
+                      </div>
+                      {/* Panneau édition inline */}
+                      {editingRowId === dep.id && (
+                        <InlineRowEdit
+                          dep={dep}
+                          categories={categories}
+                          comptes={comptes}
+                          fournisseurs={fournisseurs}
+                          onSave={updated => {
+                            setDepenses(prev => prev.map(d => d.id === updated.id ? updated : d));
+                            setEditingRowId(null);
+                          }}
+                          onCancel={() => setEditingRowId(null)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+            /* ── Mode cartes (défaut) ── */
             <div className="divide-y divide-slate-100">
               {filtered.map(dep => (
                 <div key={dep.id} className="flex items-center gap-3 px-4 py-3">
@@ -801,15 +984,34 @@ export default function DepensesPage() {
                 </div>
               ))}
             </div>
+            )}
 
-            {/* Charger plus */}
+            {/* Charger plus / Afficher tout */}
             {depNextUrl && (
-              <div className="px-4 py-3 border-t border-slate-100">
+              <div className="px-4 py-3 border-t border-slate-100 flex gap-2">
                 <button
                   onClick={() => fetchDepenses(true)}
                   disabled={loading}
-                  className="w-full py-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl transition disabled:opacity-50">
+                  className="flex-1 py-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl transition disabled:opacity-50">
                   {loading ? "Chargement…" : `Charger plus (${depTotal - filtered.length} restantes)`}
+                </button>
+                <button
+                  onClick={() => {
+                    setLoading(true);
+                    fetch(buildUrl({ page_size: 9999 }), { credentials: "include" })
+                      .then(r => r.json())
+                      .then(d => {
+                        const rows = d.results ?? (Array.isArray(d) ? d : []);
+                        setDepenses(rows);
+                        setDepTotal(d.count ?? rows.length);
+                        setDepTotalAmount(d.total_montant ?? 0);
+                        setDepNextUrl(null);
+                      })
+                      .finally(() => setLoading(false));
+                  }}
+                  disabled={loading}
+                  className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition disabled:opacity-50 whitespace-nowrap">
+                  Afficher tout
                 </button>
               </div>
             )}

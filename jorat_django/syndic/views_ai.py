@@ -306,18 +306,23 @@ def _build_business_context(message_lower, residence):
     # ── 6. BUREAU SYNDICAL ─────────────────────────────────────────────────
     if _match(KW["bureau"]):
         try:
-            from .models import BureauSyndical, MembreBureau
-            bureau = (
-                BureauSyndical.objects
+            from .models import MandatBureauSyndical, MandatBureauMembre
+            mandat = (
+                MandatBureauSyndical.objects
+                .filter(residence=residence, actif=True)
+                .order_by("-date_debut")
+                .first()
+            ) or (
+                MandatBureauSyndical.objects
                 .filter(residence=residence)
                 .order_by("-date_debut")
                 .first()
             )
-            if bureau:
-                membres = MembreBureau.objects.filter(bureau=bureau).select_related("personne")
+            if mandat:
+                membres = MandatBureauMembre.objects.filter(mandat=mandat).select_related("personne")
                 lignes = [
-                    f"BUREAU SYNDICAL ACTUEL — {residence.nom_residence} :",
-                    f"  Mandat : {bureau.date_debut} → {bureau.date_fin or 'en cours'}",
+                    f"BUREAU SYNDICAL {'ACTIF' if mandat.actif else 'DERNIER'} — {residence.nom_residence} :",
+                    f"  Mandat : {mandat.date_debut} → {mandat.date_fin or 'en cours'}",
                 ]
                 if membres.exists():
                     lignes.append("  Membres :")
@@ -326,12 +331,12 @@ def _build_business_context(message_lower, residence):
                             f"{m.personne.nom} {m.personne.prenom}".strip()
                             if m.personne else "Inconnu"
                         )
-                        lignes.append(f"    • {m.fonction} : {nom}")
+                        lignes.append(f"    • {m.get_fonction_display()} : {nom}")
                 else:
                     lignes.append("  Aucun membre enregistré.")
                 parts.append("\n".join(lignes))
             else:
-                parts.append(f"BUREAU SYNDICAL : Aucun bureau enregistré pour {residence.nom_residence}.")
+                parts.append(f"BUREAU SYNDICAL : Aucun mandat enregistré pour {residence.nom_residence}.")
         except Exception:
             pass
 

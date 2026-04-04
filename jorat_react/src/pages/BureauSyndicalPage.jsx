@@ -26,7 +26,9 @@ const FONCTION_STYLE = {
 };
 
 // ── Active mandate card ─────────────────────────────────────
-function ActiveMandatCard({ mandat, onEdit, onDelete, onDeleteMembre }) {
+function ActiveMandatCard({ mandat, onSaved, onDelete, onDeleteMembre }) {
+  const [editing, setEditing] = useState(false);
+
   if (!mandat) return (
     <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
       <p className="text-slate-400 font-medium">Aucun mandat actif</p>
@@ -59,8 +61,8 @@ function ActiveMandatCard({ mandat, onEdit, onDelete, onDeleteMembre }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => onEdit(mandat)}
-            className="text-xs text-indigo-500 hover:text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition">
+          <button onClick={() => setEditing(v => !v)}
+            className={`text-xs px-3 py-1.5 rounded-lg transition ${editing ? "bg-indigo-100 text-indigo-700" : "text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"}`}>
             ✏️ Modifier
           </button>
           <button onClick={() => onDelete(mandat)}
@@ -69,6 +71,17 @@ function ActiveMandatCard({ mandat, onEdit, onDelete, onDeleteMembre }) {
           </button>
         </div>
       </div>
+
+      {/* Inline edit form */}
+      {editing && (
+        <div className="border-b border-indigo-100 px-5 pb-4 pt-3">
+          <EditMandatForm
+            mandat={mandat}
+            onSave={() => { setEditing(false); onSaved(); }}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      )}
 
       {/* Members */}
       <div className="p-6">
@@ -392,7 +405,6 @@ export default function BureauSyndicalPage() {
   const [assemblees, setAssemblees] = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [showForm,   setShowForm]   = useState(false);
-  const [editMandat, setEditMandat] = useState(null); // mandat en cours de modif
   const [error,      setError]      = useState("");
 
   const fetchMandats = () => {
@@ -439,8 +451,7 @@ export default function BureauSyndicalPage() {
     fetchMandats();
   };
 
-  const handleFormSave = () => { setShowForm(false); setEditMandat(null); fetchMandats(); };
-  const handleEditActive = (mandat) => { setEditMandat(mandat); setShowForm(false); };
+  const handleFormSave = () => { setShowForm(false); fetchMandats(); };
 
   return (
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
@@ -470,19 +481,10 @@ export default function BureauSyndicalPage() {
         <>
           <ActiveMandatCard
             mandat={activeMandat}
-            onEdit={handleEditActive}
+            onSaved={fetchMandats}
             onDelete={handleDelete}
             onDeleteMembre={handleDeleteMembre}
           />
-
-          {/* Edit mandate form */}
-          {editMandat && (
-            <EditMandatForm
-              mandat={editMandat}
-              onSave={handleFormSave}
-              onCancel={() => setEditMandat(null)}
-            />
-          )}
 
           {/* New mandate form — below active card */}
           {showForm && (
