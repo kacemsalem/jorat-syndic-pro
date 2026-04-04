@@ -1635,6 +1635,39 @@ class AIDocument(TimeStampedModel):
         return self.nom
 
 
+# ============================================================
+# SUIVI PAR LOT
+# ============================================================
+
+class SuiviLot(TimeStampedModel):
+    """Historique des actions de recouvrement / suivi prises envers un lot."""
+
+    TYPE_CHOICES = [
+        ("RAPPEL",           "Rappel"),
+        ("MISE_EN_DEMEURE",  "Mise en demeure"),
+        ("POURSUITE",        "Poursuite judiciaire"),
+        ("ARRANGEMENT",      "Arrangement / Accord"),
+        ("APPEL_TEL",        "Appel téléphonique"),
+        ("VISITE",           "Visite"),
+        ("COURRIER",         "Courrier"),
+        ("HUISSIER",         "Huissier"),
+        ("AUTRE",            "Autre"),
+    ]
+
+    lot         = models.ForeignKey("Lot",      on_delete=models.CASCADE, related_name="suivis")
+    type_action = models.CharField(max_length=30, choices=TYPE_CHOICES, default="RAPPEL")
+    date_action = models.DateField()
+    reference   = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    auteur      = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        ordering = ["-date_action", "-created_at"]
+
+    def __str__(self):
+        return f"{self.get_type_action_display()} — Lot {self.lot.numero_lot} — {self.date_action}"
+
+
 class AIConfig(TimeStampedModel):
     """Configuration IA globale (unique, residence=None)."""
     residence     = models.OneToOneField("Residence", on_delete=models.CASCADE,

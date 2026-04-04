@@ -67,6 +67,7 @@ from .serializers import (
     FamilleDepenseSerializer,
     ModeleDepenseSerializer,
     ContratSerializer,
+    SuiviLotSerializer,
 )
 
 
@@ -1318,6 +1319,27 @@ class NotificationViewSet(ModelViewSet):
 
 
 # ============================================================
+# Suivi par lot
+# ============================================================
+
+class SuiviLotViewSet(ModelViewSet):
+    serializer_class = SuiviLotSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        residence = get_user_residence(self.request)
+        if not residence:
+            from .models import SuiviLot
+            return SuiviLot.objects.none()
+        from .models import SuiviLot
+        qs = SuiviLot.objects.select_related("lot").filter(lot__residence=residence)
+        lot_id = self.request.query_params.get("lot")
+        if lot_id:
+            qs = qs.filter(lot_id=lot_id)
+        return qs
+
+
+# ============================================================
 # Passation de consignes
 # ============================================================
 from .models import PassationConsignes, ReservePassation
@@ -1395,7 +1417,12 @@ def passation_detail(request, pk):
                 setattr(p, field, request.data[field])
         if "solde_banque" in request.data:
             p.solde_banque = request.data["solde_banque"] or 0
-        p.save()
+        # solde_caisse est TOUJOURS protégé en PATCH — figé à la création
+        p.save(update_fields=[
+            "date_passation","justification_ecart","notes",
+            "nom_syndic","nom_tresorier","nom_syndic_entrant","nom_tresorier_entrant",
+            "solde_banque","updated_at",
+        ])
         p.refresh_from_db()
         return Response(PassationConsignesSerializer(p).data)
 

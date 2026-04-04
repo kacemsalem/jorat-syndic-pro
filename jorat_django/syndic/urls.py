@@ -38,6 +38,7 @@ from .views import (
     MandatBureauMembreViewSet,
     TravauxViewSet,
     NotificationViewSet,
+    SuiviLotViewSet,
     ResidenceViewSet,
     GroupeViewSet,
     LotViewSet,
@@ -89,6 +90,7 @@ router.register(r"mandats-bureau",          MandatBureauSyndicalViewSet,     bas
 router.register(r"membres-bureau",          MandatBureauMembreViewSet,        basename="membre-bureau")
 router.register(r"travaux",                 TravauxViewSet,                   basename="travaux")
 router.register(r"notifications",           NotificationViewSet,              basename="notification")
+router.register(r"suivi-lot",              SuiviLotViewSet,                  basename="suivi-lot")
 
 urlpatterns = [
     path("", include(router.urls)),

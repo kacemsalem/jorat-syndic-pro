@@ -504,6 +504,20 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 # -------------------------------------------------
+# Suivi par lot
+# -------------------------------------------------
+from .models import SuiviLot
+
+class SuiviLotSerializer(serializers.ModelSerializer):
+    type_action_label = serializers.CharField(source="get_type_action_display", read_only=True)
+
+    class Meta:
+        model  = SuiviLot
+        fields = ["id", "lot", "type_action", "type_action_label", "date_action",
+                  "reference", "description", "auteur", "created_at"]
+
+
+# -------------------------------------------------
 # Passation de consignes
 # -------------------------------------------------
 from .models import PassationConsignes, ReservePassation

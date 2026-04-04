@@ -62,17 +62,6 @@ export default function PassationConsignesPage() {
       .then(d => setPersonnes(Array.isArray(d) ? d : (d.results ?? [])));
   }, []);
 
-  const refreshCaisse = useCallback(async (id) => {
-    const r = await fetch(`/api/passations/${id}/refresh-caisse/`, {
-      method: "POST", credentials: "include",
-      headers: { "X-CSRFToken": getCsrf() },
-    });
-    if (r.ok) {
-      const d = await r.json();
-      setPassation(p => ({ ...p, solde_caisse: d.solde_caisse }));
-    }
-  }, []);
-
   // ── Chargement ───────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
@@ -97,18 +86,15 @@ export default function PassationConsignesPage() {
           });
           setReserves(p.reserves || []);
           setJustifs(parseJustifs(p.justification_ecart));
-          // Charger situation + recalculer solde à chaque ouverture
-          const [rs] = await Promise.all([
-            fetch(`/api/passations/${p.id}/situation/`, { credentials: "include" }),
-            refreshCaisse(p.id),
-          ]);
+          // Charger situation uniquement — solde caisse gelé à la création, ne pas recalculer
+          const rs = await fetch(`/api/passations/${p.id}/situation/`, { credentials: "include" });
           if (rs.ok) setSituation(await rs.json());
         }
       } catch {}
       setLoading(false);
     };
     load();
-  }, [assembleeId, refreshCaisse]);
+  }, [assembleeId]);
 
   // ── Sauvegarde ───────────────────────────────────────────
   const handleSave = async () => {
@@ -138,10 +124,8 @@ export default function PassationConsignesPage() {
         setReserves(p.reserves || []);
         setJustifs(parseJustifs(p.justification_ecart));
         setShowForm(false);
-        const [rs] = await Promise.all([
-          fetch(`/api/passations/${p.id}/situation/`, { credentials: "include" }),
-          refreshCaisse(p.id),
-        ]);
+        // solde_caisse déjà calculé par le backend à date_passation — ne pas recalculer
+        const rs = await fetch(`/api/passations/${p.id}/situation/`, { credentials: "include" });
         if (rs.ok) setSituation(await rs.json());
       } else {
         const r = await fetch(`/api/passations/${passation.id}/`, {
@@ -486,17 +470,55 @@ export default function PassationConsignesPage() {
 
       {/* ── Résumé passation (form fermé) ── */}
       {!showForm && passation && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-center justify-between gap-3">
-          <div className="text-sm text-slate-700">
-            <span className="font-semibold">{form.nom_syndic || "—"}</span>
-            <span className="text-slate-400 mx-2">→</span>
-            <span className="font-semibold">{form.nom_syndic_entrant || "—"}</span>
-            <span className="ml-3 text-xs text-slate-400">{form.date_passation?.slice(0, 10)}</span>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-sm text-slate-700">
+              <span className="font-semibold">{form.nom_syndic || "—"}</span>
+              <span className="text-slate-400 mx-2">→</span>
+              <span className="font-semibold">{form.nom_syndic_entrant || "—"}</span>
+              <span className="ml-3 text-xs text-slate-400">{form.date_passation?.slice(0, 10)}</span>
+            </div>
+            <button onClick={() => setShowForm(true)}
+              className="text-xs text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition font-semibold">
+              ✏️ Modifier
+            </button>
           </div>
-          <button onClick={() => setShowForm(true)}
-            className="text-xs text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition font-semibold">
-            ✏️ Modifier
-          </button>
+          {/* Soldes gelés */}
+          <div className="flex items-stretch gap-3 flex-wrap">
+            <div className="flex-1 min-w-[140px] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-slate-400">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Solde caisse</p>
+                <span className="text-[8px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full font-semibold">GELÉ</span>
+              </div>
+              <p className={`text-base font-bold font-mono ${parseFloat(passation.solde_caisse) >= 0 ? "text-slate-800" : "text-red-600"}`}>
+                {fmt(passation.solde_caisse)}
+              </p>
+              <p className="text-[9px] text-slate-400 mt-0.5">MAD — calculé le {form.date_passation?.slice(0,10)}</p>
+            </div>
+            <div className="flex-1 min-w-[140px] bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-slate-400">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Solde bancaire</p>
+                <span className="text-[8px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full font-semibold">GELÉ</span>
+              </div>
+              <p className={`text-base font-bold font-mono ${parseFloat(passation.solde_banque) >= 0 ? "text-slate-800" : "text-red-600"}`}>
+                {fmt(passation.solde_banque)}
+              </p>
+              <p className="text-[9px] text-slate-400 mt-0.5">MAD — saisi manuellement</p>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 text-center">
+            🔒 Ces soldes sont figés à la date de passation. Pour les recalculer, utilisez le bouton <strong>Initialiser</strong>.
+          </p>
         </div>
       )}
 

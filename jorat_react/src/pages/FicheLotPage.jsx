@@ -286,9 +286,15 @@ function ChargesSection({ details, typeLabel, accent = "indigo" }) {
         return (
           <div key={d.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
             <div className="w-28 shrink-0">
-              <span className="text-xs font-semibold text-slate-700 block">{d.appel_exercice ?? "—"}</span>
-              {isFond && (d.appel_libelle || d.appel_code) && (
-                <span className="text-[10px] text-slate-400 block leading-tight">{d.appel_libelle || d.appel_code}</span>
+              {isFond ? (
+                <>
+                  <span className="text-xs font-semibold text-slate-700 block truncate" title={d.appel_libelle || d.appel_code}>
+                    {d.appel_libelle || d.appel_code || "—"}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block leading-tight">{d.appel_exercice ?? ""}</span>
+                </>
+              ) : (
+                <span className="text-xs font-semibold text-slate-700 block">{d.appel_exercice ?? "—"}</span>
               )}
             </div>
             <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -418,6 +424,173 @@ function GrandLivreSection({ detailsCharge, detailsFond, paiements }) {
           </tr>
         </tfoot>
       </table>
+    </div>
+  );
+}
+
+// ── SuiviSection ─────────────────────────────────────────────────────────────
+const SUIVI_TYPES = [
+  { value: "RAPPEL",          label: "Rappel" },
+  { value: "MISE_EN_DEMEURE", label: "Mise en demeure" },
+  { value: "POURSUITE",       label: "Poursuite judiciaire" },
+  { value: "ARRANGEMENT",     label: "Arrangement / Accord" },
+  { value: "APPEL_TEL",       label: "Appel téléphonique" },
+  { value: "VISITE",          label: "Visite" },
+  { value: "COURRIER",        label: "Courrier" },
+  { value: "HUISSIER",        label: "Huissier" },
+  { value: "AUTRE",           label: "Autre" },
+];
+
+const SUIVI_BADGE = {
+  RAPPEL:          "bg-blue-100 text-blue-700",
+  MISE_EN_DEMEURE: "bg-orange-100 text-orange-700",
+  POURSUITE:       "bg-red-100 text-red-700",
+  ARRANGEMENT:     "bg-emerald-100 text-emerald-700",
+  APPEL_TEL:       "bg-sky-100 text-sky-700",
+  VISITE:          "bg-violet-100 text-violet-700",
+  COURRIER:        "bg-slate-100 text-slate-600",
+  HUISSIER:        "bg-rose-100 text-rose-700",
+  AUTRE:           "bg-slate-100 text-slate-500",
+};
+
+function getCsrfFiche() {
+  return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
+}
+
+const EMPTY_SUIVI = {
+  type_action: "RAPPEL",
+  date_action: new Date().toISOString().slice(0, 10),
+  reference:   "",
+  description: "",
+  auteur:      "",
+};
+
+function SuiviSection({ lotId, suivis, onRefresh }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form,     setForm]     = useState(EMPTY_SUIVI);
+  const [saving,   setSaving]   = useState(false);
+  const [error,    setError]    = useState("");
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.date_action) { setError("La date est obligatoire."); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await fetch("/api/suivi-lot/", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfFiche() },
+        body: JSON.stringify({ lot: lotId, ...form }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
+      setForm(EMPTY_SUIVI); setShowForm(false); onRefresh();
+    } catch { setError("Erreur réseau."); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Supprimer cette action ?")) return;
+    await fetch(`/api/suivi-lot/${id}/`, {
+      method: "DELETE", credentials: "include",
+      headers: { "X-CSRFToken": getCsrfFiche() },
+    });
+    onRefresh();
+  };
+
+  const INP = "w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-400 bg-white text-slate-700";
+
+  return (
+    <div className="space-y-3">
+      {/* Bouton ajouter */}
+      <div className="flex justify-between items-center">
+        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+          {suivis.length} action{suivis.length !== 1 ? "s" : ""}
+        </p>
+        <button
+          onClick={() => setShowForm(v => !v)}
+          className={`text-xs px-3 py-1.5 rounded-xl font-semibold transition ${
+            showForm ? "bg-slate-100 text-slate-600" : "bg-indigo-600 text-white hover:bg-indigo-700"
+          }`}>
+          {showForm ? "Annuler" : "+ Ajouter"}
+        </button>
+      </div>
+
+      {/* Formulaire */}
+      {showForm && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <select value={form.type_action} onChange={e => set("type_action", e.target.value)} className={INP}>
+              {SUIVI_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            <input type="date" value={form.date_action} onChange={e => set("date_action", e.target.value)} className={INP} />
+            <input value={form.reference} onChange={e => set("reference", e.target.value)}
+              placeholder="Référence (ex: MED-2024-01)" className={INP} />
+            <input value={form.auteur} onChange={e => set("auteur", e.target.value)}
+              placeholder="Auteur / Responsable" className={INP} />
+            <textarea value={form.description} onChange={e => set("description", e.target.value)}
+              placeholder="Description / Détails…" rows={2}
+              className={`${INP} col-span-2 resize-none`} />
+          </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <button onClick={handleSave} disabled={saving}
+            className="w-full py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition">
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </div>
+      )}
+
+      {/* Timeline */}
+      {suivis.length === 0 ? (
+        <p className="text-xs text-slate-400 text-center py-6">Aucune action enregistrée pour ce lot.</p>
+      ) : (
+        <div className="relative">
+          {/* Ligne verticale */}
+          <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-200" />
+          <div className="space-y-3">
+            {suivis.map(s => (
+              <div key={s.id} className="relative flex gap-3 pl-10">
+                {/* Dot */}
+                <div className="absolute left-2.5 top-2.5 w-3 h-3 rounded-full border-2 border-white shadow-sm"
+                  style={{ backgroundColor: {
+                    RAPPEL: "#3b82f6", MISE_EN_DEMEURE: "#f97316", POURSUITE: "#ef4444",
+                    ARRANGEMENT: "#10b981", APPEL_TEL: "#0ea5e9", VISITE: "#8b5cf6",
+                    COURRIER: "#64748b", HUISSIER: "#f43f5e",
+                  }[s.type_action] ?? "#94a3b8" }} />
+                <div className="flex-1 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SUIVI_BADGE[s.type_action] ?? "bg-slate-100 text-slate-500"}`}>
+                        {s.type_action_label}
+                      </span>
+                      {s.reference && (
+                        <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                          {s.reference}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-slate-400">{fmtDate(s.date_action)}</span>
+                      <button onClick={() => handleDelete(s.id)}
+                        className="p-1 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                          strokeLinecap="round" strokeLinejoin="round" style={{ width: 11, height: 11 }}>
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  {s.description && (
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">{s.description}</p>
+                  )}
+                  {s.auteur && (
+                    <p className="text-[10px] text-slate-400 mt-1">Par : {s.auteur}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -568,14 +741,27 @@ export default function FicheLotPage() {
   const [loading,        setLoading]        = useState(true);
   const [pdfLoading,     setPdfLoading]     = useState(false);
   const [notifications,  setNotifications]  = useState([]);
+  const [suivis,         setSuivis]         = useState([]);
   const [smsSending,     setSmsSending]     = useState(false);
   const [smsSent,        setSmsSent]        = useState(false);
+  const [openSections,   setOpenSections]   = useState({
+    charge: true, fond: true, paiements: true, notifications: false, suivi: true,
+  });
   const toast = useToast();
+
+  const toggleSection = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
 
   const loadNotifications = useCallback(() => {
     if (!lotId) return;
     fetchJson(`${API}/notifications/?lot=${lotId}`).then(data => {
       setNotifications(Array.isArray(data) ? data : []);
+    });
+  }, [lotId]);
+
+  const loadSuivis = useCallback(() => {
+    if (!lotId) return;
+    fetchJson(`${API}/suivi-lot/?lot=${lotId}`).then(data => {
+      setSuivis(Array.isArray(data) ? data : []);
     });
   }, [lotId]);
 
@@ -607,6 +793,7 @@ export default function FicheLotPage() {
   }, [lotId]);
 
   useEffect(() => { loadNotifications(); }, [loadNotifications]);
+  useEffect(() => { loadSuivis(); }, [loadSuivis]);
 
   // Summary across all details
   const summary = useMemo(() => {
@@ -845,75 +1032,88 @@ export default function FicheLotPage() {
       ) : (
         <div className="space-y-3">
 
-          {/* Appels de charge */}
-          <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
-            <div className="bg-indigo-50 px-4 py-2.5 border-b border-indigo-100">
-              <span className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Appels de charge ({detailsCharge.length})</span>
-            </div>
-            <div className="p-4">
-              <ChargesSection details={detailsCharge} typeLabel="charge" />
-            </div>
-          </div>
-
-          {/* Appels de fond */}
-          <div className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
-            <div className="bg-amber-50 px-4 py-2.5 border-b border-amber-100">
-              <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Appels de fond ({detailsFond.length})</span>
-            </div>
-            <div className="p-4">
-              <ChargesSection details={detailsFond} typeLabel="fond" accent="amber" />
-            </div>
-          </div>
-
-          {/* Paiements */}
-          <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden">
-            <div className="bg-emerald-50 px-4 py-2.5 border-b border-emerald-100">
-              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Paiements ({paiements.length})</span>
-            </div>
-            <div className="p-3">
-              {paiementsWithBalance.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-4">Aucun paiement enregistré.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {paiementsWithBalance.map(p => (
-                    <div key={p.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
-                      <span className="text-[11px] font-mono text-slate-500 w-20 shrink-0">{fmtDate(p.date_paiement)}</span>
-                      <span className="text-[11px] font-mono text-slate-400 w-24 shrink-0 truncate">{p.reference || "—"}</span>
-                      <span className="text-[11px] text-slate-400 w-20 shrink-0 truncate">{p.mode_paiement || "—"}</span>
-                      <span className="flex-1 text-[11px] text-slate-400 truncate">{p.notes || ""}</span>
-                      <span className="text-xs font-mono font-bold text-emerald-700 w-24 text-right shrink-0">{fmt(p.montant)}</span>
-                      <span className={`text-[11px] font-mono font-semibold w-24 text-right shrink-0 ${p.soldeApres > 0 ? "text-red-500" : p.soldeApres < 0 ? "text-blue-500" : "text-emerald-600"}`}>
-                        {fmt(Math.abs(p.soldeApres))}
-                        {p.soldeApres < 0 && <span className="ml-1 text-[9px] text-blue-400 font-normal">avance</span>}
-                      </span>
+          {/* ── helper ── */}
+          {[
+            {
+              key: "charge",
+              label: `Appels de charge (${detailsCharge.length})`,
+              borderCls: "border-indigo-100", headerCls: "bg-indigo-50", textCls: "text-indigo-700",
+              content: <div className="p-4"><ChargesSection details={detailsCharge} typeLabel="charge" /></div>,
+            },
+            {
+              key: "fond",
+              label: `Appels de fond (${detailsFond.length})`,
+              borderCls: "border-amber-100", headerCls: "bg-amber-50", textCls: "text-amber-700",
+              content: <div className="p-4"><ChargesSection details={detailsFond} typeLabel="fond" accent="amber" /></div>,
+            },
+            {
+              key: "paiements",
+              label: `Paiements (${paiements.length})`,
+              borderCls: "border-emerald-100", headerCls: "bg-emerald-50", textCls: "text-emerald-700",
+              content: (
+                <div className="p-3">
+                  {paiementsWithBalance.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-4">Aucun paiement enregistré.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {paiementsWithBalance.map(p => (
+                        <div key={p.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
+                          <span className="text-[11px] font-mono text-slate-500 w-20 shrink-0">{fmtDate(p.date_paiement)}</span>
+                          <span className="text-[11px] font-mono text-slate-400 w-24 shrink-0 truncate">{p.reference || "—"}</span>
+                          <span className="text-[11px] text-slate-400 w-20 shrink-0 truncate">{p.mode_paiement || "—"}</span>
+                          <span className="flex-1 text-[11px] text-slate-400 truncate">{p.notes || ""}</span>
+                          <span className="text-xs font-mono font-bold text-emerald-700 w-24 text-right shrink-0">{fmt(p.montant)}</span>
+                          <span className={`text-[11px] font-mono font-semibold w-24 text-right shrink-0 ${p.soldeApres > 0 ? "text-red-500" : p.soldeApres < 0 ? "text-blue-500" : "text-emerald-600"}`}>
+                            {fmt(Math.abs(p.soldeApres))}
+                            {p.soldeApres < 0 && <span className="ml-1 text-[9px] text-blue-400 font-normal">avance</span>}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="flex justify-end px-3 pt-1">
+                        <span className="text-[11px] font-bold text-emerald-700">
+                          Total : {fmt(paiements.reduce((s, p) => s + parseFloat(p.montant ?? 0), 0))} MAD
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                  {/* Total */}
-                  <div className="flex justify-end px-3 pt-1">
-                    <span className="text-[11px] font-bold text-emerald-700">
-                      Total : {fmt(paiements.reduce((s, p) => s + parseFloat(p.montant ?? 0), 0))} MAD
-                    </span>
-                  </div>
+                  )}
                 </div>
-              )}
+              ),
+            },
+            {
+              key: "suivi",
+              label: `Suivi / Recouvrement (${suivis.length})`,
+              borderCls: "border-violet-100", headerCls: "bg-violet-50", textCls: "text-violet-700",
+              content: (
+                <div className="p-4">
+                  <SuiviSection lotId={parseInt(lotId)} suivis={suivis} onRefresh={loadSuivis} />
+                </div>
+              ),
+            },
+            {
+              key: "notifications",
+              label: `Notifications (${notifications.length})`,
+              borderCls: "border-slate-200", headerCls: "bg-slate-50", textCls: "text-slate-600",
+              content: (
+                <div className="p-4">
+                  <NotificationsSection notifications={notifications} lot={lot} summary={summary} telephone={telephone} onSend={loadNotifications} />
+                </div>
+              ),
+            },
+          ].map(({ key, label, borderCls, headerCls, textCls, content }) => (
+            <div key={key} className={`bg-white rounded-2xl shadow-sm border ${borderCls} overflow-hidden`}>
+              <button
+                onClick={() => toggleSection(key)}
+                className={`w-full flex items-center justify-between px-4 py-2.5 ${headerCls} hover:brightness-95 transition text-left`}>
+                <span className={`text-xs font-bold uppercase tracking-wide ${textCls}`}>{label}</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  strokeLinecap="round" strokeLinejoin="round"
+                  className={`w-3.5 h-3.5 ${textCls} transition-transform ${openSections[key] ? "" : "-rotate-90"}`}>
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              {openSections[key] && content}
             </div>
-          </div>
-
-          {/* Notifications */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100">
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">Notifications ({notifications.length})</span>
-            </div>
-            <div className="p-4">
-              <NotificationsSection
-                notifications={notifications}
-                lot={lot}
-                summary={summary}
-                telephone={telephone}
-                onSend={loadNotifications}
-              />
-            </div>
-          </div>
+          ))}
 
         </div>
       )}

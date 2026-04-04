@@ -66,6 +66,7 @@ import { AdminRoute, ResidentRoute } from "./components/ProtectedRoutes";
 import Sidebar from "./components/Sidebar";
 import AppHeader from "./components/AppHeader";
 import BottomNav from "./components/BottomNav";
+import BottomStatusBar from "./components/BottomStatusBar";
 import { ToastProvider } from "./components/Toast";
 
 // Pages that use their own full-screen layout (no sidebar/header)
@@ -159,6 +160,7 @@ function AppLayout() {
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <BottomStatusBar />
 
         <main className="flex-1 overflow-auto">
           <div className="max-w-4xl mx-auto p-3 sm:p-6 pb-20 min-h-full">

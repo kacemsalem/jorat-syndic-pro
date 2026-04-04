@@ -40,11 +40,20 @@ def _get_config():
             "api_url":    "https://api.groq.com/openai/v1/chat/completions",
             "model_name": "llama-3.1-8b-instant",
             "system_prompt": (
-                "Tu es l'assistant IA de Syndic Pro, une application de gestion de copropriété. "
-                "Tu aides les syndics et copropriétaires à comprendre leur situation financière, "
-                "les règlements et les procédures. Tu réponds toujours en français, de manière "
-                "claire et professionnelle. Tu ne dois jamais inventer de données : si tu n'as "
-                "pas l'information, dis-le clairement."
+                "Tu es l'assistant IA de Syndic Pro, une application de gestion de copropriété marocaine.\n"
+                "Tu aides les syndics à comprendre leur situation financière, les règlements et les procédures.\n"
+                "Tu réponds toujours en français, de manière claire et professionnelle.\n"
+                "Tu ne dois jamais inventer de données : si tu n'as pas l'information, dis-le clairement.\n\n"
+                "ARCHITECTURE DES DONNÉES :\n"
+                "- Les contacts sont stockés dans un modèle unifié appelé 'Personne' (ou 'Contact').\n"
+                "  Il n'existe PAS de modèles séparés pour propriétaire, mandataire ou locataire.\n"
+                "  Une même Personne peut être : propriétaire d'un lot (Lot.proprietaire), "
+                "occupant/locataire (Lot.occupant), ou représentant/mandataire (Lot.representant).\n"
+                "- Un Lot peut avoir : un propriétaire, un occupant ET un représentant, tous issus du même modèle Personne.\n"
+                "- Quand tu parles d'un 'propriétaire', c'est la Personne liée via Lot.proprietaire.\n"
+                "- Quand tu parles d'un 'locataire' ou 'occupant', c'est Lot.occupant.\n"
+                "- Quand tu parles d'un 'mandataire' ou 'représentant', c'est Lot.representant.\n"
+                "- Les paiements sont toujours liés au lot, pas directement à la personne."
             ),
         }
     )
@@ -125,8 +134,9 @@ def _build_business_context(message_lower, residence):
         ],
         "personnes": [
             "personne", "personnes", "propriétaire", "copropriétaire",
-            "résident", "résidents", "habitant", "occupant", "nom",
-            "prénom", "contact", "téléphone", "email", "liste des",
+            "résident", "résidents", "habitant", "occupant", "locataire",
+            "représentant", "mandataire", "contact", "contacts",
+            "nom", "prénom", "téléphone", "email", "liste des",
         ],
         "groupes": [
             "groupe", "groupes", "bâtiment", "bâtiments", "bloc", "blocs",
@@ -426,9 +436,9 @@ def _build_business_context(message_lower, residence):
                 parts.append(
                     f"PASSATION DE CONSIGNES — {residence.nom_residence} :\n"
                     f"  Date          : {passation.date_passation.strftime('%d/%m/%Y') if passation.date_passation else '?'}\n"
-                    f"  Syndic sortant : {passation.nom_syndic_sortant or '?'}\n"
+                    f"  Syndic sortant : {passation.nom_syndic or '?'}\n"
                     f"  Syndic entrant : {passation.nom_syndic_entrant or '?'}\n"
-                    f"  Trésorier sortant : {passation.nom_tresorier_sortant or '?'}\n"
+                    f"  Trésorier sortant : {passation.nom_tresorier or '?'}\n"
                     f"  Trésorier entrant : {passation.nom_tresorier_entrant or '?'}\n"
                     f"  Solde caisse  : {float(passation.solde_caisse or 0):,.2f} MAD\n"
                     f"  Solde banque  : {float(passation.solde_banque or 0):,.2f} MAD"
@@ -506,26 +516,37 @@ def _build_business_context(message_lower, residence):
         except Exception:
             pass
 
-    # ── 14. COPROPRIÉTAIRES / PERSONNES ──────────────────────────────────
+    # ── 14. CONTACTS / PERSONNES ─────────────────────────────────────────
     if _match(KW["personnes"]):
         try:
             from .models import Lot
             lots = (Lot.objects.filter(residence=residence)
-                    .select_related("proprietaire", "representant")
+                    .select_related("proprietaire", "occupant", "representant")
                     .order_by("numero_lot"))
-            lignes = [f"COPROPRIÉTAIRES — {residence.nom_residence} ({lots.count()} lots) :"]
+            lignes = [f"CONTACTS / PERSONNES — {residence.nom_residence} ({lots.count()} lots) :"]
+            lignes.append("(Chaque lot peut avoir : un propriétaire, un occupant/locataire, un représentant/mandataire)")
             for l in lots:
-                p = l.proprietaire or l.representant
-                if p:
-                    nom = f"{p.nom} {p.prenom or ''}".strip()
-                    tel   = p.telephone or ""
-                    email = p.email or ""
-                    ligne = f"  • Lot {l.numero_lot} — {nom}"
-                    if tel:   ligne += f" — Tél : {tel}"
-                    if email: ligne += f" — Email : {email}"
+                persons = []
+                if l.proprietaire:
+                    p = l.proprietaire
+                    info = f"{p.nom} {p.prenom or ''}".strip()
+                    if p.telephone: info += f" Tél:{p.telephone}"
+                    if p.email:     info += f" Email:{p.email}"
+                    persons.append(f"Propriétaire={info}")
+                if l.occupant:
+                    p = l.occupant
+                    info = f"{p.nom} {p.prenom or ''}".strip()
+                    if p.telephone: info += f" Tél:{p.telephone}"
+                    persons.append(f"Occupant/Locataire={info}")
+                if l.representant:
+                    p = l.representant
+                    info = f"{p.nom} {p.prenom or ''}".strip()
+                    if p.telephone: info += f" Tél:{p.telephone}"
+                    persons.append(f"Représentant/Mandataire={info}")
+                if persons:
+                    lignes.append(f"  • Lot {l.numero_lot} — " + " | ".join(persons))
                 else:
-                    ligne = f"  • Lot {l.numero_lot} — (aucun propriétaire)"
-                lignes.append(ligne)
+                    lignes.append(f"  • Lot {l.numero_lot} — (aucun contact enregistré)")
             parts.append("\n".join(lignes))
         except Exception:
             pass
