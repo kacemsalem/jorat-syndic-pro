@@ -52,7 +52,7 @@ def superuser_residences(request):
 
 
 # ── Détail / modification d'une résidence ─────────────────────────────────────
-@api_view(["GET", "PATCH"])
+@api_view(["GET", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def superuser_residence_detail(request, pk):
     err = _require_superuser(request)
@@ -74,6 +74,20 @@ def superuser_residence_detail(request, pk):
             return Response({"detail": "Le nom est obligatoire."}, status=400)
         r.save(update_fields=["nom_residence", "ville_residence"])
         return Response({"detail": "Résidence mise à jour."})
+
+    if request.method == "DELETE":
+        nom = r.nom_residence
+        # CASCADE sur Residence supprime toutes les données liées (lots, paiements, etc.)
+        # On supprime aussi les utilisateurs exclusivement liés à cette résidence
+        from .models import ResidenceMembership
+        memberships = ResidenceMembership.objects.filter(residence=r).select_related("user")
+        users_to_check = [m.user for m in memberships if not m.user.is_superuser]
+        r.delete()  # déclenche le CASCADE
+        # Supprimer les utilisateurs qui n'appartiennent plus à aucune résidence
+        for u in users_to_check:
+            if not ResidenceMembership.objects.filter(user=u).exists():
+                u.delete()
+        return Response({"detail": f"Résidence « {nom} » et toutes ses données supprimées."})
 
     admins = (
         ResidenceMembership.objects

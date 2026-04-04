@@ -193,6 +193,21 @@ function ResidenceDrawer({ residenceId, onClose, onRefresh, showToast }) {
     else showToast(d.detail || "Erreur.", false);
   };
 
+  const [deleting,   setDeleting]   = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    const r = await fetch(`/api/superuser/residences/${residenceId}/`, {
+      method: "DELETE", credentials: "include",
+      headers: { "X-CSRFToken": getCsrf() },
+    });
+    const d = await r.json();
+    setDeleting(false);
+    if (r.ok) { showToast(d.detail); onRefresh(); onClose(); }
+    else { showToast(d.detail || "Erreur.", false); setConfirmDel(false); }
+  };
+
   const handleAddAdmin = async () => {
     setAddError("");
     if (!addForm.username.trim()) { setAddError("Nom d'utilisateur requis."); return; }
@@ -340,6 +355,34 @@ function ResidenceDrawer({ residenceId, onClose, onRefresh, showToast }) {
                   className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition">
                   {saving ? "Sauvegarde…" : "Enregistrer les modifications"}
                 </button>
+
+                {/* Zone danger — suppression */}
+                <div className="mt-4 border border-red-200 rounded-2xl p-4 space-y-3 bg-red-50">
+                  <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Zone de danger</p>
+                  {!confirmDel ? (
+                    <button onClick={() => setConfirmDel(true)}
+                      className="w-full py-2 border border-red-300 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 transition">
+                      Supprimer cette résidence…
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-red-700 font-semibold">
+                        ⚠️ Supprimer <strong>« {detail?.nom} »</strong> et toutes ses données ?<br/>
+                        <span className="font-normal text-red-500">Cette action est irréversible.</span>
+                      </p>
+                      <div className="flex gap-2">
+                        <button onClick={handleDelete} disabled={deleting}
+                          className="flex-1 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 disabled:opacity-50 transition">
+                          {deleting ? "Suppression…" : "Confirmer la suppression"}
+                        </button>
+                        <button onClick={() => setConfirmDel(false)}
+                          className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
             /* ── Tab: Administrateurs ── */
