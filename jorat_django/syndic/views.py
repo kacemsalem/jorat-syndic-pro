@@ -1517,11 +1517,9 @@ def passation_situation_lots(request, pk):
 def _compute_solde_caisse(residence, date=None):
     """
     Calcule le solde caisse à une date donnée.
-
-    Les mouvements normaux sont filtrés par date_mouvement <= filter_date.
-    Les ARCHIVE_ADJUSTMENT sont toujours inclus : leur date_mouvement est la
-    date de FIN d'archive (peut être dans le futur), mais ils représentent un
-    report historique réel qui doit toujours être compté.
+    Tous les mouvements (y compris ARCHIVE_ADJUSTMENT) sont filtrés par
+    date_mouvement <= filter_date pour éviter d'inclure des ajustements
+    d'archives postérieurs à la date demandée.
     """
     from .models import CaisseMouvement
     from django.db.models import Sum, Q
@@ -1541,13 +1539,7 @@ def _compute_solde_caisse(residence, date=None):
 
     qs = CaisseMouvement.objects.filter(residence=residence)
     if filter_date:
-        # Inclure les mouvements jusqu'à filter_date + tous les ajustements
-        # d'archive (leur date de fin peut dépasser filter_date mais ils
-        # représentent des données historiques réelles déjà consolidées)
-        qs = qs.filter(
-            Q(date_mouvement__lte=filter_date) |
-            Q(type_mouvement="ARCHIVE_ADJUSTMENT")
-        )
+        qs = qs.filter(date_mouvement__lte=filter_date)
 
     agg = qs.aggregate(
         entrees=Sum("montant", filter=Q(sens="DEBIT")),
