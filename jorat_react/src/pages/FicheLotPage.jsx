@@ -1063,17 +1063,32 @@ export default function FicheLotPage() {
                   {sortedPaiements.length === 0 ? (
                     <p className="text-xs text-slate-400 text-center py-4">Aucun paiement enregistré.</p>
                   ) : (
-                    <div className="space-y-1.5">
-                      {sortedPaiements.map(p => (
-                        <div key={p.id} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl px-3 py-2.5 hover:shadow-sm transition">
-                          <span className="text-[11px] font-mono text-slate-500 w-20 shrink-0">{fmtDate(p.date_paiement)}</span>
-                          <span className="text-[11px] font-mono text-slate-400 w-24 shrink-0 truncate">{p.reference || "—"}</span>
-                          <span className="text-[11px] text-slate-400 w-20 shrink-0 truncate">{p.mode_paiement || "—"}</span>
-                          <span className="flex-1 text-[11px] text-slate-400 truncate">{p.notes || ""}</span>
-                          <span className="text-xs font-mono font-bold text-emerald-700 text-right shrink-0">{fmt(p.montant)} MAD</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-end px-3 pt-1">
+                    <div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {sortedPaiements.map(p => (
+                          <div key={p.id} className="flex flex-col gap-1.5 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3">
+                            {/* Montant */}
+                            <p className="text-base font-bold text-emerald-700 leading-none">{fmt(p.montant)} <span className="text-[10px] font-semibold text-emerald-500">MAD</span></p>
+                            {/* Date */}
+                            <p className="text-[11px] font-mono text-slate-500">{fmtDate(p.date_paiement)}</p>
+                            {/* Mode */}
+                            {p.mode_paiement && (
+                              <span className="self-start text-[9px] font-bold uppercase tracking-wide bg-white border border-emerald-200 text-emerald-600 px-2 py-0.5 rounded-full">
+                                {p.mode_paiement}
+                              </span>
+                            )}
+                            {/* Référence */}
+                            {p.reference && (
+                              <p className="text-[10px] font-mono text-slate-400 truncate">{p.reference}</p>
+                            )}
+                            {/* Notes */}
+                            {p.notes && (
+                              <p className="text-[10px] text-slate-400 truncate">{p.notes}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end pt-2 pr-1">
                         <span className="text-[11px] font-bold text-emerald-700">
                           Total : {fmt(paiements.reduce((s, p) => s + parseFloat(p.montant ?? 0), 0))} MAD
                         </span>
