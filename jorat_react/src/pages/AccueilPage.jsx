@@ -167,10 +167,10 @@ export default function AccueilPage() {
       </div>
 
       {/* ── Cartes ──────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col px-4 -mt-4 pb-4">
+      <div className="flex flex-col px-4 -mt-4 pb-4 sm:flex-1">
 
-        {/* 2×2 grid — fill available height */}
-        <div className="grid grid-cols-2 gap-3 flex-1" style={{ gridAutoRows: "1fr" }}>
+        {/* 2×2 grid */}
+        <div className="grid grid-cols-2 gap-3 sm:flex-1" style={{ gridAutoRows: "auto" }}>
           {CARDS.map(card => (
             <SectionCard key={card.label} {...card} />
           ))}
