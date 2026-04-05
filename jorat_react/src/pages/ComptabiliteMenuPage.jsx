@@ -50,6 +50,21 @@ export default function ComptabiliteMenuPage() {
       {/* ── Contenu ─────────────────────────────────────────── */}
       <div className="px-4 -mt-5 space-y-3">
 
+        {/* Avertissement */}
+        <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
+            className="shrink-0 mt-0.5" style={{ width: 18, height: 18 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <p className="text-[11px] text-amber-800 leading-relaxed">
+            <span className="font-bold">Avertissement —</span> Les résultats des écritures comptables dépendent entièrement de la saisie.
+            Il faut impérativement <span className="font-semibold">affecter les mouvements de caisse</span> (entrées, dépenses) aux comptes comptables associés pour que les journaux, balances et bilans soient fiables.
+          </p>
+        </div>
+
         <NavCard onClick={() => navigate("/comptabilite/journal")}
           label="Journal"
           sub="Enregistrement chronologique des écritures"

@@ -14,11 +14,11 @@ function SectionCard({ onClick, icon, label, description, topGradient, iconBg, i
       <div className={`h-[5px] w-full ${topGradient}`} />
 
       {/* Card body */}
-      <div className="flex-1 flex flex-col p-5 gap-4">
+      <div className="flex-1 flex flex-col p-3 gap-2">
 
         {/* Badge BIENTÔT */}
         {soon && (
-          <div className="self-end -mt-1 -mr-1">
+          <div className="self-end -mt-0.5 -mr-0.5">
             <span className="text-[9px] font-bold tracking-widest text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
               BIENTÔT
             </span>
@@ -26,23 +26,23 @@ function SectionCard({ onClick, icon, label, description, topGradient, iconBg, i
         )}
 
         {/* Icon */}
-        <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center`}>
+        <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center`}>
           <svg viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="1.8"
-            strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+            strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
             {icon}
           </svg>
         </div>
 
         {/* Text */}
         <div className="flex-1">
-          <p className="text-[17px] font-bold text-slate-800 leading-tight">{label}</p>
-          <p className="text-[11px] text-slate-400 mt-1 leading-tight">{description}</p>
+          <p className="text-[14px] font-bold text-slate-800 leading-tight">{label}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{description}</p>
         </div>
 
         {/* Accéder / Bientôt */}
         {!soon && (
-          <p className={`text-sm font-semibold ${accentText} flex items-center gap-1`}>
-            Accéder <span className="text-base leading-none">›</span>
+          <p className={`text-xs font-semibold ${accentText} flex items-center gap-1`}>
+            Accéder <span className="text-sm leading-none">›</span>
           </p>
         )}
       </div>
@@ -94,14 +94,14 @@ export default function AccueilPage() {
       icon: <><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></>,
     },
     {
-      label:       "Dépenses",
-      description: "Recettes & dépenses",
-      onClick:     () => navigate("/depenses"),
+      label:       "Analyse",
+      description: "Rapport financier & synthèse",
+      onClick:     () => navigate("/analyse"),
       topGradient: "bg-gradient-to-r from-amber-400 to-orange-500",
       iconBg:      "bg-amber-50",
       iconColor:   "#F59E0B",
       accentText:  "text-amber-500",
-      icon: <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>,
+      icon: <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>,
     },
     {
       label:       "Comptabilité",
@@ -176,7 +176,7 @@ export default function AccueilPage() {
         </div>
 
         {/* Boutons ronds secondaires */}
-        <div className="flex justify-center gap-10 mt-5">
+        <div className="flex justify-center gap-10 mt-5 pb-24">
           <button onClick={() => navigate("/outils")}
             className="flex flex-col items-center gap-1.5 group">
             <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:shadow-md group-active:scale-95 transition-all">
