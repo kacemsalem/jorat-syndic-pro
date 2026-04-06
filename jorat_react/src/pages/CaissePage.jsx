@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ChartCaisse from "../components/ChartCaisse";
 
@@ -92,12 +92,15 @@ export default function CaissePage() {
     if (m) params.set("mois",           m);
     if (t) params.set("type_mouvement", t);
     if (s) params.set("sens",           s);
+    if (extra.page_size) params.set("page_size", extra.page_size);
     return `/api/caisse-mouvements/?${params.toString()}`;
   };
 
+  const pageSizeRef = React.useRef(null); // null = default, 9999 = show all
+
   const fetchMouvements = (append = false) => {
     if (append) setLoadingMore(true); else setLoading(true);
-    const url = append && nextUrl ? nextUrl : buildUrl();
+    const url = append && nextUrl ? nextUrl : buildUrl(pageSizeRef.current ? { page_size: pageSizeRef.current } : {});
     fetch(url, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -382,6 +385,17 @@ export default function CaissePage() {
               })}
             </div>
 
+            {/* Réinitialiser mode "tout afficher" */}
+            {!nextUrl && pageSizeRef.current === 9999 && mouvements.length > 20 && (
+              <div className="px-4 py-3 border-t border-slate-100">
+                <button
+                  onClick={() => { pageSizeRef.current = null; fetchMouvements(false); }}
+                  className="w-full py-2 text-xs font-semibold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition">
+                  Réduire la liste
+                </button>
+              </div>
+            )}
+
             {/* Charger plus / Afficher tout */}
             {nextUrl && (
               <div className="px-4 py-3 border-t border-slate-100 flex gap-2">
@@ -391,6 +405,7 @@ export default function CaissePage() {
                 </button>
                 <button
                   onClick={() => {
+                    pageSizeRef.current = 9999;
                     setLoadingMore(true);
                     fetch(buildUrl({ page_size: 9999 }), { credentials: "include" })
                       .then(r => r.ok ? r.json() : null)
