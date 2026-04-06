@@ -30,11 +30,19 @@ export default function EtatMensuelPage() {
   const [crossData, setCrossData] = useState(null);
   const [availableYears, setAvailableYears] = useState([]);
 
-  // Fetch all years with financial activity (dépenses + recettes + paiements)
+  // Fetch all years with financial activity — auto-select most recent year with data
   useEffect(() => {
     fetch(`/api/annees-activite/`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (Array.isArray(d) && d.length) setAvailableYears(d); })
+      .then(d => {
+        if (!Array.isArray(d) || !d.length) return;
+        setAvailableYears(d);
+        const sorted = [...d].sort((a, b) => b - a);
+        const mostRecent = sorted[0];
+        if (mostRecent !== now.getFullYear()) {
+          setYear(mostRecent);
+        }
+      })
       .catch(() => {});
   }, []);
 
