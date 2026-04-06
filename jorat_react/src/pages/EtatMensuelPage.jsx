@@ -15,7 +15,6 @@ export default function EtatMensuelPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setData(null);
     setLoading(true);
     const m = String(month + 1).padStart(2, "0");
     const deb = `${year}-${m}-01`;
@@ -91,17 +90,20 @@ export default function EtatMensuelPage() {
             </select>
           </div>
         </div>
-        <p className="text-white/50 text-[10px] mt-1">Paiements reçus · Dépenses du mois</p>
+        <p className="text-white/50 text-[10px] mt-1 flex items-center gap-2">
+          Paiements reçus · Dépenses du mois
+          {loading && <span className="w-3 h-3 border border-white/50 border-t-white rounded-full animate-spin inline-block" />}
+        </p>
       </div>
       <div className="px-4 -mt-5 pb-24 max-w-5xl mx-auto space-y-4">
 
-      {loading && (
+      {loading && !data && (
         <div className="flex items-center justify-center py-12">
           <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
-      {data && !loading && (
+      {data && (
         <>
           {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
