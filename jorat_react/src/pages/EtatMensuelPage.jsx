@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 
 const MOIS = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 const MOIS_FULL = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
@@ -9,7 +8,6 @@ function fmt(v) {
 }
 
 export default function EtatMensuelPage() {
-  const navigate = useNavigate();
   const now = new Date();
   const [year,  setYear]  = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth()); // 0-based
@@ -17,6 +15,7 @@ export default function EtatMensuelPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    setData(null);
     setLoading(true);
     const m = String(month + 1).padStart(2, "0");
     const deb = `${year}-${m}-01`;
@@ -41,6 +40,7 @@ export default function EtatMensuelPage() {
   }, []);
 
   useEffect(() => {
+    setCrossData(null);
     fetch(`/api/situation-paiements/?year=${year}&type_charge=CHARGE`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => setCrossData(d))
