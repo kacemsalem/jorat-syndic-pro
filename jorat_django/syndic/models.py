@@ -1011,7 +1011,7 @@ class Contrat(TimeStampedModel):
 
     residence        = models.ForeignKey("Residence",        on_delete=models.CASCADE,  related_name="contrats")
     reference_contrat = models.CharField(max_length=100, blank=True, help_text="Référence / numéro de contrat")
-    type_contrat     = models.CharField(max_length=20,  choices=TYPE_CHOICES)
+    type_contrat     = models.CharField(max_length=20,  choices=TYPE_CHOICES, blank=True, default="AUTRE")
     libelle          = models.CharField(max_length=255, help_text="Description du contrat")
     fournisseur      = models.ForeignKey("Fournisseur",      on_delete=models.PROTECT,  null=True, blank=True, related_name="contrats")
     periodicite      = models.CharField(max_length=20,  choices=PERIODICITE_CHOICES, default="MENSUEL")

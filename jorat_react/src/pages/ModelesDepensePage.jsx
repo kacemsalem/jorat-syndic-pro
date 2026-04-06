@@ -39,17 +39,17 @@ function SubHeader({ icon, label, onBack }) {
 }
 
 function SubFormFournisseur({ onBack, onCreated }) {
-  const [form, setForm] = useState({ nom: "", telephone: "", email: "" });
+  const [form, setForm] = useState({ nom_societe: "", telephone: "", email: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const save = async () => {
-    if (!form.nom.trim()) { setError("Le nom est obligatoire."); return; }
+    if (!form.nom_societe.trim()) { setError("Le nom de société est obligatoire."); return; }
     setSaving(true); setError("");
     try {
       const res = await fetch("/api/fournisseurs/", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ nom: form.nom.trim(), telephone: form.telephone, email: form.email, actif: true }),
+        body: JSON.stringify({ nom_societe: form.nom_societe.trim(), telephone: form.telephone, email: form.email, actif: true }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(Object.values(d).flat().join(" ") || "Erreur."); return; }
       onCreated(await res.json());
@@ -61,7 +61,7 @@ function SubFormFournisseur({ onBack, onCreated }) {
         icon={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>} />
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Raison sociale <span className="text-red-500">*</span></label>
-        <input className={INPUT} value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Ex : SARL Atlas, Maroc Elect…" />
+        <input className={INPUT} value={form.nom_societe} onChange={e => setForm(f => ({ ...f, nom_societe: e.target.value }))} placeholder="Ex : SARL Atlas, Maroc Elect…" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
