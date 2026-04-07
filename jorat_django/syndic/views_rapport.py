@@ -69,19 +69,21 @@ def _rapport_data(residence, date_debut, date_fin):
         rec_par_compte[code] = rec_par_compte.get(code, Decimal("0")) + r.montant
 
     # ── Situation par lot ───────────────────────────────────
-    # Subqueries évitent la multiplication des lignes lors du double join
+    # Exclure les appels archivés (archive_comptable not null) pour ne pas
+    # compter des montants déjà soldés. Utiliser montant_recu (persisté après
+    # archivage des paiements) plutôt que Paiement.montant (supprimé).
     du_sub = (
         DetailAppelCharge.objects
-        .filter(lot=OuterRef("pk"))
+        .filter(lot=OuterRef("pk"), appel__archive_comptable__isnull=True, archived=False)
         .values("lot_id")
         .annotate(s=Sum("montant"))
         .values("s")
     )
     paye_sub = (
-        Paiement.objects
-        .filter(lot=OuterRef("pk"))
+        DetailAppelCharge.objects
+        .filter(lot=OuterRef("pk"), appel__archive_comptable__isnull=True, archived=False)
         .values("lot_id")
-        .annotate(s=Sum("montant"))
+        .annotate(s=Sum("montant_recu"))
         .values("s")
     )
     lots = Lot.objects.filter(residence=residence).select_related(

@@ -611,6 +611,9 @@ class DetailAppelCharge(TimeStampedModel):
         default="NON_PAYE"
     )
 
+    # True = ce détail a été archivé (lot soldé lors d'un archivage partiel)
+    archived = models.BooleanField(default=False)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["appel", "lot"], name="uniq_lot_par_appel")

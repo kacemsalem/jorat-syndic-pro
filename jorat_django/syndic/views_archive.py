@@ -174,10 +174,12 @@ def archive_create(request):
         Paiement.objects.filter(id__in=[p.id for p in paiements]).delete()
         Recette.objects.filter(id__in=[r.id for r in recettes]).delete()
 
-        # ── Optionally archive fully-covered AppelCharge/Fond ────
+        # ── Optionally archive AppelCharge/Fond ─────────────────
         if archive_appels:
-            # Un appel est "totalement recouvré" si tous ses details sont PAYE
-            appels_to_archive = AppelCharge.objects.filter(
+            from .models import DetailAppelCharge as DAC
+
+            # 1. Appels totalement payés → archiver l'appel entier
+            appels_full = AppelCharge.objects.filter(
                 residence=residence,
                 archive_comptable__isnull=True,
             ).annotate(
@@ -187,7 +189,26 @@ def archive_create(request):
                 nb_details__gt=0,
                 nb_details=models.F("nb_paye"),
             )
-            appels_to_archive.update(archive_comptable=archive)
+            appels_full.update(archive_comptable=archive)
+
+            # 2. Appels partiellement couverts → supprimer les details PAYE,
+            #    conserver uniquement les lots PARTIEL et NON_PAYE
+            appels_partial = AppelCharge.objects.filter(
+                residence=residence,
+                archive_comptable__isnull=True,
+            ).annotate(
+                nb_details=Count("details"),
+                nb_paye=Count("details", filter=Q(details__statut="PAYE")),
+            ).filter(
+                nb_details__gt=0,
+                nb_paye__gt=0,
+                nb_paye__lt=models.F("nb_details"),
+            )
+            # Archiver les details PAYE de ces appels partiels (archived=True)
+            DAC.objects.filter(
+                appel__in=appels_partial,
+                statut="PAYE",
+            ).update(archived=True)
 
         # ── Create adjustment entry in Caisse ───────────────────
         if solde != Decimal("0"):
