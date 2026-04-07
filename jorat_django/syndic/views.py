@@ -548,7 +548,7 @@ class DetailAppelChargeViewSet(ModelViewSet):
             "lot__representant__prenom", "lot__representant__telephone",
             "appel__id", "appel__code_fond", "appel__periode",
             "appel__exercice", "appel__residence_id", "appel__type_charge",
-        ).filter(appel__residence=residence, appel__archive_comptable__isnull=True, archived=False)
+        ).filter(appel__residence=residence)
 
         appel_id    = self.request.query_params.get("appel")
         lot_id      = self.request.query_params.get("lot")
@@ -556,7 +556,12 @@ class DetailAppelChargeViewSet(ModelViewSet):
         type_charge = self.request.query_params.get("type_charge")
 
         if appel_id:
+            # Viewing a specific appel directly: show ALL details (including archived PAYE)
+            # so that appels outside the archive range remain fully visible
             qs = qs.filter(appel_id=appel_id)
+        else:
+            # General listing: exclude archived details and appels already archived
+            qs = qs.filter(appel__archive_comptable__isnull=True, archived=False)
         if lot_id:
             qs = qs.filter(lot_id=lot_id)
         if exercice:

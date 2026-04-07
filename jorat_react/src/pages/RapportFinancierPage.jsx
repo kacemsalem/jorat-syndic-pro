@@ -189,13 +189,11 @@ export default function RapportFinancierPage() {
       {data && (
         <>
           <Section title="Résumé financier">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <KPICard label="Balance période" value={`${fmt(data.balance)} MAD`}
                 color={balance >= 0 ? "#059669" : "#dc2626"}
                 bg={balance >= 0 ? "#f0fdf4" : "#fef2f2"}
                 sub={balance >= 0 ? "Excédent" : "Déficit"} />
-              <KPICard label="Total entrées" value={`${fmt(data.entrees)} MAD`} color="#059669" bg="#f0fdf4" />
-              <KPICard label="Total sorties" value={`${fmt(data.sorties)} MAD`} color="#dc2626" bg="#fef2f2" />
             </div>
           </Section>
 
