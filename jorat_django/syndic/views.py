@@ -548,7 +548,7 @@ class DetailAppelChargeViewSet(ModelViewSet):
             "lot__representant__prenom", "lot__representant__telephone",
             "appel__id", "appel__code_fond", "appel__periode",
             "appel__exercice", "appel__residence_id", "appel__type_charge",
-        ).filter(appel__residence=residence, appel__archive_comptable__isnull=True)
+        ).filter(appel__residence=residence, appel__archive_comptable__isnull=True, archived=False)
 
         appel_id    = self.request.query_params.get("appel")
         lot_id      = self.request.query_params.get("lot")
@@ -1498,7 +1498,7 @@ def passation_situation_lots(request, pk):
     lots = Lot.objects.filter(residence=residence).select_related("representant","groupe").order_by("groupe__nom_groupe","numero_lot")
     result = []
     for lot in lots:
-        agg = DetailAppelCharge.objects.filter(lot=lot).aggregate(du=S("montant"), recu=S("montant_recu"))
+        agg = DetailAppelCharge.objects.filter(lot=lot, archived=False, appel__archive_comptable__isnull=True).aggregate(du=S("montant"), recu=S("montant_recu"))
         du   = float(agg["du"]   or 0)
         recu = float(agg["recu"] or 0)
         if du == 0:
