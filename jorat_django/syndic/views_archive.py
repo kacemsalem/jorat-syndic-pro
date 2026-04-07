@@ -324,6 +324,20 @@ def archive_restore(request, pk):
             )
             r.save()  # triggers auto CaisseMouvement creation
 
+        # ── Reset archived flag on DetailAppelCharge ───────────
+        # When archiving, PAYE details of partially-paid appels within the range
+        # are soft-archived (archived=True). On restore, reset them to False so
+        # they become visible again and a future re-archive works correctly.
+        from .models import DetailAppelCharge as DAC
+        start_year = int(str(archive.start_date)[:4])
+        end_year   = int(str(archive.end_date)[:4])
+        DAC.objects.filter(
+            appel__residence=residence,
+            appel__exercice__gte=start_year,
+            appel__exercice__lte=end_year,
+            archived=True,
+        ).update(archived=False)
+
         # ── Delete archive ──────────────────────────────────────
         archive.delete()
 
