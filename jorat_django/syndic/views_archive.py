@@ -177,37 +177,45 @@ def archive_create(request):
         # ── Optionally archive AppelCharge/Fond ─────────────────
         if archive_appels:
             from .models import DetailAppelCharge as DAC
+            import datetime
 
-            # 1. Appels totalement payés → archiver l'appel entier
-            appels_full = AppelCharge.objects.filter(
+            # Exercices couverts par la période archivée
+            start_year = int(str(start_date)[:4])
+            end_year   = int(str(end_date)[:4])
+
+            base_qs = AppelCharge.objects.filter(
                 residence=residence,
                 archive_comptable__isnull=True,
-            ).annotate(
-                nb_details=Count("details"),
-                nb_paye=Count("details", filter=Q(details__statut="PAYE")),
+                exercice__gte=start_year,
+                exercice__lte=end_year,
+            )
+
+            # 1. Appels totalement payés → archiver l'appel entier
+            appels_full = base_qs.annotate(
+                nb_details=Count("details", filter=Q(details__archived=False)),
+                nb_paye=Count("details", filter=Q(details__statut="PAYE", details__archived=False)),
             ).filter(
                 nb_details__gt=0,
                 nb_details=models.F("nb_paye"),
             )
             appels_full.update(archive_comptable=archive)
 
-            # 2. Appels partiellement couverts → supprimer les details PAYE,
-            #    conserver uniquement les lots PARTIEL et NON_PAYE
-            appels_partial = AppelCharge.objects.filter(
-                residence=residence,
-                archive_comptable__isnull=True,
+            # 2. Appels partiellement couverts → marquer archived=True les details PAYE
+            #    Conserver uniquement les lots PARTIEL et NON_PAYE
+            appels_partial = base_qs.exclude(
+                archive_comptable=archive  # exclure ceux qu'on vient d'archiver
             ).annotate(
-                nb_details=Count("details"),
-                nb_paye=Count("details", filter=Q(details__statut="PAYE")),
+                nb_details=Count("details", filter=Q(details__archived=False)),
+                nb_paye=Count("details", filter=Q(details__statut="PAYE", details__archived=False)),
             ).filter(
                 nb_details__gt=0,
                 nb_paye__gt=0,
                 nb_paye__lt=models.F("nb_details"),
             )
-            # Archiver les details PAYE de ces appels partiels (archived=True)
             DAC.objects.filter(
                 appel__in=appels_partial,
                 statut="PAYE",
+                archived=False,
             ).update(archived=True)
 
         # ── Create adjustment entry in Caisse ───────────────────
