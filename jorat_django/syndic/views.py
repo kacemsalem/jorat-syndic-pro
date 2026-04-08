@@ -268,10 +268,11 @@ class PaiementViewSet(ModelViewSet):
         residence = get_user_residence(self.request)
         if not residence:
             return Paiement.objects.none()
+        p      = self.request.query_params
         qs     = Paiement.objects.select_related("lot", "residence").filter(residence=residence)
-        lot_id = self.request.query_params.get("lot")
-        if lot_id:
-            qs = qs.filter(lot_id=lot_id)
+        if p.get("lot"):        qs = qs.filter(lot_id=p["lot"])
+        if p.get("date_debut"): qs = qs.filter(date_paiement__gte=p["date_debut"])
+        if p.get("date_fin"):   qs = qs.filter(date_paiement__lte=p["date_fin"])
         return qs
 
     @action(detail=True, methods=["post"], url_path="ventiler")
@@ -757,6 +758,8 @@ class DepenseViewSet(ModelViewSet):
         if p.get("mois"):         qs = qs.filter(mois=p["mois"])
         if p.get("a_affecter") == "true":
             qs = qs.filter(compte__code="000")
+        if p.get("date_debut"): qs = qs.filter(date_depense__gte=p["date_debut"])
+        if p.get("date_fin"):   qs = qs.filter(date_depense__lte=p["date_fin"])
 
         ALLOWED_SORT = {
             "date_depense":    "date_depense",

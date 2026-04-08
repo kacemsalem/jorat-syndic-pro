@@ -59,13 +59,15 @@ export default function GestionPage() {
       <div className="px-4 -mt-5 space-y-4">
 
         <Section title="Finances">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             <NavCard onClick={() => navigate("/caisse")} label="Caisse"
               icon={<><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M7 15h.01M12 15h.01"/></>} />
             <NavCard onClick={() => navigate("/depenses")} label="Dépenses"
               icon={<><path d="M12 5v14M19 12l-7 7-7-7"/></>} />
             <NavCard onClick={() => navigate("/paiements")} label="Cotisations"
               icon={<><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></>} />
+            <NavCard onClick={() => navigate("/saisie-par-mois")} label="Saisie"
+              icon={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>} />
             <NavCard onClick={() => navigate("/etat-mensuel")} label="Mensuel"
               icon={<><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>} />
           </div>
