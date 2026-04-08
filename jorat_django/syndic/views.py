@@ -288,6 +288,7 @@ class PaiementViewSet(ModelViewSet):
             )
 
         type_charge = request.data.get("type_charge") or request.query_params.get("type_charge")
+        exercice    = request.data.get("exercice")    or request.query_params.get("exercice")
 
         qs_details = (
             DetailAppelCharge.objects
@@ -297,6 +298,11 @@ class PaiementViewSet(ModelViewSet):
         )
         if type_charge in ("CHARGE", "FOND"):
             qs_details = qs_details.filter(appel__type_charge=type_charge)
+        if exercice:
+            try:
+                qs_details = qs_details.filter(appel__exercice=int(exercice))
+            except (ValueError, TypeError):
+                pass
 
         details_dus = list(qs_details)
 
