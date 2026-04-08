@@ -18,8 +18,9 @@ export default function EtatMensuelPage() {
     setLoading(true);
     const m = String(month + 1).padStart(2, "0");
     const deb = `${year}-${m}-01`;
-    // last day of month
-    const fin = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+    // last day of month — avoid toISOString() which shifts to UTC and can lose a day
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const fin = `${year}-${m}-${String(lastDay).padStart(2, "0")}`;
     fetch(`/api/rapport-financier/?date_debut=${deb}&date_fin=${fin}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => { setData(d); setLoading(false); })
@@ -30,18 +31,15 @@ export default function EtatMensuelPage() {
   const [crossData, setCrossData] = useState(null);
   const [availableYears, setAvailableYears] = useState([]);
 
-  // Fetch all years with financial activity — auto-select most recent year with data
+  // Fetch all years with financial activity — only used to populate the year selector
   useEffect(() => {
     fetch(`/api/annees-activite/`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!Array.isArray(d) || !d.length) return;
-        setAvailableYears(d);
-        const sorted = [...d].sort((a, b) => b - a);
-        const mostRecent = sorted[0];
-        if (mostRecent !== now.getFullYear()) {
-          setYear(mostRecent);
-        }
+        // Ensure current year is always in the list
+        const withCurrent = d.includes(now.getFullYear()) ? d : [...d, now.getFullYear()];
+        setAvailableYears(withCurrent.sort((a, b) => b - a));
       })
       .catch(() => {});
   }, []);

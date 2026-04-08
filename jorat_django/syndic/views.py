@@ -536,9 +536,20 @@ class DetailAppelChargeViewSet(ModelViewSet):
     queryset         = DetailAppelCharge.objects.all()
 
     def get_queryset(self):
+        from .models import ArchiveComptable
         residence = get_user_residence(self.request)
         if not residence:
             return DetailAppelCharge.objects.none()
+
+        # Compute exercice years covered by active archives for this residence.
+        # A detail with archived=True should only be hidden if its appel's exercice
+        # falls within an active archive range — orphaned flags (e.g. from a buggy
+        # previous run covering 2025) must not hide details outside the range.
+        archived_years = set()
+        for arch in ArchiveComptable.objects.filter(residence=residence):
+            for y in range(arch.start_date.year, arch.end_date.year + 1):
+                archived_years.add(y)
+
         qs = DetailAppelCharge.objects.select_related(
             "lot", "lot__representant", "appel",
         ).only(
@@ -548,7 +559,15 @@ class DetailAppelChargeViewSet(ModelViewSet):
             "lot__representant__prenom", "lot__representant__telephone",
             "appel__id", "appel__code_fond", "appel__periode",
             "appel__exercice", "appel__residence_id", "appel__type_charge",
-        ).filter(appel__residence=residence, appel__archive_comptable__isnull=True, archived=False)
+        ).filter(
+            appel__residence=residence,
+            appel__archive_comptable__isnull=True,
+        ).exclude(
+            # Hide soft-archived PAYE details only when their exercice is
+            # actually within an active archive range
+            archived=True,
+            appel__exercice__in=archived_years,
+        )
 
         appel_id    = self.request.query_params.get("appel")
         lot_id      = self.request.query_params.get("lot")
