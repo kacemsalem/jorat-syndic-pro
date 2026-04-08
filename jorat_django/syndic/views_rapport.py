@@ -840,6 +840,7 @@ def situation_paiements_view(request):
                     remaining -= contribution
 
         result.append({
+            "lot_id":    lot.id,
             "lot":       lot.numero_lot,
             "nom":       nom,
             "total_du":  total_du_year,

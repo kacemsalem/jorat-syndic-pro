@@ -66,7 +66,7 @@ export default function GestionPage() {
               icon={<><path d="M12 5v14M19 12l-7 7-7-7"/></>} />
             <NavCard onClick={() => navigate("/paiements")} label="Cotisations"
               icon={<><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></>} />
-            <NavCard onClick={() => navigate("/saisie-par-mois")} label="Saisie"
+            <NavCard onClick={() => navigate("/saisie-grille")} label="Saisie"
               icon={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>} />
             <NavCard onClick={() => navigate("/etat-mensuel")} label="Mensuel"
               icon={<><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>} />

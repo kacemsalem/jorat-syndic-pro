@@ -49,11 +49,19 @@ function PaiementForm({ lots, defaultDate, onAdded }) {
           lot: parseInt(form.lot), montant: form.montant,
           date_paiement: form.date_paiement,
           mode_paiement: form.mode_paiement || null,
-          reference: form.reference || null,
+          reference: form.reference || "",
         }),
       });
-      if (!res.ok) { const d = await res.json(); setErr(Object.values(d).flat().join(" ")); }
-      else { setForm(f => ({ ...f, lot: "", montant: "", mode_paiement: "", reference: "" })); onAdded(); }
+      if (!res.ok) { const d = await res.json(); setErr(Object.values(d).flat().join(" ")); return; }
+      const created = await res.json();
+      // Auto-ventilation sur tous les appels impayés du lot (CHARGE + FOND)
+      await fetch(`${API}/paiements/${created.id}/ventiler/`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({}),
+      });
+      setForm(f => ({ ...f, lot: "", montant: "", mode_paiement: "", reference: "" }));
+      onAdded();
     } finally { setSaving(false); }
   };
 

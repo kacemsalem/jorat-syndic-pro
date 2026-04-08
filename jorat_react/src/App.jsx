@@ -48,6 +48,7 @@ import MessagesResidentPage from "./pages/MessagesResidentPage";
 import ConsultationPage from "./pages/ConsultationPage";
 import EtatMensuelPage from "./pages/EtatMensuelPage";
 import SaisieParMoisPage from "./pages/SaisieParMoisPage";
+import SaisieGrilleePage from "./pages/SaisieGrilleePage";
 import PassationConsignesPage from "./pages/PassationConsignesPage";
 import GrapheCaissePage from "./pages/GrapheCaissePage";
 import GraphePaiementsPage from "./pages/GraphePaiementsPage";
@@ -211,6 +212,7 @@ function AppLayout() {
               <Route path="/espace-resident/consultation"    element={<ConsultationPage />} />
               <Route path="/etat-mensuel"                  element={<EtatMensuelPage />} />
               <Route path="/saisie-par-mois"              element={<SaisieParMoisPage />} />
+              <Route path="/saisie-grille"               element={<SaisieGrilleePage />} />
               <Route path="/passation-consignes"          element={<PassationConsignesPage />} />
               <Route path="/ia/chat"                      element={<IAChatPage />} />
               <Route path="/parametrage/ia"               element={<IASettingsPage />} />
