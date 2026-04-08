@@ -162,14 +162,20 @@ export default function SaisieGrilleePage() {
   // ── Rows ─────────────────────────────────────────────────────
   const rows = useMemo(() => {
     if (!crossData?.lots) return [];
+    // Cutoff = dernier jour du mois sélectionné : seuls les paiements ≤ cette date sont comptés
+    const cutoff = new Date(year, month + 1, 0);
+    cutoff.setHours(23, 59, 59, 999);
     return crossData.lots.map(lot => {
-      const totalDu   = parseFloat(lot.total_du || 0);
-      const totalPaid = (lot.paiements || []).reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+      const totalDu = parseFloat(lot.total_du || 0);
+      const filteredPaiements = (lot.paiements || []).filter(p =>
+        !p.date || new Date(p.date) <= cutoff
+      );
+      const totalPaid = filteredPaiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
       const monthsCovered = totalDu > 0 ? (totalPaid / totalDu) * 12 : 0;
       const paid = Array(12).fill(false).map((_, i) => i < monthsCovered);
       return { ...lot, paid, monthlyAmt: totalDu / 12, totalDu };
     });
-  }, [crossData]);
+  }, [crossData, year, month]);
 
   const toggleMonth = (lotId, mi) => {
     setSaved(p => ({ ...p, [lotId]: false }));
