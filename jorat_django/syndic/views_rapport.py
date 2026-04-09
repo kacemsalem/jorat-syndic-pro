@@ -929,3 +929,464 @@ def send_email_view(request):
         return Response({"ok": True})
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+
+# ============================================================
+# Helpers partagés pour l'export Saisie Grille
+# ============================================================
+MOIS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin",
+           "Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
+MOIS_SHORT = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"]
+
+def _saisie_grille_data(residence, year, month, type_charge):
+    """
+    Retourne un dict avec:
+      - lots: [{lot, nom, paid[12], total_du, total_paye, reste}]
+      - total_paiements_mois, total_depenses_mois, balance
+      - depenses: [{date, libelle, categorie, fournisseur, montant}]
+    """
+    import calendar as cal
+    last_day = cal.monthrange(year, month)[1]
+    cutoff   = datetime.date(year, month, last_day)
+    deb_mois = datetime.date(year, month, 1)
+
+    lots_qs = (
+        Lot.objects
+        .filter(residence=residence)
+        .select_related("representant", "groupe")
+        .order_by("groupe__nom_groupe", "numero_lot")
+    )
+    lot_ids = list(lots_qs.values_list("id", flat=True))
+
+    from django.db.models import Sum as DSum
+    # Charges par lot pour l'année
+    charges_rows = (
+        DetailAppelCharge.objects
+        .filter(lot__in=lot_ids, appel__type_charge=type_charge, appel__exercice=year)
+        .values("lot_id")
+        .annotate(total=DSum("montant"))
+    )
+    charges_map = {r["lot_id"]: float(r["total"]) for r in charges_rows}
+
+    # Paiements ventilés jusqu'au cutoff
+    aff_rows = (
+        AffectationPaiement.objects
+        .filter(
+            paiement__lot__in=lot_ids,
+            paiement__date_paiement__lte=cutoff,
+            detail__appel__type_charge=type_charge,
+            detail__appel__exercice=year,
+        )
+        .values("paiement__lot_id")
+        .annotate(total=DSum("montant_affecte"))
+    )
+    paye_map = {r["paiement__lot_id"]: float(r["total"]) for r in aff_rows}
+
+    # KPI mois : paiements encaissés dans le mois
+    total_paiements_mois = float(
+        Paiement.objects
+        .filter(residence=residence, date_paiement__gte=deb_mois, date_paiement__lte=cutoff)
+        .aggregate(t=DSum("montant"))["t"] or 0
+    )
+
+    # Dépenses du mois
+    dep_qs = (
+        Depense.objects
+        .select_related("categorie", "fournisseur")
+        .filter(residence=residence, date_depense__gte=deb_mois, date_depense__lte=cutoff)
+        .order_by("date_depense")
+    )
+    depenses = []
+    total_depenses_mois = 0.0
+    for d in dep_qs:
+        m = float(d.montant)
+        total_depenses_mois += m
+        fournisseur = ""
+        if d.fournisseur:
+            f = d.fournisseur
+            fournisseur = f.nom_societe or f"{f.nom} {f.prenom or ''}".strip()
+        depenses.append({
+            "date":        str(d.date_depense),
+            "libelle":     d.libelle,
+            "categorie":   d.categorie.nom if d.categorie else "",
+            "fournisseur": fournisseur,
+            "montant":     m,
+        })
+
+    # Rows grille
+    lots_out = []
+    for lot in lots_qs:
+        rep = lot.representant
+        nom = f"{rep.nom} {rep.prenom or ''}".strip() if rep else "—"
+        total_du   = charges_map.get(lot.id, 0.0)
+        total_paye = paye_map.get(lot.id, 0.0)
+        reste      = total_du - total_paye
+        months_covered = (total_paye / total_du * 12) if total_du > 0 else 0.0
+        paid = [i < months_covered for i in range(12)]
+        lots_out.append({
+            "lot": lot.numero_lot, "nom": nom,
+            "paid": paid,
+            "total_du": total_du, "total_paye": total_paye, "reste": reste,
+        })
+
+    return {
+        "lots": lots_out,
+        "total_paiements_mois": total_paiements_mois,
+        "total_depenses_mois":  total_depenses_mois,
+        "balance":              total_paiements_mois - total_depenses_mois,
+        "depenses":             depenses,
+    }
+
+
+# ============================================================
+# Export Saisie Grille — EXCEL
+# ============================================================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def saisie_grille_export_excel(request):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    residence = get_user_residence(request)
+    if not residence:
+        return Response({"detail": "Aucune résidence."}, status=400)
+
+    try:
+        year  = int(request.query_params.get("year",  datetime.date.today().year))
+        month = int(request.query_params.get("month", datetime.date.today().month))
+    except (TypeError, ValueError):
+        return Response({"detail": "Paramètres invalides."}, status=400)
+
+    type_charge = request.query_params.get("type_charge", "CHARGE")
+    if type_charge not in ("CHARGE", "FOND"):
+        type_charge = "CHARGE"
+
+    d = _saisie_grille_data(residence, year, month, type_charge)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Saisie Grille"
+
+    thin   = Side(style="thin", color="E2E8F0")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    DARK  = "0F172A"
+    INDIGO = "4F46E5"
+    GREEN  = "059669"
+    RED    = "DC2626"
+    AMBER  = "D97706"
+
+    def hdr(cell, bg=DARK, color="FFFFFF", size=10, bold=True, center=True):
+        cell.fill      = PatternFill("solid", fgColor=bg)
+        cell.font      = Font(bold=bold, color=color, size=size)
+        cell.alignment = Alignment(horizontal="center" if center else "left", vertical="center", wrap_text=True)
+        cell.border    = border
+
+    def dc(ws, row, col, value, fmt=None, bold=False, color=None, center=False):
+        c = ws.cell(row=row, column=col, value=value)
+        c.border = border
+        c.alignment = Alignment(horizontal="center" if center else "left", vertical="center")
+        if fmt:   c.number_format = fmt
+        if bold:  c.font = Font(bold=True, color=color or "000000")
+        elif color: c.font = Font(color=color)
+        return c
+
+    tc_label = "Appel de charge" if type_charge == "CHARGE" else "Appel de fond"
+    mois_label = MOIS_FR[month - 1]
+
+    # ── Titre ──────────────────────────────────────────────────
+    ws.merge_cells("A1:Q1")
+    c = ws["A1"]
+    c.value = f"SAISIE EN GRILLE — {residence.nom_residence.upper()}"
+    c.font  = Font(bold=True, size=14, color=DARK)
+    c.alignment = Alignment(horizontal="left", vertical="center")
+    ws.row_dimensions[1].height = 22
+
+    ws.merge_cells("A2:Q2")
+    ws["A2"].value = f"{tc_label}  ·  {mois_label} {year}"
+    ws["A2"].font  = Font(italic=True, color="64748B", size=10)
+    ws.append([])  # row 3 blank
+
+    # ── KPI ────────────────────────────────────────────────────
+    kpi_row = 4
+    for ci, (lbl, val, col) in enumerate([
+        ("Paiements reçus", d["total_paiements_mois"], GREEN),
+        ("Dépenses",        d["total_depenses_mois"],  RED),
+        ("Balance",         d["balance"],              GREEN if d["balance"] >= 0 else RED),
+    ], 1):
+        col_start = (ci - 1) * 3 + 1
+        ws.merge_cells(start_row=kpi_row,   start_column=col_start, end_row=kpi_row,   end_column=col_start + 2)
+        ws.merge_cells(start_row=kpi_row+1, start_column=col_start, end_row=kpi_row+1, end_column=col_start + 2)
+        lc = ws.cell(kpi_row, col_start, lbl)
+        lc.font = Font(bold=True, color="94A3B8", size=9)
+        lc.alignment = Alignment(horizontal="center")
+        vc = ws.cell(kpi_row+1, col_start, val)
+        vc.font = Font(bold=True, color=col, size=13)
+        vc.alignment = Alignment(horizontal="center")
+        vc.number_format = "#,##0.00"
+    ws.append([])  # blank
+
+    # ── En-têtes grille ─────────────────────────────────────────
+    hdr_row = kpi_row + 3
+    headers = ["Lot", "Propriétaire"] + MOIS_SHORT + ["Total dû", "Total payé", "Reste"]
+    col_widths = [8, 26] + [5]*12 + [14, 14, 14]
+    for ci, (h, w) in enumerate(zip(headers, col_widths), 1):
+        ws.column_dimensions[ws.cell(hdr_row, ci).column_letter].width = w
+        hdr(ws.cell(hdr_row, ci, h), bg=INDIGO)
+
+    # ── Données grille ──────────────────────────────────────────
+    total_du_sum = total_paye_sum = total_reste_sum = 0.0
+    for ri, lot in enumerate(d["lots"], hdr_row + 1):
+        dc(ws, ri, 1, lot["lot"],  bold=True, color=INDIGO, center=True)
+        dc(ws, ri, 2, lot["nom"])
+        for mi, is_paid in enumerate(lot["paid"]):
+            c = ws.cell(ri, 3 + mi, "✓" if is_paid else "")
+            c.border = border
+            c.alignment = Alignment(horizontal="center", vertical="center")
+            if is_paid:
+                c.font = Font(bold=True, color=GREEN)
+        dc(ws, ri, 15, lot["total_du"],   fmt="#,##0.00", center=True)
+        dc(ws, ri, 16, lot["total_paye"], fmt="#,##0.00", center=True)
+        reste = lot["reste"]
+        c = ws.cell(ri, 17, reste)
+        c.border = border
+        c.number_format = "#,##0.00"
+        c.alignment = Alignment(horizontal="center")
+        c.font = Font(bold=True, color=RED if reste > 0 else GREEN)
+        total_du_sum    += lot["total_du"]
+        total_paye_sum  += lot["total_paye"]
+        total_reste_sum += lot["reste"]
+
+    # Totaux grille
+    tr = hdr_row + 1 + len(d["lots"])
+    c = ws.cell(tr, 1, "TOTAL")
+    c.font = Font(bold=True)
+    c.border = border
+    ws.merge_cells(start_row=tr, start_column=1, end_row=tr, end_column=14)
+    for ci, val in [(15, total_du_sum), (16, total_paye_sum), (17, total_reste_sum)]:
+        c = ws.cell(tr, ci, val)
+        c.number_format = "#,##0.00"
+        c.font = Font(bold=True, color=RED if ci == 17 and total_reste_sum > 0 else GREEN)
+        c.border = border
+        c.alignment = Alignment(horizontal="center")
+
+    # ── Section dépenses ────────────────────────────────────────
+    dep_start = tr + 2
+    ws.merge_cells(start_row=dep_start, start_column=1, end_row=dep_start, end_column=6)
+    c = ws.cell(dep_start, 1, f"DÉPENSES — {mois_label} {year}  ({len(d['depenses'])} entrée(s))")
+    c.font = Font(bold=True, size=11, color=RED)
+    c.alignment = Alignment(horizontal="left")
+
+    dep_hdr = dep_start + 1
+    for ci, (h, w) in enumerate([("Date",10),("Libellé",34),("Catégorie",20),("Fournisseur",24),("Montant",14)], 1):
+        ws.column_dimensions[ws.cell(dep_hdr, ci).column_letter].width = max(ws.column_dimensions[ws.cell(dep_hdr, ci).column_letter].width, w)
+        hdr(ws.cell(dep_hdr, ci, h), bg=RED)
+
+    for ri, dep in enumerate(d["depenses"], dep_hdr + 1):
+        dc(ws, ri, 1, dep["date"],        center=True)
+        dc(ws, ri, 2, dep["libelle"])
+        dc(ws, ri, 3, dep["categorie"])
+        dc(ws, ri, 4, dep["fournisseur"])
+        dc(ws, ri, 5, dep["montant"],     fmt="#,##0.00", center=True)
+
+    # Total dépenses
+    tdr = dep_hdr + 1 + len(d["depenses"])
+    ws.merge_cells(start_row=tdr, start_column=1, end_row=tdr, end_column=4)
+    ws.cell(tdr, 1, "TOTAL DÉPENSES").font = Font(bold=True)
+    ws.cell(tdr, 1).border = border
+    c = ws.cell(tdr, 5, d["total_depenses_mois"])
+    c.number_format = "#,##0.00"
+    c.font = Font(bold=True, color=RED)
+    c.border = border
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    slug  = re.sub(r"[^a-z0-9]", "_", residence.nom_residence.lower())
+    today = datetime.date.today().strftime("%Y%m%d")
+    resp  = HttpResponse(buf.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    resp["Content-Disposition"] = f'attachment; filename="grille_{slug}_{year}_{month:02d}_{today}.xlsx"'
+    return resp
+
+
+# ============================================================
+# Export Saisie Grille — PDF
+# ============================================================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def saisie_grille_export_pdf(request):
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+
+    residence = get_user_residence(request)
+    if not residence:
+        return Response({"detail": "Aucune résidence."}, status=400)
+
+    try:
+        year  = int(request.query_params.get("year",  datetime.date.today().year))
+        month = int(request.query_params.get("month", datetime.date.today().month))
+    except (TypeError, ValueError):
+        return Response({"detail": "Paramètres invalides."}, status=400)
+
+    type_charge = request.query_params.get("type_charge", "CHARGE")
+    if type_charge not in ("CHARGE", "FOND"):
+        type_charge = "CHARGE"
+
+    d = _saisie_grille_data(residence, year, month, type_charge)
+
+    def money(v): return f"{float(v):,.2f}"
+
+    DARK   = colors.HexColor("#0F172A")
+    INDIGO = colors.HexColor("#4F46E5")
+    GREEN  = colors.HexColor("#059669")
+    RED    = colors.HexColor("#DC2626")
+    AMBER  = colors.HexColor("#D97706")
+    LGRAY  = colors.HexColor("#F8FAFC")
+    BORDER = colors.HexColor("#E2E8F0")
+
+    buf  = io.BytesIO()
+    doc  = SimpleDocTemplate(buf, pagesize=landscape(A4),
+                             leftMargin=1.2*cm, rightMargin=1.2*cm,
+                             topMargin=1.5*cm, bottomMargin=1.5*cm)
+    styles = getSampleStyleSheet()
+    story  = []
+
+    def para(text, size=10, bold=False, color=DARK, align="LEFT"):
+        alignment = {"LEFT": 0, "CENTER": 1, "RIGHT": 2}.get(align, 0)
+        style = ParagraphStyle("x", fontSize=size, fontName="Helvetica-Bold" if bold else "Helvetica",
+                               textColor=color, alignment=alignment, spaceAfter=2)
+        return Paragraph(text, style)
+
+    tc_label  = "Appel de charge" if type_charge == "CHARGE" else "Appel de fond"
+    mois_label = MOIS_FR[month - 1]
+
+    # ── Titre ──────────────────────────────────────────────────
+    story.append(para(f"SAISIE EN GRILLE — {residence.nom_residence.upper()}", size=14, bold=True))
+    story.append(para(f"{tc_label}  ·  {mois_label} {year}", size=10, color=colors.HexColor("#64748B")))
+    story.append(Spacer(1, 0.4*cm))
+
+    # ── KPI ────────────────────────────────────────────────────
+    kpi_data = [
+        ["Paiements reçus", "Dépenses", "Balance"],
+        [money(d["total_paiements_mois"]) + " MAD",
+         money(d["total_depenses_mois"])  + " MAD",
+         money(d["balance"])              + " MAD"],
+    ]
+    bal_color = GREEN if d["balance"] >= 0 else RED
+    kpi_table = Table(kpi_data, colWidths=[8*cm, 8*cm, 8*cm])
+    kpi_table.setStyle(TableStyle([
+        ("BACKGROUND",   (0,0), (-1,0), LGRAY),
+        ("FONTNAME",     (0,0), (-1,0), "Helvetica"),
+        ("FONTSIZE",     (0,0), (-1,0), 8),
+        ("TEXTCOLOR",    (0,0), (-1,0), colors.HexColor("#94A3B8")),
+        ("FONTNAME",     (0,1), (-1,1), "Helvetica-Bold"),
+        ("FONTSIZE",     (0,1), (-1,1), 12),
+        ("TEXTCOLOR",    (0,1), (0,1), GREEN),
+        ("TEXTCOLOR",    (1,1), (1,1), RED),
+        ("TEXTCOLOR",    (2,1), (2,1), bal_color),
+        ("ALIGN",        (0,0), (-1,-1), "CENTER"),
+        ("VALIGN",       (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,0),(-1,-1), [LGRAY, colors.white]),
+        ("BOX",          (0,0), (-1,-1), 0.5, BORDER),
+        ("INNERGRID",    (0,0), (-1,-1), 0.5, BORDER),
+        ("TOPPADDING",   (0,0), (-1,-1), 6),
+        ("BOTTOMPADDING",(0,0), (-1,-1), 6),
+    ]))
+    story.append(kpi_table)
+    story.append(Spacer(1, 0.5*cm))
+
+    # ── Grille paiements ────────────────────────────────────────
+    story.append(para("GRILLE DE PAIEMENT", size=10, bold=True, color=INDIGO))
+    story.append(Spacer(1, 0.2*cm))
+
+    grille_headers = ["Lot", "Propriétaire"] + MOIS_SHORT + ["Total dû", "Payé", "Reste"]
+    grille_rows = [grille_headers]
+    for lot in d["lots"]:
+        row = [lot["lot"], lot["nom"]]
+        for is_paid in lot["paid"]:
+            row.append("✓" if is_paid else "")
+        row += [money(lot["total_du"]), money(lot["total_paye"]), money(lot["reste"])]
+        grille_rows.append(row)
+
+    # Total row
+    grille_rows.append(
+        ["TOTAL", ""] + [""] * 12 +
+        [money(sum(l["total_du"]   for l in d["lots"])),
+         money(sum(l["total_paye"] for l in d["lots"])),
+         money(sum(l["reste"]      for l in d["lots"]))]
+    )
+
+    pw = 27.7 * cm  # landscape A4 usable width
+    col_w = [1.2*cm, 5.5*cm] + [1.4*cm]*12 + [2.3*cm, 2.3*cm, 2.3*cm]
+    grille_table = Table(grille_rows, colWidths=col_w, repeatRows=1)
+
+    ts = TableStyle([
+        ("BACKGROUND",   (0,0), (-1,0),  INDIGO),
+        ("TEXTCOLOR",    (0,0), (-1,0),  colors.white),
+        ("FONTNAME",     (0,0), (-1,0),  "Helvetica-Bold"),
+        ("FONTSIZE",     (0,0), (-1,-1), 7),
+        ("ALIGN",        (0,0), (-1,-1), "CENTER"),
+        ("ALIGN",        (1,1), (1,-1),  "LEFT"),
+        ("VALIGN",       (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,1),(-1,-2), [colors.white, LGRAY]),
+        ("BOX",          (0,0), (-1,-1), 0.5, BORDER),
+        ("INNERGRID",    (0,0), (-1,-1), 0.3, BORDER),
+        ("TOPPADDING",   (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING",(0,0), (-1,-1), 3),
+        # Total row
+        ("BACKGROUND",   (0,-1), (-1,-1), LGRAY),
+        ("FONTNAME",     (0,-1), (-1,-1), "Helvetica-Bold"),
+    ])
+    # Color ✓ in green, reste in red/green per row
+    for ri, lot in enumerate(d["lots"], 1):
+        for mi, is_paid in enumerate(lot["paid"]):
+            if is_paid:
+                ts.add("TEXTCOLOR", (2+mi, ri), (2+mi, ri), GREEN)
+        reste_col = -1
+        ts.add("TEXTCOLOR", (reste_col, ri), (reste_col, ri),
+               RED if lot["reste"] > 0 else GREEN)
+    grille_table.setStyle(ts)
+    story.append(grille_table)
+    story.append(Spacer(1, 0.6*cm))
+
+    # ── Dépenses ────────────────────────────────────────────────
+    story.append(para(f"DÉPENSES — {mois_label} {year}  ({len(d['depenses'])} entrée(s))", size=10, bold=True, color=RED))
+    story.append(Spacer(1, 0.2*cm))
+
+    dep_headers = ["Date", "Libellé", "Catégorie", "Fournisseur", "Montant (MAD)"]
+    dep_rows = [dep_headers]
+    for dep in d["depenses"]:
+        dep_rows.append([dep["date"], dep["libelle"], dep["categorie"], dep["fournisseur"], money(dep["montant"])])
+    dep_rows.append(["", "TOTAL", "", "", money(d["total_depenses_mois"])])
+
+    dep_table = Table(dep_rows, colWidths=[2.2*cm, 8*cm, 4*cm, 5*cm, 3*cm], repeatRows=1)
+    dep_table.setStyle(TableStyle([
+        ("BACKGROUND",   (0,0), (-1,0), RED),
+        ("TEXTCOLOR",    (0,0), (-1,0), colors.white),
+        ("FONTNAME",     (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE",     (0,0), (-1,-1), 8),
+        ("ALIGN",        (0,0), (-1,-1), "LEFT"),
+        ("ALIGN",        (4,0), (4,-1),  "RIGHT"),
+        ("VALIGN",       (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,1),(-1,-2), [colors.white, LGRAY]),
+        ("BOX",          (0,0), (-1,-1), 0.5, BORDER),
+        ("INNERGRID",    (0,0), (-1,-1), 0.3, BORDER),
+        ("TOPPADDING",   (0,0), (-1,-1), 3),
+        ("BOTTOMPADDING",(0,0), (-1,-1), 3),
+        ("FONTNAME",     (0,-1), (-1,-1), "Helvetica-Bold"),
+        ("TEXTCOLOR",    (4,-1), (4,-1),  RED),
+    ]))
+    story.append(dep_table)
+
+    doc.build(story)
+    buf.seek(0)
+    slug  = re.sub(r"[^a-z0-9]", "_", residence.nom_residence.lower())
+    today = datetime.date.today().strftime("%Y%m%d")
+    resp  = HttpResponse(buf.read(), content_type="application/pdf")
+    resp["Content-Disposition"] = f'attachment; filename="grille_{slug}_{year}_{month:02d}_{today}.pdf"'
+    return resp

@@ -19,35 +19,14 @@ const INP = "w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs foc
 const INP_AUTO = "w-full border border-blue-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-blue-50";
 const SEL = "w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
 
-function BtnPlus({ onClick, active }) {
-  return (
-    <button type="button" onClick={onClick}
-      className={`shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition border ${
-        active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-blue-500 border-blue-300 hover:bg-blue-50"
-      }`}>+</button>
-  );
-}
-
 // ── Enhanced Dépense form ─────────────────────────────────────────
-function DepenseForm({ categories: initCats, fournisseurs: initFous, modeles, contrats, defaultDate, onAdded }) {
-  const EMPTY = { source: "", libelle: "", montant: "", date_depense: defaultDate, categorie: "", fournisseur: "", facture_reference: "", modele_depense: "" };
+function DepenseForm({ categories, fournisseurs, modeles, contrats, comptes, defaultDate, onAdded }) {
+  const EMPTY = { source: "", libelle: "", montant: "", date_depense: defaultDate, categorie: "", fournisseur: "", compte: "", facture_reference: "", modele_depense: "" };
   const [form,    setForm]    = useState(EMPTY);
-  const [autoFld, setAutoFld] = useState({ libelle: false, categorie: false, fournisseur: false, montant: false });
+  const [autoFld, setAutoFld] = useState({ libelle: false, categorie: false, fournisseur: false, compte: false, montant: false });
   const [saving,  setSaving]  = useState(false);
   const [err,     setErr]     = useState("");
-  // local lists (can grow with inline adds)
-  const [localCats, setLocalCats] = useState(initCats);
-  const [localFous, setLocalFous] = useState(initFous);
-  // inline add state
-  const [showNewCat, setShowNewCat] = useState(false);
-  const [showNewFou, setShowNewFou] = useState(false);
-  const [newCatNom,  setNewCatNom]  = useState("");
-  const [newFouNom,  setNewFouNom]  = useState("");
-  const [savingCat,  setSavingCat]  = useState(false);
-  const [savingFou,  setSavingFou]  = useState(false);
 
-  useEffect(() => { setLocalCats(initCats); }, [initCats]);
-  useEffect(() => { setLocalFous(initFous); }, [initFous]);
   useEffect(() => { setForm(f => ({ ...f, date_depense: defaultDate })); }, [defaultDate]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -55,7 +34,7 @@ function DepenseForm({ categories: initCats, fournisseurs: initFous, modeles, co
   // Auto-fill from source (modèle or contrat)
   const handleSource = (val) => {
     set("source", val);
-    if (!val) { setAutoFld({ libelle: false, categorie: false, fournisseur: false, montant: false }); return; }
+    if (!val) { setAutoFld({ libelle: false, categorie: false, fournisseur: false, compte: false, montant: false }); return; }
     if (val.startsWith("m_")) {
       const m = modeles.find(x => String(x.id) === val.slice(2));
       if (m) {
@@ -63,10 +42,11 @@ function DepenseForm({ categories: initCats, fournisseurs: initFous, modeles, co
           ...f, source: val,
           modele_depense: String(m.id),
           libelle:     m.nom,
-          categorie:   m.categorie    ? String(m.categorie)    : f.categorie,
-          fournisseur: m.fournisseur  ? String(m.fournisseur)  : f.fournisseur,
+          categorie:   m.categorie         ? String(m.categorie)         : f.categorie,
+          fournisseur: m.fournisseur        ? String(m.fournisseur)       : f.fournisseur,
+          compte:      m.compte_comptable   ? String(m.compte_comptable)  : f.compte,
         }));
-        setAutoFld({ libelle: !!m.nom, categorie: !!m.categorie, fournisseur: !!m.fournisseur, montant: false });
+        setAutoFld({ libelle: !!m.nom, categorie: !!m.categorie, fournisseur: !!m.fournisseur, compte: !!m.compte_comptable, montant: false });
       }
     } else if (val.startsWith("c_")) {
       const c = contrats.find(x => String(x.id) === val.slice(2));
@@ -74,49 +54,13 @@ function DepenseForm({ categories: initCats, fournisseurs: initFous, modeles, co
         setForm(f => ({
           ...f, source: val,
           modele_depense: "",
-          libelle:     c.libelle || f.libelle,
+          libelle:     c.libelle    || f.libelle,
           fournisseur: c.fournisseur ? String(c.fournisseur) : f.fournisseur,
           montant:     c.montant     ? String(c.montant)     : f.montant,
         }));
-        setAutoFld({ libelle: !!c.libelle, categorie: false, fournisseur: !!c.fournisseur, montant: !!c.montant });
+        setAutoFld({ libelle: !!c.libelle, categorie: false, fournisseur: !!c.fournisseur, compte: false, montant: !!c.montant });
       }
     }
-  };
-
-  const addCat = async () => {
-    if (!newCatNom.trim()) return;
-    setSavingCat(true);
-    try {
-      const res = await fetch(`${API}/categories-depense/`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ nom: newCatNom.trim() }),
-      });
-      if (res.ok) {
-        const c = await res.json();
-        setLocalCats(p => [...p, c]);
-        set("categorie", String(c.id));
-        setNewCatNom(""); setShowNewCat(false);
-      }
-    } finally { setSavingCat(false); }
-  };
-
-  const addFou = async () => {
-    if (!newFouNom.trim()) return;
-    setSavingFou(true);
-    try {
-      const res = await fetch(`${API}/fournisseurs/`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ nom_societe: newFouNom.trim(), nom: "", actif: true }),
-      });
-      if (res.ok) {
-        const f = await res.json();
-        setLocalFous(p => [...p, f]);
-        set("fournisseur", String(f.id));
-        setNewFouNom(""); setShowNewFou(false);
-      }
-    } finally { setSavingFou(false); }
   };
 
   const submit = async () => {
@@ -131,15 +75,16 @@ function DepenseForm({ categories: initCats, fournisseurs: initFous, modeles, co
           libelle:           form.libelle.trim(),
           montant:           form.montant,
           date_depense:      form.date_depense,
-          categorie:         form.categorie         || null,
-          fournisseur:       form.fournisseur        || null,
-          modele_depense:    form.modele_depense     || null,
-          facture_reference: form.facture_reference  || "",
+          categorie:         form.categorie      || null,
+          fournisseur:       form.fournisseur     || null,
+          compte:            form.compte          || null,
+          modele_depense:    form.modele_depense  || null,
+          facture_reference: form.facture_reference || "",
         }),
       });
       if (!res.ok) { const d = await res.json(); setErr(Object.values(d).flat().join(" ")); return; }
       setForm({ ...EMPTY, date_depense: defaultDate });
-      setAutoFld({ libelle: false, categorie: false, fournisseur: false, montant: false });
+      setAutoFld({ libelle: false, categorie: false, fournisseur: false, compte: false, montant: false });
       onAdded();
     } finally { setSaving(false); }
   };
@@ -153,7 +98,26 @@ function DepenseForm({ categories: initCats, fournisseurs: initFous, modeles, co
 
   return (
     <div className="space-y-2 p-3 bg-red-50/60 rounded-xl border border-red-100">
-      <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Nouvelle dépense</p>
+      {/* Header avec boutons raccourcis */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Nouvelle dépense</p>
+        <div className="flex gap-1.5">
+          <button type="button" onClick={() => window.open("/modeles-depense", "_blank")}
+            className="px-2 py-1 text-[10px] font-semibold bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition flex items-center gap-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Modèles
+          </button>
+          <button type="button" onClick={() => window.open("/contrats", "_blank")}
+            className="px-2 py-1 text-[10px] font-semibold bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition flex items-center gap-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            Contrats
+          </button>
+        </div>
+      </div>
       {err && <p className="text-[11px] text-red-500">{err}</p>}
 
       {/* Source : modèle ou contrat */}
@@ -185,50 +149,25 @@ function DepenseForm({ categories: initCats, fournisseurs: initFous, modeles, co
       </div>
 
       {/* Catégorie */}
-      <div className="space-y-1">
-        <div className="flex gap-1.5 items-center">
-          <select value={form.categorie} onChange={e => { set("categorie", e.target.value); setAutoFld(a => ({ ...a, categorie: false })); }}
-            className={`flex-1 ${autoFld.categorie ? INP_AUTO : SEL}`}>
-            <option value="">— Catégorie —</option>
-            {localCats.map(c => <option key={c.id} value={String(c.id)}>{c.nom}</option>)}
-          </select>
-          <BtnPlus onClick={() => { setShowNewCat(v => !v); setShowNewFou(false); }} active={showNewCat} />
-        </div>
-        {showNewCat && (
-          <div className="flex gap-1.5">
-            <input value={newCatNom} onChange={e => setNewCatNom(e.target.value)}
-              placeholder="Nom catégorie…" className={`flex-1 ${INP}`}
-              onKeyDown={e => e.key === "Enter" && addCat()} />
-            <button onClick={addCat} disabled={savingCat}
-              className="px-2 py-1 bg-blue-600 text-white text-xs rounded-lg disabled:opacity-50">
-              {savingCat ? "…" : "OK"}
-            </button>
-          </div>
-        )}
-      </div>
+      <select value={form.categorie} onChange={e => { set("categorie", e.target.value); setAutoFld(a => ({ ...a, categorie: false })); }}
+        className={autoFld.categorie ? INP_AUTO : SEL}>
+        <option value="">— Catégorie —</option>
+        {categories.map(c => <option key={c.id} value={String(c.id)}>{c.nom}</option>)}
+      </select>
 
       {/* Fournisseur */}
-      <div className="space-y-1">
-        <div className="flex gap-1.5 items-center">
-          <select value={form.fournisseur} onChange={e => { set("fournisseur", e.target.value); setAutoFld(a => ({ ...a, fournisseur: false })); }}
-            className={`flex-1 ${autoFld.fournisseur ? INP_AUTO : SEL}`}>
-            <option value="">— Fournisseur —</option>
-            {localFous.map(f => <option key={f.id} value={String(f.id)}>{f.nom_societe || f.nom_complet || f.nom}</option>)}
-          </select>
-          <BtnPlus onClick={() => { setShowNewFou(v => !v); setShowNewCat(false); }} active={showNewFou} />
-        </div>
-        {showNewFou && (
-          <div className="flex gap-1.5">
-            <input value={newFouNom} onChange={e => setNewFouNom(e.target.value)}
-              placeholder="Nom société…" className={`flex-1 ${INP}`}
-              onKeyDown={e => e.key === "Enter" && addFou()} />
-            <button onClick={addFou} disabled={savingFou}
-              className="px-2 py-1 bg-blue-600 text-white text-xs rounded-lg disabled:opacity-50">
-              {savingFou ? "…" : "OK"}
-            </button>
-          </div>
-        )}
-      </div>
+      <select value={form.fournisseur} onChange={e => { set("fournisseur", e.target.value); setAutoFld(a => ({ ...a, fournisseur: false })); }}
+        className={autoFld.fournisseur ? INP_AUTO : SEL}>
+        <option value="">— Fournisseur —</option>
+        {fournisseurs.map(f => <option key={f.id} value={String(f.id)}>{f.nom_societe || f.nom_complet || f.nom}</option>)}
+      </select>
+
+      {/* Compte comptable */}
+      <select value={form.compte} onChange={e => { set("compte", e.target.value); setAutoFld(a => ({ ...a, compte: false })); }}
+        className={autoFld.compte ? INP_AUTO : SEL}>
+        <option value="">— Compte comptable —</option>
+        {comptes.map(c => <option key={c.id} value={String(c.id)}>{c.code} — {c.libelle}</option>)}
+      </select>
 
       {/* Référence facture (optionnel) */}
       <input placeholder="Réf. facture (optionnel)" value={form.facture_reference}
@@ -268,6 +207,7 @@ export default function SaisieGrilleePage() {
   const [fournisseurs, setFournisseurs] = useState([]);
   const [modeles,      setModeles]      = useState([]);
   const [contrats,     setContrats]     = useState([]);
+  const [comptes,      setComptes]      = useState([]);
   const [depenses,     setDepenses]     = useState([]);
   const [paiementsMois, setPaiementsMois] = useState([]);
   const [loadingDep,   setLoadingDep]   = useState(false);
@@ -300,6 +240,11 @@ export default function SaisieGrilleePage() {
     fetch(`${API}/contrats/?page_size=9999`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => setContrats(Array.isArray(d) ? d : (d?.results ?? [])))
+      .catch(() => {});
+
+    fetch(`${API}/comptes-comptables/?page_size=9999`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setComptes(Array.isArray(d) ? d : (d?.results ?? [])))
       .catch(() => {});
   }, []);
 
@@ -505,6 +450,28 @@ export default function SaisieGrilleePage() {
                 Fond
               </button>
             </div>
+            {/* Export PDF / Excel */}
+            {(() => {
+              const params = `year=${year}&month=${month + 1}&type_charge=${typeCharge}`;
+              return (
+                <div className="flex gap-1.5">
+                  <a href={`/api/saisie-grille/export/pdf/?${params}`} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl text-[11px] font-semibold text-white transition">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    PDF
+                  </a>
+                  <a href={`/api/saisie-grille/export/excel/?${params}`} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl text-[11px] font-semibold text-white transition">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+                    </svg>
+                    Excel
+                  </a>
+                </div>
+              );
+            })()}
           </div>
         </div>
         {/* Appel de fond selector */}
@@ -663,7 +630,7 @@ export default function SaisieGrilleePage() {
       <div className="px-2 sm:px-4 mt-4 max-w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         <DepenseForm categories={categories} fournisseurs={fournisseurs}
-          modeles={modeles} contrats={contrats}
+          modeles={modeles} contrats={contrats} comptes={comptes}
           defaultDate={defaultDate} onAdded={fetchDepenses} />
 
         <div className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">

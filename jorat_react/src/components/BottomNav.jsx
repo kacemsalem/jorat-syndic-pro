@@ -18,19 +18,20 @@ const SECTIONS = [
     icon:  IC.grid,
     path:  "/gestion",
     test:  p => p === "/gestion" || [
-      "/caisse", "/paiements", "/depenses", "/recettes",
       "/residences", "/kanban", "/appels-charge", "/groupes",
       "/personnes", "/lots", "/fiche-lot", "/details-appel",
-      "/contrats", "/modeles-depense",
+      "/saisie-grille", "/saisie-par-mois",
     ].some(r => p === r || p.startsWith(r + "/")),
   },
   {
-    label: "Analyse",
+    label: "Situation",
     icon:  IC_ANALYSE,
     path:  "/analyse",
     test:  p => p === "/analyse" || [
+      "/caisse", "/paiements", "/depenses", "/recettes",
       "/synthese", "/situation-paiements", "/etat-mensuel",
-      "/rapport-financier", "/rapports", "/graphes",
+      "/rapport-financier", "/rapports",
+      "/graphe-caisse", "/graphe-paiements", "/graphe-depenses",
     ].some(r => p === r || p.startsWith(r + "/")),
   },
   // null = bouton Home central

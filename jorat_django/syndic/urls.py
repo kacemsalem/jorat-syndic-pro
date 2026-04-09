@@ -4,6 +4,7 @@ from .views_rapport import (
     rapport_financier_json, rapport_financier_excel, rapport_financier_pdf,
     situation_export_excel, situation_export_pdf,
     situation_paiements_view, send_email_view, annees_activite,
+    saisie_grille_export_excel, saisie_grille_export_pdf,
 )
 from .views_comptabilite import (
     journal_view, grand_livre_view, balance_view, cpc_view, bilan_view,
@@ -104,7 +105,9 @@ urlpatterns = [
     path("rapport-financier/export/pdf/",   rapport_financier_pdf,   name="rapport-pdf"),
     path("situation/export/excel/",         situation_export_excel,       name="situation-excel"),
     path("situation/export/pdf/",           situation_export_pdf,         name="situation-pdf"),
-    path("situation-paiements/",            situation_paiements_view,     name="situation-paiements"),
+    path("situation-paiements/",            situation_paiements_view,          name="situation-paiements"),
+    path("saisie-grille/export/excel/",    saisie_grille_export_excel,        name="saisie-grille-excel"),
+    path("saisie-grille/export/pdf/",      saisie_grille_export_pdf,          name="saisie-grille-pdf"),
     path("annees-activite/",               annees_activite,              name="annees-activite"),
     path("send-email/",                     send_email_view,              name="send-email"),
     path("export/excel/",                   export_excel,            name="export-excel"),
