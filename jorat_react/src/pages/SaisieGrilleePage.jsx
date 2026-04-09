@@ -318,10 +318,19 @@ export default function SaisieGrilleePage() {
     // Cutoff = dernier jour du mois sélectionné : seuls les paiements ≤ cette date sont comptés
     const cutoff = new Date(year, month + 1, 0);
     cutoff.setHours(23, 59, 59, 999);
+    const monthStart = new Date(year, month, 1);
+    monthStart.setHours(0, 0, 0, 0);
     return crossData.lots.map(lot => {
       const totalDu = parseFloat(lot.total_du || 0);
 
-      // Filtered payments (up to cutoff) → green display
+      // Payments before the active month → paidBefore
+      const paidBeforePmnts = (lot.paiements || []).filter(p =>
+        p.date && new Date(p.date) < monthStart
+      );
+      const totalPaidBefore = paidBeforePmnts.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+      const monthsCoveredBefore = totalDu > 0 ? (totalPaidBefore / totalDu) * 12 : 0;
+
+      // Payments up to end of active month → paid (for display)
       const filteredPaiements = (lot.paiements || []).filter(p =>
         !p.date || new Date(p.date) <= cutoff
       );
@@ -332,10 +341,12 @@ export default function SaisieGrilleePage() {
       const totalPaidAll = (lot.paiements || []).reduce((s, p) => s + parseFloat(p.montant || 0), 0);
       const monthsCoveredAll = totalDu > 0 ? (totalPaidAll / totalDu) * 12 : 0;
 
-      const paid    = Array(12).fill(false).map((_, i) => i < monthsCoveredFiltered);
-      const paidAny = Array(12).fill(false).map((_, i) => i < monthsCoveredAll);
+      const paid         = Array(12).fill(false).map((_, i) => i < monthsCoveredFiltered);
+      const paidBefore   = Array(12).fill(false).map((_, i) => i < monthsCoveredBefore);
+      const paidThisMonth = Array(12).fill(false).map((_, i) => i >= monthsCoveredBefore && i < monthsCoveredFiltered);
+      const paidAny      = Array(12).fill(false).map((_, i) => i < monthsCoveredAll);
 
-      return { ...lot, paid, paidAny, monthlyAmt: totalDu / 12, totalDu };
+      return { ...lot, paid, paidBefore, paidThisMonth, paidAny, monthlyAmt: totalDu / 12, totalDu };
     });
   }, [crossData, year, month]);
 
@@ -613,13 +624,17 @@ export default function SaisieGrilleePage() {
                                 <span className="font-black text-indigo-700">{row.lot}</span>
                               </td>
                               <td className="px-2 py-2 text-slate-500 text-[11px] truncate max-w-[130px]">{row.nom}</td>
-                              {row.paid.map((isPaid, mi) => {
-                                const isSel    = sel.has(mi);
-                                const isLocked = row.paidAny[mi];
+                              {row.paid.map((_, mi) => {
+                                const isSel       = sel.has(mi);
+                                const isThisMonth = row.paidThisMonth[mi];
+                                const isBefore    = row.paidBefore[mi];
+                                const isLocked    = !row.paid[mi] && row.paidAny[mi];
                                 return (
                                   <td key={mi} className={`py-2 text-center px-0.5 ${mi === month ? "bg-indigo-50/30" : ""}`}>
-                                    {isPaid ? (
-                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold select-none">✓</span>
+                                    {isThisMonth ? (
+                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold select-none" title="Payé ce mois">✓</span>
+                                    ) : isBefore ? (
+                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-[9px] font-semibold select-none" title="Payé avant ce mois">✓</span>
                                     ) : isLocked ? (
                                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-400 text-[9px] font-bold select-none cursor-not-allowed" title="Déjà payé">✓</span>
                                     ) : isSel ? (

@@ -983,6 +983,20 @@ def _saisie_grille_data(residence, year, month, type_charge):
     )
     paye_map = {r["paiement__lot_id"]: float(r["total"]) for r in aff_rows}
 
+    # Paiements ventilés AVANT le mois actif (pour différencier "payé ce mois" vs "payé avant")
+    aff_before_rows = (
+        AffectationPaiement.objects
+        .filter(
+            paiement__lot__in=lot_ids,
+            paiement__date_paiement__lt=deb_mois,
+            detail__appel__type_charge=type_charge,
+            detail__appel__exercice=year,
+        )
+        .values("paiement__lot_id")
+        .annotate(total=DSum("montant_affecte"))
+    )
+    paye_before_map = {r["paiement__lot_id"]: float(r["total"]) for r in aff_before_rows}
+
     # KPI mois : paiements encaissés dans le mois
     total_paiements_mois = float(
         Paiement.objects
@@ -1023,10 +1037,16 @@ def _saisie_grille_data(residence, year, month, type_charge):
         total_paye = paye_map.get(lot.id, 0.0)
         reste      = total_du - total_paye
         months_covered = (total_paye / total_du * 12) if total_du > 0 else 0.0
-        paid = [i < months_covered for i in range(12)]
+        paye_before = paye_before_map.get(lot.id, 0.0)
+        months_before = (paye_before / total_du * 12) if total_du > 0 else 0.0
+        paid           = [i < months_covered for i in range(12)]
+        paid_before    = [i < months_before for i in range(12)]
+        paid_this_month = [(months_before <= i < months_covered) for i in range(12)]
         lots_out.append({
             "lot": lot.numero_lot, "nom": nom,
             "paid": paid,
+            "paid_before": paid_before,
+            "paid_this_month": paid_this_month,
             "total_du": total_du, "total_paye": total_paye, "reste": reste,
         })
 
@@ -1140,12 +1160,17 @@ def saisie_grille_export_excel(request):
     for ri, lot in enumerate(d["lots"], hdr_row + 1):
         dc(ws, ri, 1, lot["lot"],  bold=True, color=INDIGO, center=True)
         dc(ws, ri, 2, lot["nom"])
-        for mi, is_paid in enumerate(lot["paid"]):
-            c = ws.cell(ri, 3 + mi, "✓" if is_paid else "")
+        for mi in range(12):
+            is_this_month = lot["paid_this_month"][mi]
+            is_before     = lot["paid_before"][mi]
+            c = ws.cell(ri, 3 + mi, "✓" if (is_this_month or is_before) else "")
             c.border = border
             c.alignment = Alignment(horizontal="center", vertical="center")
-            if is_paid:
+            if is_this_month:
                 c.font = Font(bold=True, color=GREEN)
+                c.fill = PatternFill("solid", fgColor="D1FAE5")
+            elif is_before:
+                c.font = Font(bold=False, color="6EE7B7")
         dc(ws, ri, 15, lot["total_du"],   fmt="#,##0.00", center=True)
         dc(ws, ri, 16, lot["total_paye"], fmt="#,##0.00", center=True)
         reste = lot["reste"]
@@ -1328,8 +1353,8 @@ def saisie_grille_export_pdf(request):
     grille_rows = [grille_headers]
     for lot in d["lots"]:
         row = [lot["lot"], lot["nom"]]
-        for is_paid in lot["paid"]:
-            row.append("✓" if is_paid else "")
+        for mi in range(12):
+            row.append("✓" if (lot["paid_this_month"][mi] or lot["paid_before"][mi]) else "")
         row += [money(lot["total_du"]), money(lot["total_paye"]), money(lot["reste"])]
         grille_rows.append(row)
 
@@ -1362,11 +1387,16 @@ def saisie_grille_export_pdf(request):
         ("BACKGROUND",   (0,-1), (-1,-1), LGRAY),
         ("FONTNAME",     (0,-1), (-1,-1), "Helvetica-Bold"),
     ])
-    # Color ✓ in green, reste in red/green per row
+    # Color ✓ per row: bright green = paid this month, muted = paid before
+    MUTED_GREEN = colors.HexColor("#10B981")
+    CELL_BG     = colors.HexColor("#D1FAE5")
     for ri, lot in enumerate(d["lots"], 1):
-        for mi, is_paid in enumerate(lot["paid"]):
-            if is_paid:
-                ts.add("TEXTCOLOR", (2+mi, ri), (2+mi, ri), GREEN)
+        for mi in range(12):
+            if lot["paid_this_month"][mi]:
+                ts.add("TEXTCOLOR",  (2+mi, ri), (2+mi, ri), GREEN)
+                ts.add("BACKGROUND", (2+mi, ri), (2+mi, ri), CELL_BG)
+            elif lot["paid_before"][mi]:
+                ts.add("TEXTCOLOR",  (2+mi, ri), (2+mi, ri), MUTED_GREEN)
         reste_col = -1
         ts.add("TEXTCOLOR", (reste_col, ri), (reste_col, ri),
                RED if lot["reste"] > 0 else GREEN)
