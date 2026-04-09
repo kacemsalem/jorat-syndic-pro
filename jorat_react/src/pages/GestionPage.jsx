@@ -47,27 +47,16 @@ export default function GestionPage() {
       {/* ── Contenu ─────────────────────────────────────────── */}
       <div className="px-4 -mt-5 space-y-4">
 
-        {/* ── Saisie — bouton large ───────────────────────── */}
-        <button onClick={() => navigate("/saisie-grille")}
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-md
-                     active:scale-95 hover:shadow-lg transition-all duration-150 p-4
-                     flex items-center gap-4">
-          <div className="w-14 h-14 bg-white/20 border border-white/20 rounded-2xl flex items-center justify-center shrink-0">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8"
-              strokeLinecap="round" strokeLinejoin="round" style={{ width: 26, height: 26 }}>
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
+        {/* ── Saisie ──────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saisie</p>
           </div>
-          <div className="text-left">
-            <p className="text-white font-bold text-base leading-tight">Saisie en grille</p>
-            <p className="text-white/60 text-[11px] mt-0.5">Paiements & dépenses par mois</p>
+          <div className="p-3">
+            <NavCard onClick={() => navigate("/saisie-grille")} label="Saisie en grille"
+              icon={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>} />
           </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 ml-auto opacity-50">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </button>
+        </div>
 
         {/* ── Configuration ───────────────────────────────── */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">

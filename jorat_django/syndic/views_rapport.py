@@ -1170,34 +1170,53 @@ def saisie_grille_export_excel(request):
         c.border = border
         c.alignment = Alignment(horizontal="center")
 
-    # ── Section dépenses ────────────────────────────────────────
+    # ── Section dépenses (fusionnée sur 17 colonnes) ────────────
+    # Spans : Date=1-2, Libellé=3-9, Catégorie=10-12, Fournisseur=13-15, Montant=16-17
+    DEP_SPANS = [(1, 2), (3, 9), (10, 12), (13, 15), (16, 17)]
+    DEP_HDR_LABELS = ["Date", "Libellé", "Catégorie", "Fournisseur", "Montant (MAD)"]
+    DEP_FIELDS     = ["date", "libelle", "categorie", "fournisseur", "montant"]
+
+    def dep_merge(ws, row, span_idx, value, is_hdr=False, is_num=False, is_bold=False, color=None):
+        c1, c2 = DEP_SPANS[span_idx]
+        if c2 > c1:
+            ws.merge_cells(start_row=row, start_column=c1, end_row=row, end_column=c2)
+        cell = ws.cell(row, c1, value)
+        cell.border = border
+        align_h = "center" if span_idx in (0, 4) else "left"
+        cell.alignment = Alignment(horizontal=align_h, vertical="center")
+        if is_hdr:
+            cell.fill  = PatternFill("solid", fgColor=RED)
+            cell.font  = Font(bold=True, color="FFFFFF", size=10)
+        elif is_num:
+            cell.number_format = "#,##0.00"
+            cell.font = Font(bold=is_bold, color=color or "000000")
+        elif is_bold:
+            cell.font = Font(bold=True, color=color or "000000")
+        return cell
+
     dep_start = tr + 2
-    ws.merge_cells(start_row=dep_start, start_column=1, end_row=dep_start, end_column=6)
+    ws.merge_cells(start_row=dep_start, start_column=1, end_row=dep_start, end_column=17)
     c = ws.cell(dep_start, 1, f"DÉPENSES — {mois_label} {year}  ({len(d['depenses'])} entrée(s))")
     c.font = Font(bold=True, size=11, color=RED)
     c.alignment = Alignment(horizontal="left")
 
     dep_hdr = dep_start + 1
-    for ci, (h, w) in enumerate([("Date",10),("Libellé",34),("Catégorie",20),("Fournisseur",24),("Montant",14)], 1):
-        ws.column_dimensions[ws.cell(dep_hdr, ci).column_letter].width = max(ws.column_dimensions[ws.cell(dep_hdr, ci).column_letter].width, w)
-        hdr(ws.cell(dep_hdr, ci, h), bg=RED)
+    for si, label in enumerate(DEP_HDR_LABELS):
+        dep_merge(ws, dep_hdr, si, label, is_hdr=True)
 
     for ri, dep in enumerate(d["depenses"], dep_hdr + 1):
-        dc(ws, ri, 1, dep["date"],        center=True)
-        dc(ws, ri, 2, dep["libelle"])
-        dc(ws, ri, 3, dep["categorie"])
-        dc(ws, ri, 4, dep["fournisseur"])
-        dc(ws, ri, 5, dep["montant"],     fmt="#,##0.00", center=True)
+        for si, field in enumerate(DEP_FIELDS):
+            val = dep[field]
+            dep_merge(ws, ri, si, val, is_num=(si == 4))
 
     # Total dépenses
     tdr = dep_hdr + 1 + len(d["depenses"])
-    ws.merge_cells(start_row=tdr, start_column=1, end_row=tdr, end_column=4)
-    ws.cell(tdr, 1, "TOTAL DÉPENSES").font = Font(bold=True)
-    ws.cell(tdr, 1).border = border
-    c = ws.cell(tdr, 5, d["total_depenses_mois"])
-    c.number_format = "#,##0.00"
-    c.font = Font(bold=True, color=RED)
+    ws.merge_cells(start_row=tdr, start_column=1, end_row=tdr, end_column=15)
+    c = ws.cell(tdr, 1, "TOTAL DÉPENSES")
+    c.font = Font(bold=True)
     c.border = border
+    c.alignment = Alignment(horizontal="left", vertical="center")
+    dep_merge(ws, tdr, 4, d["total_depenses_mois"], is_num=True, is_bold=True, color=RED)
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -1322,7 +1341,7 @@ def saisie_grille_export_pdf(request):
     )
 
     pw = 27.7 * cm  # landscape A4 usable width
-    col_w = [1.2*cm, 5.5*cm] + [1.4*cm]*12 + [2.3*cm, 2.3*cm, 2.3*cm]
+    col_w = [1.2*cm, 5.5*cm] + [0.7*cm]*12 + [2.3*cm, 2.3*cm, 2.3*cm]
     grille_table = Table(grille_rows, colWidths=col_w, repeatRows=1)
 
     ts = TableStyle([

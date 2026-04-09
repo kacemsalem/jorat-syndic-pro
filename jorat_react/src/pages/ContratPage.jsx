@@ -343,10 +343,16 @@ export default function ContratPage() {
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
       {/* Header */}
       <div className="bg-gradient-to-br from-teal-600 to-teal-700 px-4 pt-5 pb-14">
-        <button onClick={() => navigate("/depenses")}
-          className="flex items-center gap-1 text-white/70 text-[10px] font-semibold mb-3 hover:text-white transition">
-          ← Retour Dépenses
-        </button>
+        <div className="flex items-center gap-3 mb-3">
+          <button onClick={() => navigate("/depenses")}
+            className="flex items-center gap-1 text-white/70 text-[10px] font-semibold hover:text-white transition">
+            ← Dépenses
+          </button>
+          <button onClick={() => navigate("/saisie-grille")}
+            className="flex items-center gap-1 text-white/70 text-[10px] font-semibold hover:text-white transition">
+            ← Saisie
+          </button>
+        </div>
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Contrats récurrents</p>
