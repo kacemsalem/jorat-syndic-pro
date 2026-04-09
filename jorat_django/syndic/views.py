@@ -289,6 +289,7 @@ class PaiementViewSet(ModelViewSet):
 
         type_charge = request.data.get("type_charge") or request.query_params.get("type_charge")
         exercice    = request.data.get("exercice")    or request.query_params.get("exercice")
+        appel_id    = request.data.get("appel_id")    or request.query_params.get("appel_id")
 
         qs_details = (
             DetailAppelCharge.objects
@@ -296,13 +297,20 @@ class PaiementViewSet(ModelViewSet):
             .exclude(statut="PAYE")
             .select_related("appel")
         )
-        if type_charge in ("CHARGE", "FOND"):
-            qs_details = qs_details.filter(appel__type_charge=type_charge)
-        if exercice:
+        if appel_id:
+            # Target a specific appel (e.g. a specific fond de travaux)
             try:
-                qs_details = qs_details.filter(appel__exercice=int(exercice))
+                qs_details = qs_details.filter(appel_id=int(appel_id))
             except (ValueError, TypeError):
                 pass
+        else:
+            if type_charge in ("CHARGE", "FOND"):
+                qs_details = qs_details.filter(appel__type_charge=type_charge)
+            if exercice:
+                try:
+                    qs_details = qs_details.filter(appel__exercice=int(exercice))
+                except (ValueError, TypeError):
+                    pass
 
         details_dus = list(qs_details)
 
@@ -459,9 +467,12 @@ class AppelChargeViewSet(ModelViewSet):
             residence=residence,
             archive_comptable__isnull=True,   # exclure les appels archivés
         ).annotate(nombre_details=Count("details"), montant_total=Sum("details__montant"))
-        exercice = self.request.query_params.get("exercice")
+        exercice    = self.request.query_params.get("exercice")
+        type_charge = self.request.query_params.get("type_charge")
         if exercice:
             qs = qs.filter(exercice=exercice)
+        if type_charge:
+            qs = qs.filter(type_charge=type_charge)
         return qs
 
     def _wrap_django_validation(self, exc):

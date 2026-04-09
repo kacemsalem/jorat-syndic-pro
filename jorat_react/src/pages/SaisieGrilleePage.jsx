@@ -3,11 +3,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 const API = "/api";
 const MOIS     = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 const MOIS_FULL = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-const MODE_OPTIONS = [
-  { value: "ESPECES",  label: "Espèces"  },
-  { value: "VIREMENT", label: "Virement" },
-  { value: "CHEQUE",   label: "Chèque"   },
-];
 
 function fmt(v) {
   return Number(v || 0).toLocaleString("fr-MA", { minimumFractionDigits: 2 });
@@ -19,17 +14,110 @@ function lastDay(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
 
-// ── Dépense inline form ──────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────
 const INP = "w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
+const INP_AUTO = "w-full border border-blue-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-blue-50";
 const SEL = "w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
 
-function DepenseForm({ categories, fournisseurs, defaultDate, onAdded }) {
-  const [form, setForm] = useState({ libelle: "", montant: "", date_depense: defaultDate, categorie: "", fournisseur: "" });
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState("");
+function BtnPlus({ onClick, active }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition border ${
+        active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-blue-500 border-blue-300 hover:bg-blue-50"
+      }`}>+</button>
+  );
+}
+
+// ── Enhanced Dépense form ─────────────────────────────────────────
+function DepenseForm({ categories: initCats, fournisseurs: initFous, modeles, contrats, defaultDate, onAdded }) {
+  const EMPTY = { source: "", libelle: "", montant: "", date_depense: defaultDate, categorie: "", fournisseur: "", facture_reference: "", modele_depense: "" };
+  const [form,    setForm]    = useState(EMPTY);
+  const [autoFld, setAutoFld] = useState({ libelle: false, categorie: false, fournisseur: false, montant: false });
+  const [saving,  setSaving]  = useState(false);
+  const [err,     setErr]     = useState("");
+  // local lists (can grow with inline adds)
+  const [localCats, setLocalCats] = useState(initCats);
+  const [localFous, setLocalFous] = useState(initFous);
+  // inline add state
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [showNewFou, setShowNewFou] = useState(false);
+  const [newCatNom,  setNewCatNom]  = useState("");
+  const [newFouNom,  setNewFouNom]  = useState("");
+  const [savingCat,  setSavingCat]  = useState(false);
+  const [savingFou,  setSavingFou]  = useState(false);
+
+  useEffect(() => { setLocalCats(initCats); }, [initCats]);
+  useEffect(() => { setLocalFous(initFous); }, [initFous]);
+  useEffect(() => { setForm(f => ({ ...f, date_depense: defaultDate })); }, [defaultDate]);
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  useEffect(() => { set("date_depense", defaultDate); }, [defaultDate]);
+  // Auto-fill from source (modèle or contrat)
+  const handleSource = (val) => {
+    set("source", val);
+    if (!val) { setAutoFld({ libelle: false, categorie: false, fournisseur: false, montant: false }); return; }
+    if (val.startsWith("m_")) {
+      const m = modeles.find(x => String(x.id) === val.slice(2));
+      if (m) {
+        setForm(f => ({
+          ...f, source: val,
+          modele_depense: String(m.id),
+          libelle:     m.nom,
+          categorie:   m.categorie    ? String(m.categorie)    : f.categorie,
+          fournisseur: m.fournisseur  ? String(m.fournisseur)  : f.fournisseur,
+        }));
+        setAutoFld({ libelle: !!m.nom, categorie: !!m.categorie, fournisseur: !!m.fournisseur, montant: false });
+      }
+    } else if (val.startsWith("c_")) {
+      const c = contrats.find(x => String(x.id) === val.slice(2));
+      if (c) {
+        setForm(f => ({
+          ...f, source: val,
+          modele_depense: "",
+          libelle:     c.libelle || f.libelle,
+          fournisseur: c.fournisseur ? String(c.fournisseur) : f.fournisseur,
+          montant:     c.montant     ? String(c.montant)     : f.montant,
+        }));
+        setAutoFld({ libelle: !!c.libelle, categorie: false, fournisseur: !!c.fournisseur, montant: !!c.montant });
+      }
+    }
+  };
+
+  const addCat = async () => {
+    if (!newCatNom.trim()) return;
+    setSavingCat(true);
+    try {
+      const res = await fetch(`${API}/categories-depense/`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ nom: newCatNom.trim() }),
+      });
+      if (res.ok) {
+        const c = await res.json();
+        setLocalCats(p => [...p, c]);
+        set("categorie", String(c.id));
+        setNewCatNom(""); setShowNewCat(false);
+      }
+    } finally { setSavingCat(false); }
+  };
+
+  const addFou = async () => {
+    if (!newFouNom.trim()) return;
+    setSavingFou(true);
+    try {
+      const res = await fetch(`${API}/fournisseurs/`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ nom_societe: newFouNom.trim(), nom: "", actif: true }),
+      });
+      if (res.ok) {
+        const f = await res.json();
+        setLocalFous(p => [...p, f]);
+        set("fournisseur", String(f.id));
+        setNewFouNom(""); setShowNewFou(false);
+      }
+    } finally { setSavingFou(false); }
+  };
 
   const submit = async () => {
     if (!form.libelle.trim()) { setErr("Libellé requis."); return; }
@@ -40,36 +128,112 @@ function DepenseForm({ categories, fournisseurs, defaultDate, onAdded }) {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
         body: JSON.stringify({
-          libelle: form.libelle.trim(), montant: form.montant,
-          date_depense: form.date_depense,
-          categorie: form.categorie || null, fournisseur: form.fournisseur || null,
+          libelle:           form.libelle.trim(),
+          montant:           form.montant,
+          date_depense:      form.date_depense,
+          categorie:         form.categorie         || null,
+          fournisseur:       form.fournisseur        || null,
+          modele_depense:    form.modele_depense     || null,
+          facture_reference: form.facture_reference  || "",
         }),
       });
-      if (!res.ok) { const d = await res.json(); setErr(Object.values(d).flat().join(" ")); }
-      else { setForm(f => ({ ...f, libelle: "", montant: "", categorie: "", fournisseur: "" })); onAdded(); }
+      if (!res.ok) { const d = await res.json(); setErr(Object.values(d).flat().join(" ")); return; }
+      setForm({ ...EMPTY, date_depense: defaultDate });
+      setAutoFld({ libelle: false, categorie: false, fournisseur: false, montant: false });
+      onAdded();
     } finally { setSaving(false); }
   };
+
+  // grouped modèles by catégorie
+  const modelesByGroup = useMemo(() => {
+    const map = {};
+    modeles.forEach(m => { const k = m.categorie_nom || "Autres"; (map[k] = map[k] || []).push(m); });
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  }, [modeles]);
 
   return (
     <div className="space-y-2 p-3 bg-red-50/60 rounded-xl border border-red-100">
       <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Nouvelle dépense</p>
       {err && <p className="text-[11px] text-red-500">{err}</p>}
-      <input placeholder="Libellé *" value={form.libelle} onChange={e => set("libelle", e.target.value)} className={INP} />
+
+      {/* Source : modèle ou contrat */}
+      <select value={form.source} onChange={e => handleSource(e.target.value)} className={SEL}>
+        <option value="">— Choisir un modèle / contrat —</option>
+        {modelesByGroup.map(([grp, items]) => (
+          <optgroup key={grp} label={`Modèles — ${grp}`}>
+            {items.map(m => <option key={m.id} value={`m_${m.id}`}>{m.nom}</option>)}
+          </optgroup>
+        ))}
+        {contrats.length > 0 && (
+          <optgroup label="Contrats">
+            {contrats.map(c => <option key={c.id} value={`c_${c.id}`}>{c.libelle}</option>)}
+          </optgroup>
+        )}
+      </select>
+
+      {/* Libellé */}
+      <input placeholder="Libellé *" value={form.libelle}
+        onChange={e => { set("libelle", e.target.value); setAutoFld(a => ({ ...a, libelle: false })); }}
+        className={autoFld.libelle ? INP_AUTO : INP} />
+
+      {/* Montant + Date */}
       <div className="grid grid-cols-2 gap-2">
         <input type="number" min={0} step="0.01" placeholder="Montant MAD"
-          value={form.montant} onChange={e => set("montant", e.target.value)} className={INP} />
+          value={form.montant} onChange={e => { set("montant", e.target.value); setAutoFld(a => ({ ...a, montant: false })); }}
+          className={autoFld.montant ? INP_AUTO : INP} />
         <input type="date" value={form.date_depense} onChange={e => set("date_depense", e.target.value)} className={INP} />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <select value={form.categorie} onChange={e => set("categorie", e.target.value)} className={SEL}>
-          <option value="">— Catégorie —</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
-        </select>
-        <select value={form.fournisseur} onChange={e => set("fournisseur", e.target.value)} className={SEL}>
-          <option value="">— Fournisseur —</option>
-          {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_societe || f.nom_complet || f.nom}</option>)}
-        </select>
+
+      {/* Catégorie */}
+      <div className="space-y-1">
+        <div className="flex gap-1.5 items-center">
+          <select value={form.categorie} onChange={e => { set("categorie", e.target.value); setAutoFld(a => ({ ...a, categorie: false })); }}
+            className={`flex-1 ${autoFld.categorie ? INP_AUTO : SEL}`}>
+            <option value="">— Catégorie —</option>
+            {localCats.map(c => <option key={c.id} value={String(c.id)}>{c.nom}</option>)}
+          </select>
+          <BtnPlus onClick={() => { setShowNewCat(v => !v); setShowNewFou(false); }} active={showNewCat} />
+        </div>
+        {showNewCat && (
+          <div className="flex gap-1.5">
+            <input value={newCatNom} onChange={e => setNewCatNom(e.target.value)}
+              placeholder="Nom catégorie…" className={`flex-1 ${INP}`}
+              onKeyDown={e => e.key === "Enter" && addCat()} />
+            <button onClick={addCat} disabled={savingCat}
+              className="px-2 py-1 bg-blue-600 text-white text-xs rounded-lg disabled:opacity-50">
+              {savingCat ? "…" : "OK"}
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Fournisseur */}
+      <div className="space-y-1">
+        <div className="flex gap-1.5 items-center">
+          <select value={form.fournisseur} onChange={e => { set("fournisseur", e.target.value); setAutoFld(a => ({ ...a, fournisseur: false })); }}
+            className={`flex-1 ${autoFld.fournisseur ? INP_AUTO : SEL}`}>
+            <option value="">— Fournisseur —</option>
+            {localFous.map(f => <option key={f.id} value={String(f.id)}>{f.nom_societe || f.nom_complet || f.nom}</option>)}
+          </select>
+          <BtnPlus onClick={() => { setShowNewFou(v => !v); setShowNewCat(false); }} active={showNewFou} />
+        </div>
+        {showNewFou && (
+          <div className="flex gap-1.5">
+            <input value={newFouNom} onChange={e => setNewFouNom(e.target.value)}
+              placeholder="Nom société…" className={`flex-1 ${INP}`}
+              onKeyDown={e => e.key === "Enter" && addFou()} />
+            <button onClick={addFou} disabled={savingFou}
+              className="px-2 py-1 bg-blue-600 text-white text-xs rounded-lg disabled:opacity-50">
+              {savingFou ? "…" : "OK"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Référence facture (optionnel) */}
+      <input placeholder="Réf. facture (optionnel)" value={form.facture_reference}
+        onChange={e => set("facture_reference", e.target.value)} className={INP} />
+
       <button onClick={submit} disabled={saving}
         className="w-full py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 transition">
         {saving ? "Enregistrement…" : "Ajouter la dépense"}
@@ -88,6 +252,11 @@ export default function SaisieGrilleePage() {
   const [loading,    setLoading]    = useState(false);
   const [availableYears, setAvailableYears] = useState([]);
 
+  // Appels de fond (FOND mode only)
+  const [appelsFond,      setAppelsFond]      = useState([]);
+  const [selectedAppel,   setSelectedAppel]   = useState("");   // appel id (string)
+  const [detailsByLot,    setDetailsByLot]    = useState({});   // { lot_id: { montant, montant_recu } }
+
   // grille state
   const [selected, setSelected] = useState({});   // { lotId: Set<monthIndex> }
   const [amounts,  setAmounts]  = useState({});   // { lotId: string }
@@ -97,6 +266,8 @@ export default function SaisieGrilleePage() {
   // dépenses + paiements du mois
   const [categories,   setCategories]   = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
+  const [modeles,      setModeles]      = useState([]);
+  const [contrats,     setContrats]     = useState([]);
   const [depenses,     setDepenses]     = useState([]);
   const [paiementsMois, setPaiementsMois] = useState([]);
   const [loadingDep,   setLoadingDep]   = useState(false);
@@ -120,7 +291,43 @@ export default function SaisieGrilleePage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => setFournisseurs(Array.isArray(d) ? d : (d?.results ?? [])))
       .catch(() => {});
+
+    fetch(`${API}/modeles-depense/?actif=true&page_size=9999`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setModeles(Array.isArray(d) ? d : (d?.results ?? [])))
+      .catch(() => {});
+
+    fetch(`${API}/contrats/?page_size=9999`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setContrats(Array.isArray(d) ? d : (d?.results ?? [])))
+      .catch(() => {});
   }, []);
+
+  // ── Appels de fond ───────────────────────────────────────────
+  useEffect(() => {
+    if (typeCharge !== "FOND") { setAppelsFond([]); setSelectedAppel(""); return; }
+    fetch(`${API}/appels-charge/?type_charge=FOND&exercice=${year}&page_size=9999`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const list = Array.isArray(d) ? d : (d?.results ?? []);
+        setAppelsFond(list);
+        // auto-select first
+        setSelectedAppel(list.length ? String(list[0].id) : "");
+      }).catch(() => {});
+  }, [typeCharge, year]);
+
+  // ── Details per lot for selected appel ───────────────────────
+  useEffect(() => {
+    if (!selectedAppel) { setDetailsByLot({}); return; }
+    fetch(`${API}/details-appel/?appel=${selectedAppel}&page_size=9999`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const list = Array.isArray(d) ? d : (d?.results ?? []);
+        const map = {};
+        list.forEach(dt => { map[String(dt.lot)] = { montant: parseFloat(dt.montant || 0), montant_recu: parseFloat(dt.montant_recu || 0) }; });
+        setDetailsByLot(map);
+      }).catch(() => {});
+  }, [selectedAppel]);
 
   // ── Grille data ───────────────────────────────────────────────
   const fetchGrille = useCallback(() => {
@@ -204,11 +411,25 @@ export default function SaisieGrilleePage() {
       });
       if (!res.ok) { const d = await res.json(); alert(Object.values(d).flat().join(" ")); return; }
       const created = await res.json();
+      const ventilerBody = typeCharge === "FOND" && selectedAppel
+        ? { appel_id: Number(selectedAppel) }
+        : { exercice: year, type_charge: typeCharge };
       await fetch(`${API}/paiements/${created.id}/ventiler/`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ exercice: year, type_charge: typeCharge }),
+        body: JSON.stringify(ventilerBody),
       });
+      // Refresh details per lot after payment
+      if (typeCharge === "FOND" && selectedAppel) {
+        fetch(`${API}/details-appel/?appel=${selectedAppel}&page_size=9999`, { credentials: "include" })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => {
+            const list = Array.isArray(d) ? d : (d?.results ?? []);
+            const map = {};
+            list.forEach(dt => { map[String(dt.lot)] = { montant: parseFloat(dt.montant || 0), montant_recu: parseFloat(dt.montant_recu || 0) }; });
+            setDetailsByLot(map);
+          }).catch(() => {});
+      }
       setSaved(p => ({ ...p, [lotId]: true }));
       setSelected(p => ({ ...p, [lotId]: new Set() }));
       setAmounts(p => ({ ...p, [lotId]: "" }));
@@ -275,6 +496,26 @@ export default function SaisieGrilleePage() {
             </div>
           </div>
         </div>
+        {/* Appel de fond selector */}
+        {typeCharge === "FOND" && (
+          <div className="mt-3">
+            {appelsFond.length === 0 ? (
+              <p className="text-white/50 text-[10px]">Aucun appel de fond pour {year}</p>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider shrink-0">Appel&nbsp;:</span>
+                <select value={selectedAppel} onChange={e => setSelectedAppel(e.target.value)}
+                  className="text-xs border border-white/30 rounded-xl px-3 py-1.5 bg-white/20 text-white focus:outline-none max-w-xs">
+                  {appelsFond.map(a => (
+                    <option key={a.id} value={String(a.id)} className="text-slate-800">
+                      {a.nom_fond || a.libelle || a.code_fond} — {fmt(a.montant_total)} MAD
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
         <p className="text-white/50 text-[10px] mt-1">
           Paiements datés au 1er {MOIS_FULL[month]} {year} · Cliquer les mois impayés
         </p>
@@ -315,6 +556,11 @@ export default function SaisieGrilleePage() {
                       <th key={i} className={`py-2.5 text-center font-medium w-8 ${i === month ? "text-indigo-600 bg-indigo-50/60" : "text-slate-400"}`}>{m}</th>
                     ))}
                     <th className="px-3 py-2.5 text-right text-slate-400 font-medium w-28 min-w-[100px]">Montant</th>
+                    {typeCharge === "FOND" && selectedAppel && (<>
+                      <th className="px-2 py-2.5 text-right text-slate-400 font-medium w-20 min-w-[70px]">Appelé</th>
+                      <th className="px-2 py-2.5 text-right text-emerald-500 font-medium w-20 min-w-[70px]">Payé</th>
+                      <th className="px-2 py-2.5 text-right text-red-400 font-medium w-20 min-w-[70px]">Reste</th>
+                    </>)}
                     <th className="px-2 py-2.5 w-8" />
                   </tr>
                 </thead>
@@ -333,11 +579,14 @@ export default function SaisieGrilleePage() {
                         </td>
                         <td className="px-2 py-2 text-slate-500 text-[11px] truncate max-w-[130px]">{row.nom}</td>
                         {row.paid.map((isPaid, mi) => {
-                          const isSel = sel.has(mi);
+                          const isSel   = sel.has(mi);
+                          const isFutur = mi > month; // après le mois sélectionné → verrouillé
                           return (
                             <td key={mi} className={`py-2 text-center px-0.5 ${mi === month ? "bg-indigo-50/30" : ""}`}>
                               {isPaid ? (
                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold select-none">✓</span>
+                              ) : isFutur ? (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-200 text-[10px] select-none cursor-not-allowed">—</span>
                               ) : isSel ? (
                                 <button onClick={() => toggleMonth(row.lot_id, mi)}
                                   className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400 text-white text-[9px] font-bold hover:bg-amber-500 active:scale-90 transition">✓</button>
@@ -359,6 +608,19 @@ export default function SaisieGrilleePage() {
                             <span className="text-[10px] text-slate-300 font-mono">{fmt(row.monthlyAmt)}/mois</span>
                           ) : null}
                         </td>
+                        {typeCharge === "FOND" && selectedAppel && (() => {
+                          const d = detailsByLot[String(row.lot_id)];
+                          const appele = d?.montant ?? 0;
+                          const paye   = d?.montant_recu ?? 0;
+                          const reste  = appele - paye;
+                          return (<>
+                            <td className="px-2 py-1.5 text-right text-xs font-mono text-slate-500">{appele > 0 ? fmt(appele) : "—"}</td>
+                            <td className="px-2 py-1.5 text-right text-xs font-mono text-emerald-600">{paye > 0 ? fmt(paye) : "—"}</td>
+                            <td className={`px-2 py-1.5 text-right text-xs font-mono font-bold ${reste > 0 ? "text-red-500" : "text-emerald-600"}`}>
+                              {appele > 0 ? fmt(reste) : "—"}
+                            </td>
+                          </>);
+                        })()}
                         <td className="px-1 py-1.5 text-center">
                           {hasSel && (
                             <button onClick={() => saveLot(row.lot_id)}
@@ -374,7 +636,7 @@ export default function SaisieGrilleePage() {
                     );
                   })}
                   {rows.length === 0 && !loading && (
-                    <tr><td colSpan={16} className="text-center text-slate-400 py-10 text-xs">Aucun lot pour {year}</td></tr>
+                    <tr><td colSpan={typeCharge === "FOND" && selectedAppel ? 19 : 16} className="text-center text-slate-400 py-10 text-xs">Aucun lot pour {year}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -387,6 +649,7 @@ export default function SaisieGrilleePage() {
       <div className="px-2 sm:px-4 mt-4 max-w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         <DepenseForm categories={categories} fournisseurs={fournisseurs}
+          modeles={modeles} contrats={contrats}
           defaultDate={defaultDate} onAdded={fetchDepenses} />
 
         <div className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
