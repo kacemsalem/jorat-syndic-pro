@@ -347,9 +347,36 @@ export default function SaisieGrilleePage() {
   useEffect(() => { fetchDepenses(); }, [fetchDepenses]);
 
   // ── Rows ─────────────────────────────────────────────────────
+  const MOIS_CODES = ["JAN","FEV","MAR","AVR","MAI","JUN","JUL","AOU","SEP","OCT","NOV","DEC"];
   const rows = useMemo(() => {
     if (!crossData?.lots) return [];
-    // Cutoff = dernier jour du mois sélectionné : seuls les paiements ≤ cette date sont comptés
+
+    if (typeCharge === "FOND" && selectedAppel) {
+      // ── FOND : logique mois-direct ──────────────────────────────
+      const monthStart = new Date(year, month, 1);
+      monthStart.setHours(0, 0, 0, 0);
+      const cutoff = new Date(year, month + 1, 0);
+      cutoff.setHours(23, 59, 59, 999);
+
+      return crossData.lots.map(lot => {
+        const totalDu   = parseFloat(lot.total_du  || 0);
+        const totalPaye = parseFloat(lot.total_paye || 0);
+        const pmts      = lot.fond_paiements || [];
+
+        const paid         = MOIS_CODES.map(code => pmts.some(p => p.mois === code));
+        const paidBefore   = MOIS_CODES.map(code =>
+          pmts.some(p => p.mois === code && new Date(p.date) < monthStart)
+        );
+        const paidThisMonth = MOIS_CODES.map(code =>
+          pmts.some(p => p.mois === code && new Date(p.date) >= monthStart && new Date(p.date) <= cutoff)
+        );
+        const paidAny = paid;
+
+        return { ...lot, paid, paidBefore, paidThisMonth, paidAny, monthlyAmt: 0, totalDu, totalPaye };
+      });
+    }
+
+    // ── CHARGE : carry-over (mensualités) ───────────────────────
     const cutoff = new Date(year, month + 1, 0);
     cutoff.setHours(23, 59, 59, 999);
     const monthStart = new Date(year, month, 1);
@@ -357,54 +384,75 @@ export default function SaisieGrilleePage() {
     return crossData.lots.map(lot => {
       const totalDu = parseFloat(lot.total_du || 0);
 
-      // Payments before the active month → paidBefore
       const paidBeforePmnts = (lot.paiements || []).filter(p =>
         p.date && new Date(p.date) < monthStart
       );
       const totalPaidBefore = paidBeforePmnts.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
       const monthsCoveredBefore = totalDu > 0 ? (totalPaidBefore / totalDu) * 12 : 0;
 
-      // Payments up to end of active month → paid (for display)
       const filteredPaiements = (lot.paiements || []).filter(p =>
         !p.date || new Date(p.date) <= cutoff
       );
       const totalPaidFiltered = filteredPaiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
       const monthsCoveredFiltered = totalDu > 0 ? (totalPaidFiltered / totalDu) * 12 : 0;
 
-      // ALL payments (regardless of date) → lock determination
       const totalPaidAll = (lot.paiements || []).reduce((s, p) => s + parseFloat(p.montant || 0), 0);
       const monthsCoveredAll = totalDu > 0 ? (totalPaidAll / totalDu) * 12 : 0;
 
-      const paid         = Array(12).fill(false).map((_, i) => i < monthsCoveredFiltered);
-      const paidBefore   = Array(12).fill(false).map((_, i) => i < monthsCoveredBefore);
+      const paid          = Array(12).fill(false).map((_, i) => i < monthsCoveredFiltered);
+      const paidBefore    = Array(12).fill(false).map((_, i) => i < monthsCoveredBefore);
       const paidThisMonth = Array(12).fill(false).map((_, i) => i >= monthsCoveredBefore && i < monthsCoveredFiltered);
-      const paidAny      = Array(12).fill(false).map((_, i) => i < monthsCoveredAll);
+      const paidAny       = Array(12).fill(false).map((_, i) => i < monthsCoveredAll);
 
       return { ...lot, paid, paidBefore, paidThisMonth, paidAny, monthlyAmt: totalDu / 12, totalDu };
     });
-  }, [crossData, year, month]);
+  }, [crossData, year, month, typeCharge, selectedAppel]);
 
   const toggleMonth = (lotId, mi) => {
     const row = rows.find(r => r.lot_id === lotId);
-    // Refuse toggle if month is already paid globally
     if (row?.paidAny[mi]) return;
-    setSelected(prev => {
-      const s = new Set(prev[lotId] || []);
-      if (s.has(mi)) s.delete(mi); else s.add(mi);
-      const next = { ...prev, [lotId]: s };
-      if (row) setAmounts(a => ({ ...a, [lotId]: s.size > 0 ? String(Math.round(row.monthlyAmt * s.size)) : "" }));
-      return next;
-    });
+
+    if (typeCharge === "FOND" && selectedAppel) {
+      // FOND : sélection unique, montant = solde restant
+      setSelected(prev => {
+        const already = (prev[lotId] || new Set()).has(mi);
+        const s = already ? new Set() : new Set([mi]);
+        const next = { ...prev, [lotId]: s };
+        if (!already) {
+          const reste = (row?.totalDu || 0) - (row?.totalPaye || 0);
+          setAmounts(a => ({ ...a, [lotId]: String(Math.round(reste * 100) / 100) }));
+        } else {
+          setAmounts(a => ({ ...a, [lotId]: "" }));
+        }
+        return next;
+      });
+    } else {
+      // CHARGE : multi-sélection, montant = mensualité × nb mois
+      setSelected(prev => {
+        const s = new Set(prev[lotId] || []);
+        if (s.has(mi)) s.delete(mi); else s.add(mi);
+        const next = { ...prev, [lotId]: s };
+        if (row) setAmounts(a => ({ ...a, [lotId]: s.size > 0 ? String(Math.round(row.monthlyAmt * s.size)) : "" }));
+        return next;
+      });
+    }
   };
 
-  // date du paiement = 1er du mois sélectionné
+  // date du paiement = 1er du mois actif
   const payDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const MOIS_CODES = ["JAN","FEV","MAR","AVR","MAI","JUN","JUL","AOU","SEP","OCT","NOV","DEC"];
   const periodeComptable = MOIS_CODES[month];
 
   const saveLot = async (lotId, { skipRefresh = false } = {}) => {
     const amount = parseFloat(amounts[lotId] || 0);
     if (!amount || amount <= 0) return;
+    // Contrôle : ne pas dépasser le solde restant pour les appels de fond
+    if (typeCharge === "FOND" && selectedAppel) {
+      const row = rows.find(r => r.lot_id === lotId);
+      if (row) {
+        const reste = (row.totalDu || 0) - (row.totalPaye || 0);
+        if (amount > reste + 0.005) { alert(`Montant maximum autorisé : ${reste.toFixed(2)} MAD`); return; }
+      }
+    }
     setSaving(p => ({ ...p, [lotId]: true }));
     try {
       const res = await fetch(`${API}/paiements/`, {
@@ -434,10 +482,12 @@ export default function SaisieGrilleePage() {
   };
 
   const saveAll = async () => {
-    const toSave = rows.filter(r => {
-      const s = selected[r.lot_id];
-      return s && s.size > 0 && parseFloat(amounts[r.lot_id] || 0) > 0;
-    });
+    const toSave = typeCharge === "FOND" && selectedAppel
+      ? rows.filter(r => parseFloat(amounts[r.lot_id] || 0) > 0)
+      : rows.filter(r => {
+          const s = selected[r.lot_id];
+          return s && s.size > 0 && parseFloat(amounts[r.lot_id] || 0) > 0;
+        });
     for (const row of toSave) await saveLot(row.lot_id, { skipRefresh: true });
     // Refresh details fond if needed
     if (typeCharge === "FOND" && selectedAppel) {
@@ -456,9 +506,22 @@ export default function SaisieGrilleePage() {
 
   const undoMonthPaiement = async (lotId, mi) => {
     const row = rows.find(r => r.lot_id === lotId);
-    if (!row || !row.monthlyAmt) return;
+    if (!row) return;
     if (!confirm(`Annuler le paiement de ${MOIS[mi]} ${year} pour ce lot ?`)) return;
 
+    if (typeCharge === "FOND" && selectedAppel) {
+      // ── FOND : supprimer le(s) paiement(s) portant ce mois ──────
+      const targets = (row.fond_paiements || []).filter(p => p.mois === MOIS_CODES[mi]);
+      for (const p of targets) {
+        await fetch(`${API}/paiements/${p.id}/`, { method: "DELETE", credentials: "include", headers: { "X-CSRFToken": getCsrf() } });
+      }
+      fetchGrille();
+      fetchDepenses();
+      return;
+    }
+
+    // ── CHARGE : logique carry-over ───────────────────────────────
+    if (!row.monthlyAmt) return;
     const m   = String(month + 1).padStart(2, "0");
     const deb = `${year}-${m}-01`;
     const fin = `${year}-${m}-${String(lastDay(year, month)).padStart(2, "0")}`;
@@ -471,12 +534,10 @@ export default function SaisieGrilleePage() {
     const totalAmt = list.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
     const newAmt   = Math.round((totalAmt - row.monthlyAmt) * 100) / 100;
 
-    // Supprimer tous les paiements de ce mois pour ce lot
     for (const p of list) {
       await fetch(`${API}/paiements/${p.id}/`, { method: "DELETE", credentials: "include", headers: { "X-CSRFToken": getCsrf() } });
     }
 
-    // Si un solde reste, recréer un paiement réduit et le ventiler
     if (newAmt > 0.001) {
       const createRes = await fetch(`${API}/paiements/`, {
         method: "POST", credentials: "include",
@@ -496,6 +557,13 @@ export default function SaisieGrilleePage() {
       }
     }
 
+    fetchGrille();
+    fetchDepenses();
+  };
+
+  const undoFondPaiement = async (paiementId) => {
+    if (!confirm("Annuler ce paiement ?")) return;
+    await fetch(`${API}/paiements/${paiementId}/`, { method: "DELETE", credentials: "include", headers: { "X-CSRFToken": getCsrf() } });
     fetchGrille();
     fetchDepenses();
   };
@@ -539,7 +607,10 @@ export default function SaisieGrilleePage() {
     } finally { setSavingEdit(false); }
   };
 
-  const selectedLots  = rows.filter(r => (selected[r.lot_id]?.size || 0) > 0);
+  const isFondMode    = typeCharge === "FOND" && !!selectedAppel;
+  const selectedLots  = isFondMode
+    ? rows.filter(r => parseFloat(amounts[r.lot_id] || 0) > 0)
+    : rows.filter(r => (selected[r.lot_id]?.size || 0) > 0);
   const totalSelected = selectedLots.reduce((s, r) => s + parseFloat(amounts[r.lot_id] || 0), 0);
   const totalDepenses  = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
   const totalPaiements = paiementsMois.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
@@ -597,7 +668,8 @@ export default function SaisieGrilleePage() {
             </div>
             {/* Export PDF / Excel */}
             {(() => {
-              const params = `year=${year}&month=${month + 1}&type_charge=${typeCharge}`;
+              const appelSuffix = typeCharge === "FOND" && selectedAppel ? `&appel_id=${selectedAppel}` : "";
+              const params = `year=${year}&month=${month + 1}&type_charge=${typeCharge}${appelSuffix}`;
               return (
                 <div className="flex gap-1.5">
                   <a href={`/api/saisie-grille/export/pdf/?${params}`} target="_blank" rel="noreferrer"
@@ -640,7 +712,9 @@ export default function SaisieGrilleePage() {
           </div>
         )}
         <p className="text-white/50 text-[10px] mt-1">
-          Paiements datés au 1er {MOIS_FULL[month]} {year} · Cliquer les mois impayés
+          {isFondMode
+            ? `Paiements pour ${MOIS_FULL[month]} ${year} · Saisir les montants par lot`
+            : `Paiements datés au 1er ${MOIS_FULL[month]} ${year} · Cliquer les mois impayés`}
         </p>
       </div>
 
@@ -685,138 +759,218 @@ export default function SaisieGrilleePage() {
               </div>
             )}
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/80">
-                    <th className="text-left px-3 py-2.5 text-slate-600 font-bold w-12 sticky left-0 bg-slate-50/90 z-10">Lot</th>
-                    <th className="text-left px-2 py-2.5 text-slate-400 font-medium min-w-[100px] max-w-[130px]">Propriétaire</th>
-                    {MOIS.map((m, i) => (
-                      <th key={i} className={`py-2.5 text-center font-medium w-8 ${i === month ? "text-indigo-600 bg-indigo-50/60" : "text-slate-400"}`}>{m}</th>
-                    ))}
-                    <th className="px-3 py-2.5 text-right text-slate-400 font-medium w-28 min-w-[100px]">Montant</th>
-                    {typeCharge === "FOND" && selectedAppel && (<>
-                      <th className="px-2 py-2.5 text-right text-slate-400 font-medium w-20 min-w-[70px]">Appelé</th>
-                      <th className="px-2 py-2.5 text-right text-emerald-500 font-medium w-20 min-w-[70px]">Payé</th>
-                      <th className="px-2 py-2.5 text-right text-red-400 font-medium w-20 min-w-[70px]">Reste</th>
-                    </>)}
-                    <th className="px-2 py-2.5 w-8" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {groups.map(([groupName, groupRows]) => {
-                    const isCollapsed = collapsedGroups.has(groupName);
-                    const colSpan = typeCharge === "FOND" && selectedAppel ? 19 : 16;
-                    return (
-                      <>
-                        {/* ── Groupe header ── */}
-                        <tr key={`g_${groupName}`}
-                          className="bg-slate-50 border-b border-slate-200 cursor-pointer select-none hover:bg-slate-100 transition"
-                          onClick={() => toggleGroup(groupName)}>
-                          <td colSpan={colSpan} className="px-3 py-1.5">
-                            <div className="flex items-center gap-2">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                                strokeLinecap="round" strokeLinejoin="round"
-                                className={`w-3 h-3 text-slate-400 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}>
-                                <polyline points="6 9 12 15 18 9"/>
-                              </svg>
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                {groupName}
-                              </span>
-                              <span className="text-[9px] text-slate-400 font-medium">
-                                {groupRows.length} lot{groupRows.length > 1 ? "s" : ""}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                        {/* ── Lignes lots ── */}
-                        {!isCollapsed && groupRows.map((row, ri) => {
-                          const sel      = selected[row.lot_id] || new Set();
-                          const hasSel   = sel.size > 0;
-                          const isSaving = saving[row.lot_id];
-                          const amount   = amounts[row.lot_id] || "";
-                          return (
-                            <tr key={ri} className={`border-b border-slate-50 transition-colors ${
-                              hasSel ? "bg-amber-50/40" : "hover:bg-slate-50/50"}`}>
-                              <td className="px-3 py-2 sticky left-0 bg-inherit z-10">
-                                <span className="font-black text-indigo-700">{row.lot}</span>
-                              </td>
-                              <td className="px-2 py-2 text-slate-500 text-[11px] truncate max-w-[130px]">{row.nom}</td>
-                              {row.paid.map((_, mi) => {
-                                const isSel       = sel.has(mi);
-                                const isThisMonth = row.paidThisMonth[mi];
-                                const isBefore    = row.paidBefore[mi];
-                                const isLocked    = !row.paid[mi] && row.paidAny[mi];
-                                return (
-                                  <td key={mi} className={`py-2 text-center px-0.5 ${mi === month ? "bg-indigo-50/30" : ""}`}>
-                                    {isThisMonth ? (
-                                      <button onClick={() => undoMonthPaiement(row.lot_id, mi)}
-                                        title="Payé ce mois — cliquer pour annuler ce mois"
-                                        className="relative group/cell inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold hover:bg-red-400 transition select-none">
-                                        <span className="[@media(hover:hover)]:group-hover/cell:hidden">✓</span>
-                                        <span className="hidden [@media(hover:hover)]:group-hover/cell:inline font-bold">×</span>
-                                      </button>
-                                    ) : isBefore ? (
-                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-[9px] font-semibold select-none" title="Payé avant ce mois">✓</span>
-                                    ) : isLocked ? (
-                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-400 text-[9px] font-bold select-none cursor-not-allowed" title="Déjà payé">✓</span>
-                                    ) : isSel ? (
-                                      <button onClick={() => toggleMonth(row.lot_id, mi)}
-                                        className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400 text-white text-[9px] font-bold hover:bg-amber-500 active:scale-90 transition">✓</button>
-                                    ) : (
-                                      <button onClick={() => toggleMonth(row.lot_id, mi)}
-                                        className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-300 hover:bg-amber-100 hover:text-amber-400 active:scale-90 transition">—</button>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                              <td className="px-2 py-1.5 text-right">
-                                {hasSel ? (
-                                  <input type="number" min={0} step="1" value={amount}
-                                    onChange={e => setAmounts(a => ({ ...a, [row.lot_id]: e.target.value }))}
-                                    className="w-24 border border-amber-200 rounded-lg px-2 py-1 text-xs text-right font-mono bg-amber-50 focus:outline-none focus:ring-1 focus:ring-amber-400" />
-                                ) : row.monthlyAmt > 0 ? (
-                                  <span className="text-[10px] text-slate-300 font-mono">{fmt(row.monthlyAmt)}/mois</span>
-                                ) : null}
-                              </td>
-                              {typeCharge === "FOND" && selectedAppel && (() => {
-                                const d = detailsByLot[String(row.lot_id)];
-                                const appele = d?.montant ?? 0;
-                                const paye   = d?.montant_recu ?? 0;
-                                const reste  = appele - paye;
-                                return (<>
-                                  <td className="px-2 py-1.5 text-right text-xs font-mono text-slate-500">{appele > 0 ? fmt(appele) : "—"}</td>
-                                  <td className="px-2 py-1.5 text-right text-xs font-mono text-emerald-600">{paye > 0 ? fmt(paye) : "—"}</td>
-                                  <td className={`px-2 py-1.5 text-right text-xs font-mono font-bold ${reste > 0 ? "text-red-500" : "text-emerald-600"}`}>
-                                    {appele > 0 ? fmt(reste) : "—"}
-                                  </td>
-                                </>);
-                              })()}
-                              <td className="px-1 py-1.5 text-center">
-                                <button
-                                  onClick={() => hasSel && saveLot(row.lot_id)}
-                                  disabled={isSaving || !hasSel || !amount || parseFloat(amount) <= 0}
-                                  title={hasSel ? "Enregistrer le paiement" : "Sélectionnez des mois"}
-                                  className={`inline-flex items-center justify-center w-6 h-6 rounded-full transition active:scale-90 ${
-                                    hasSel && amount && parseFloat(amount) > 0
-                                      ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm"
-                                      : "bg-slate-100 text-slate-300 cursor-default"
-                                  }`}>
-                                  {isSaving
-                                    ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-                                    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </>
-                    );
-                  })}
-                  {rows.length === 0 && !loading && (
-                    <tr><td colSpan={typeCharge === "FOND" && selectedAppel ? 19 : 16} className="text-center text-slate-400 py-10 text-xs">Aucun lot pour {year}</td></tr>
-                  )}
-                </tbody>
-              </table>
+              {isFondMode ? (
+                /* ══ TABLE FOND : chips de paiements + saisie ══════════════ */
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/80">
+                      <th className="text-left px-3 py-2.5 text-slate-600 font-bold w-12 sticky left-0 bg-slate-50/90 z-10">Lot</th>
+                      <th className="text-left px-2 py-2.5 text-slate-400 font-medium w-28">Propriétaire</th>
+                      <th className="px-3 py-2.5 text-left text-slate-400 font-medium">Paiements effectués</th>
+                      <th className="px-2 py-2.5 text-right text-slate-400 font-medium w-24">Appelé</th>
+                      <th className="px-2 py-2.5 text-right text-emerald-500 font-medium w-24">Payé</th>
+                      <th className="px-2 py-2.5 text-right text-red-400 font-medium w-24">Reste</th>
+                      <th className="px-2 py-2.5 w-8" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map(([groupName, groupRows]) => {
+                      const isCollapsed = collapsedGroups.has(groupName);
+                      return (
+                        <>
+                          <tr key={`g_${groupName}`}
+                            className="bg-slate-50 border-b border-slate-200 cursor-pointer select-none hover:bg-slate-100 transition"
+                            onClick={() => toggleGroup(groupName)}>
+                            <td colSpan={7} className="px-3 py-1.5">
+                              <div className="flex items-center gap-2">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                                  strokeLinecap="round" strokeLinejoin="round"
+                                  className={`w-3 h-3 text-slate-400 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}>
+                                  <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{groupName}</span>
+                                <span className="text-[9px] text-slate-400 font-medium">{groupRows.length} lot{groupRows.length > 1 ? "s" : ""}</span>
+                              </div>
+                            </td>
+                          </tr>
+                          {!isCollapsed && groupRows.map((row, ri) => {
+                            const isSaving = saving[row.lot_id];
+                            const amount   = amounts[row.lot_id] || "";
+                            const appele   = row.totalDu  ?? 0;
+                            const paye     = row.totalPaye ?? 0;
+                            const reste    = appele - paye;
+                            const hasAmt   = !!amount && parseFloat(amount) > 0;
+                            return (
+                              <tr key={ri} className={`border-b border-slate-50 transition-colors ${hasAmt ? "bg-amber-50/40" : "hover:bg-slate-50/50"}`}>
+                                <td className="px-3 py-2 sticky left-0 bg-inherit z-10">
+                                  <span className="font-black text-amber-600">{row.lot}</span>
+                                </td>
+                                <td className="px-2 py-2 text-slate-500 text-[11px] truncate max-w-[110px]">{row.nom}</td>
+                                <td className="px-3 py-2">
+                                  <div className="flex flex-wrap gap-1 items-center">
+                                    {(row.fond_paiements || []).map(p => (
+                                      <span key={p.id} className="group/chip inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-medium">
+                                        <span className="font-mono">{fmt(p.montant)}</span>
+                                        <span className="text-emerald-400 text-[9px]">{p.mois}</span>
+                                        <button onClick={() => undoFondPaiement(p.id)}
+                                          className="ml-0.5 w-3.5 h-3.5 flex items-center justify-center rounded-full text-emerald-400 hover:bg-red-100 hover:text-red-500 transition font-bold text-[10px]">×</button>
+                                      </span>
+                                    ))}
+                                    {reste > 0.005 && (() => {
+                                      const v = parseFloat(amount) || 0;
+                                      const over = v > reste + 0.005;
+                                      return (
+                                        <div className="flex flex-col items-end gap-0.5">
+                                          <input type="number" min={0} max={reste} step="0.01" value={amount}
+                                            onChange={e => {
+                                              const val = parseFloat(e.target.value) || 0;
+                                              setAmounts(a => ({ ...a, [row.lot_id]: val > reste ? String(Math.round(reste * 100) / 100) : e.target.value }));
+                                            }}
+                                            onFocus={e => { if (!e.target.value) setAmounts(a => ({ ...a, [row.lot_id]: String(Math.round(reste * 100) / 100) })); }}
+                                            placeholder="Montant"
+                                            className={`w-28 border rounded-lg px-2 py-0.5 text-xs text-right font-mono focus:outline-none focus:ring-1 placeholder:text-slate-300 ${over ? "border-red-300 bg-red-50 focus:ring-red-400 text-red-600" : "border-amber-200 bg-amber-50 focus:ring-amber-400"}`} />
+                                          {over && <span className="text-[9px] text-red-500 font-medium">Max {fmt(reste)}</span>}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                </td>
+                                <td className="px-2 py-1.5 text-right text-xs font-mono text-slate-500">{appele > 0 ? fmt(appele) : "—"}</td>
+                                <td className="px-2 py-1.5 text-right text-xs font-mono text-emerald-600">{paye > 0 ? fmt(paye) : "—"}</td>
+                                <td className={`px-2 py-1.5 text-right text-xs font-mono font-bold ${reste > 0 ? "text-red-500" : "text-emerald-600"}`}>
+                                  {appele > 0 ? fmt(reste) : "—"}
+                                </td>
+                                <td className="px-1 py-1.5 text-center">
+                                  <button onClick={() => hasAmt && saveLot(row.lot_id)}
+                                    disabled={isSaving || !hasAmt}
+                                    className={`inline-flex items-center justify-center w-6 h-6 rounded-full transition active:scale-90 ${
+                                      hasAmt ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm" : "bg-slate-100 text-slate-300 cursor-default"
+                                    }`}>
+                                    {isSaving
+                                      ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                                      : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </>
+                      );
+                    })}
+                    {rows.length === 0 && !loading && (
+                      <tr><td colSpan={7} className="text-center text-slate-400 py-10 text-xs">Aucun lot pour {year}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              ) : (
+                /* ══ TABLE CHARGE : 12 colonnes mois ═══════════════════════ */
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/80">
+                      <th className="text-left px-3 py-2.5 text-slate-600 font-bold w-12 sticky left-0 bg-slate-50/90 z-10">Lot</th>
+                      <th className="text-left px-2 py-2.5 text-slate-400 font-medium min-w-[100px] max-w-[130px]">Propriétaire</th>
+                      {MOIS.map((m, i) => (
+                        <th key={i} className={`py-2.5 text-center font-medium w-8 ${i === month ? "text-indigo-600 bg-indigo-50/60" : "text-slate-400"}`}>{m}</th>
+                      ))}
+                      <th className="px-3 py-2.5 text-right text-slate-400 font-medium w-28 min-w-[100px]">Montant</th>
+                      <th className="px-2 py-2.5 w-8" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map(([groupName, groupRows]) => {
+                      const isCollapsed = collapsedGroups.has(groupName);
+                      return (
+                        <>
+                          <tr key={`g_${groupName}`}
+                            className="bg-slate-50 border-b border-slate-200 cursor-pointer select-none hover:bg-slate-100 transition"
+                            onClick={() => toggleGroup(groupName)}>
+                            <td colSpan={16} className="px-3 py-1.5">
+                              <div className="flex items-center gap-2">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                                  strokeLinecap="round" strokeLinejoin="round"
+                                  className={`w-3 h-3 text-slate-400 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}>
+                                  <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{groupName}</span>
+                                <span className="text-[9px] text-slate-400 font-medium">{groupRows.length} lot{groupRows.length > 1 ? "s" : ""}</span>
+                              </div>
+                            </td>
+                          </tr>
+                          {!isCollapsed && groupRows.map((row, ri) => {
+                            const sel      = selected[row.lot_id] || new Set();
+                            const hasSel   = sel.size > 0;
+                            const isSaving = saving[row.lot_id];
+                            const amount   = amounts[row.lot_id] || "";
+                            return (
+                              <tr key={ri} className={`border-b border-slate-50 transition-colors ${hasSel ? "bg-amber-50/40" : "hover:bg-slate-50/50"}`}>
+                                <td className="px-3 py-2 sticky left-0 bg-inherit z-10">
+                                  <span className="font-black text-indigo-700">{row.lot}</span>
+                                </td>
+                                <td className="px-2 py-2 text-slate-500 text-[11px] truncate max-w-[130px]">{row.nom}</td>
+                                {row.paid.map((_, mi) => {
+                                  const isSel       = sel.has(mi);
+                                  const isThisMonth = row.paidThisMonth[mi];
+                                  const isBefore    = row.paidBefore[mi];
+                                  const isLocked    = !row.paid[mi] && row.paidAny[mi];
+                                  return (
+                                    <td key={mi} className={`py-2 text-center px-0.5 ${mi === month ? "bg-indigo-50/30" : ""}`}>
+                                      {isThisMonth ? (
+                                        <button onClick={() => undoMonthPaiement(row.lot_id, mi)}
+                                          title="Payé ce mois — cliquer pour annuler ce mois"
+                                          className="relative group/cell inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold hover:bg-red-400 transition select-none">
+                                          <span className="[@media(hover:hover)]:group-hover/cell:hidden">✓</span>
+                                          <span className="hidden [@media(hover:hover)]:group-hover/cell:inline font-bold">×</span>
+                                        </button>
+                                      ) : isBefore ? (
+                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-[9px] font-semibold select-none" title="Payé avant ce mois">✓</span>
+                                      ) : isLocked ? (
+                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-400 text-[9px] font-bold select-none cursor-not-allowed" title="Déjà payé">✓</span>
+                                      ) : isSel ? (
+                                        <button onClick={() => toggleMonth(row.lot_id, mi)}
+                                          className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400 text-white text-[9px] font-bold hover:bg-amber-500 active:scale-90 transition">✓</button>
+                                      ) : (
+                                        <button onClick={() => toggleMonth(row.lot_id, mi)}
+                                          className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-300 hover:bg-amber-100 hover:text-amber-400 active:scale-90 transition">—</button>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+                                <td className="px-2 py-1.5 text-right">
+                                  {hasSel ? (
+                                    <input type="number" min={0} step="1" value={amount}
+                                      onChange={e => setAmounts(a => ({ ...a, [row.lot_id]: e.target.value }))}
+                                      className="w-24 border border-amber-200 rounded-lg px-2 py-1 text-xs text-right font-mono bg-amber-50 focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                                  ) : row.monthlyAmt > 0 ? (
+                                    <span className="text-[10px] text-slate-300 font-mono">{fmt(row.monthlyAmt)}/mois</span>
+                                  ) : null}
+                                </td>
+                                <td className="px-1 py-1.5 text-center">
+                                  <button
+                                    onClick={() => hasSel && saveLot(row.lot_id)}
+                                    disabled={isSaving || !hasSel || !amount || parseFloat(amount) <= 0}
+                                    title={hasSel ? "Enregistrer le paiement" : "Sélectionnez des mois"}
+                                    className={`inline-flex items-center justify-center w-6 h-6 rounded-full transition active:scale-90 ${
+                                      hasSel && amount && parseFloat(amount) > 0
+                                        ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm"
+                                        : "bg-slate-100 text-slate-300 cursor-default"
+                                    }`}>
+                                    {isSaving
+                                      ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                                      : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </>
+                      );
+                    })}
+                    {rows.length === 0 && !loading && (
+                      <tr><td colSpan={16} className="text-center text-slate-400 py-10 text-xs">Aucun lot pour {year}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         )}

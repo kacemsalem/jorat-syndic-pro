@@ -801,6 +801,33 @@ def situation_paiements_view(request):
                 row["date_paiement"], -row["id"], float(row["montant"]),
             ))
 
+    # ── Fond paiements directs (pour grille FOND) ─────────────────
+    # Inclus uniquement quand appel_id est fourni (mode mois-direct)
+    _MOIS_CODES = ["JAN","FEV","MAR","AVR","MAI","JUN","JUL","AOU","SEP","OCT","NOV","DEC"]
+    fond_pmt_map = {}   # {lot_id: [{id, mois, montant, date}]}
+    if type_charge == "FOND" and appel_id:
+        for row in (
+            AffectationPaiement.objects
+            .filter(paiement__lot__in=lot_ids, detail__appel__id=appel_id)
+            .values(
+                "paiement__lot_id", "paiement__id",
+                "paiement__mois", "paiement__date_paiement",
+                "montant_affecte",
+            )
+            .order_by("paiement__lot_id", "paiement__date_paiement")
+        ):
+            # Si mois non renseigné, le déduire de date_paiement
+            mois = row["paiement__mois"]
+            if not mois:
+                dt = row["paiement__date_paiement"]
+                mois = _MOIS_CODES[dt.month - 1] if dt else ""
+            fond_pmt_map.setdefault(row["paiement__lot_id"], []).append({
+                "id":      row["paiement__id"],
+                "mois":    mois,
+                "montant": float(row["montant_affecte"]),
+                "date":    str(row["paiement__date_paiement"]),
+            })
+
     # ── Construction résultat ─────────────────────────────────
     result = []
     for lot in lots_qs:
@@ -852,14 +879,20 @@ def situation_paiements_view(request):
                     })
                     remaining -= contribution
 
-        result.append({
+        lot_entry = {
             "lot_id":    lot.id,
             "lot":       lot.numero_lot,
             "nom":       nom,
             "groupe":    lot.groupe.nom_groupe if lot.groupe else "",
             "total_du":  total_du_year,
             "paiements": segments,
-        })
+        }
+        # Pour FOND avec appel_id : ajouter les paiements directs avec mois/id
+        if type_charge == "FOND" and appel_id:
+            fp = fond_pmt_map.get(lot.id, [])
+            lot_entry["fond_paiements"] = fp
+            lot_entry["total_paye"] = sum(p["montant"] for p in fp)
+        result.append(lot_entry)
 
     # Années disponibles (tous les appels du type, pas uniquement l'appel sélectionné)
     available_years = sorted(
@@ -952,13 +985,15 @@ MOIS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin",
            "Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
 MOIS_SHORT = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"]
 
-def _saisie_grille_data(residence, year, month, type_charge):
+def _saisie_grille_data(residence, year, month, type_charge, appel_id=None):
     """
     Retourne un dict avec:
       - lots: [{lot, nom, paid[12], total_du, total_paye, reste}]
       - total_paiements_mois, total_depenses_mois, balance
       - depenses: [{date, libelle, categorie, fournisseur, montant}]
+    Pour FOND + appel_id : logique mois-direct (pas de mensualités).
     """
+    MOIS_CODES = ["JAN","FEV","MAR","AVR","MAI","JUN","JUL","AOU","SEP","OCT","NOV","DEC"]
     import calendar as cal
     last_day = cal.monthrange(year, month)[1]
     cutoff   = datetime.date(year, month, last_day)
@@ -973,44 +1008,17 @@ def _saisie_grille_data(residence, year, month, type_charge):
     lot_ids = list(lots_qs.values_list("id", flat=True))
 
     from django.db.models import Sum as DSum
-    # Charges par lot pour l'année
-    charges_rows = (
-        DetailAppelCharge.objects
-        .filter(lot__in=lot_ids, appel__type_charge=type_charge, appel__exercice=year)
-        .values("lot_id")
-        .annotate(total=DSum("montant"))
-    )
-    charges_map = {r["lot_id"]: float(r["total"]) for r in charges_rows}
 
-    # Paiements ventilés jusqu'au cutoff
-    aff_rows = (
-        AffectationPaiement.objects
-        .filter(
-            paiement__lot__in=lot_ids,
-            paiement__date_paiement__lte=cutoff,
-            detail__appel__type_charge=type_charge,
-            detail__appel__exercice=year,
-        )
-        .values("paiement__lot_id")
-        .annotate(total=DSum("montant_affecte"))
-    )
-    paye_map = {r["paiement__lot_id"]: float(r["total"]) for r in aff_rows}
+    # Charges par lot
+    if appel_id:
+        charges_qs = DetailAppelCharge.objects.filter(lot__in=lot_ids, appel__id=appel_id)
+    else:
+        charges_qs = DetailAppelCharge.objects.filter(
+            lot__in=lot_ids, appel__type_charge=type_charge, appel__exercice=year)
+    charges_map = {r["lot_id"]: float(r["total"])
+                   for r in charges_qs.values("lot_id").annotate(total=DSum("montant"))}
 
-    # Paiements ventilés AVANT le mois actif (pour différencier "payé ce mois" vs "payé avant")
-    aff_before_rows = (
-        AffectationPaiement.objects
-        .filter(
-            paiement__lot__in=lot_ids,
-            paiement__date_paiement__lt=deb_mois,
-            detail__appel__type_charge=type_charge,
-            detail__appel__exercice=year,
-        )
-        .values("paiement__lot_id")
-        .annotate(total=DSum("montant_affecte"))
-    )
-    paye_before_map = {r["paiement__lot_id"]: float(r["total"]) for r in aff_before_rows}
-
-    # KPI mois : paiements encaissés dans le mois
+    # KPI mois : paiements encaissés dans le mois (tous types)
     total_paiements_mois = float(
         Paiement.objects
         .filter(residence=residence, date_paiement__gte=deb_mois, date_paiement__lte=cutoff)
@@ -1041,27 +1049,107 @@ def _saisie_grille_data(residence, year, month, type_charge):
             "montant":     m,
         })
 
-    # Rows grille
     lots_out = []
-    for lot in lots_qs:
-        rep = lot.representant
-        nom = f"{rep.nom} {rep.prenom or ''}".strip() if rep else "—"
-        total_du   = charges_map.get(lot.id, 0.0)
-        total_paye = paye_map.get(lot.id, 0.0)
-        reste      = total_du - total_paye
-        months_covered = (total_paye / total_du * 12) if total_du > 0 else 0.0
-        paye_before = paye_before_map.get(lot.id, 0.0)
-        months_before = (paye_before / total_du * 12) if total_du > 0 else 0.0
-        paid           = [i < months_covered for i in range(12)]
-        paid_before    = [i < months_before for i in range(12)]
-        paid_this_month = [(months_before <= i < months_covered) for i in range(12)]
-        lots_out.append({
-            "lot": lot.numero_lot, "nom": nom,
-            "paid": paid,
-            "paid_before": paid_before,
-            "paid_this_month": paid_this_month,
-            "total_du": total_du, "total_paye": total_paye, "reste": reste,
-        })
+
+    if type_charge == "FOND" and appel_id:
+        # ── FOND mode : logique mois-direct ──────────────────────────
+        fond_pmts = (
+            AffectationPaiement.objects
+            .filter(paiement__lot__in=lot_ids, detail__appel__id=appel_id)
+            .values(
+                "paiement__lot_id", "paiement__id",
+                "paiement__mois", "paiement__date_paiement",
+                "montant_affecte",
+            )
+            .order_by("paiement__lot_id", "paiement__date_paiement")
+        )
+        fond_pmt_map = {}   # {lot_id: [{id, mois, montant, date}]}
+        for row in fond_pmts:
+            # Si mois non renseigné, le déduire de date_paiement
+            mois = row["paiement__mois"]
+            if not mois:
+                dt = row["paiement__date_paiement"]
+                mois = MOIS_CODES[dt.month - 1] if dt else ""
+            fond_pmt_map.setdefault(row["paiement__lot_id"], []).append({
+                "id":     row["paiement__id"],
+                "mois":   mois,
+                "montant": float(row["montant_affecte"]),
+                "date":   row["paiement__date_paiement"],
+            })
+
+        for lot in lots_qs:
+            rep = lot.representant
+            nom = f"{rep.nom} {rep.prenom or ''}".strip() if rep else "—"
+            total_du   = charges_map.get(lot.id, 0.0)
+            pmts       = fond_pmt_map.get(lot.id, [])
+            total_paye = sum(p["montant"] for p in pmts)
+            reste      = total_du - total_paye
+
+            paid = [any(p["mois"] == MOIS_CODES[i] for p in pmts) for i in range(12)]
+            paid_before = [
+                any(p["mois"] == MOIS_CODES[i] and p["date"] < deb_mois for p in pmts)
+                for i in range(12)
+            ]
+            paid_this_month = [
+                any(p["mois"] == MOIS_CODES[i] and deb_mois <= p["date"] <= cutoff for p in pmts)
+                for i in range(12)
+            ]
+            lots_out.append({
+                "lot": lot.numero_lot, "nom": nom,
+                "paid": paid, "paid_before": paid_before, "paid_this_month": paid_this_month,
+                "total_du": total_du, "total_paye": total_paye, "reste": reste,
+                "fond_paiements": [
+                    {"id": p["id"], "mois": p["mois"],
+                     "montant": p["montant"], "date": str(p["date"])}
+                    for p in pmts
+                ],
+            })
+
+    else:
+        # ── CHARGE mode : logique carry-over (mensualités) ────────────
+        aff_rows = (
+            AffectationPaiement.objects
+            .filter(
+                paiement__lot__in=lot_ids,
+                paiement__date_paiement__lte=cutoff,
+                detail__appel__type_charge=type_charge,
+                detail__appel__exercice=year,
+            )
+            .values("paiement__lot_id")
+            .annotate(total=DSum("montant_affecte"))
+        )
+        paye_map = {r["paiement__lot_id"]: float(r["total"]) for r in aff_rows}
+
+        aff_before_rows = (
+            AffectationPaiement.objects
+            .filter(
+                paiement__lot__in=lot_ids,
+                paiement__date_paiement__lt=deb_mois,
+                detail__appel__type_charge=type_charge,
+                detail__appel__exercice=year,
+            )
+            .values("paiement__lot_id")
+            .annotate(total=DSum("montant_affecte"))
+        )
+        paye_before_map = {r["paiement__lot_id"]: float(r["total"]) for r in aff_before_rows}
+
+        for lot in lots_qs:
+            rep = lot.representant
+            nom = f"{rep.nom} {rep.prenom or ''}".strip() if rep else "—"
+            total_du    = charges_map.get(lot.id, 0.0)
+            total_paye  = paye_map.get(lot.id, 0.0)
+            reste       = total_du - total_paye
+            months_covered = (total_paye / total_du * 12) if total_du > 0 else 0.0
+            paye_before    = paye_before_map.get(lot.id, 0.0)
+            months_before  = (paye_before / total_du * 12) if total_du > 0 else 0.0
+            paid            = [i < months_covered for i in range(12)]
+            paid_before     = [i < months_before for i in range(12)]
+            paid_this_month = [(months_before <= i < months_covered) for i in range(12)]
+            lots_out.append({
+                "lot": lot.numero_lot, "nom": nom,
+                "paid": paid, "paid_before": paid_before, "paid_this_month": paid_this_month,
+                "total_du": total_du, "total_paye": total_paye, "reste": reste,
+            })
 
     return {
         "lots": lots_out,
@@ -1094,8 +1182,13 @@ def saisie_grille_export_excel(request):
     type_charge = request.query_params.get("type_charge", "CHARGE")
     if type_charge not in ("CHARGE", "FOND"):
         type_charge = "CHARGE"
+    appel_id = request.query_params.get("appel_id")
+    try:
+        appel_id = int(appel_id) if appel_id else None
+    except (TypeError, ValueError):
+        appel_id = None
 
-    d = _saisie_grille_data(residence, year, month, type_charge)
+    d = _saisie_grille_data(residence, year, month, type_charge, appel_id=appel_id)
 
     wb = Workbook()
     ws = wb.active
@@ -1294,8 +1387,13 @@ def saisie_grille_export_pdf(request):
     type_charge = request.query_params.get("type_charge", "CHARGE")
     if type_charge not in ("CHARGE", "FOND"):
         type_charge = "CHARGE"
+    appel_id_pdf = request.query_params.get("appel_id")
+    try:
+        appel_id_pdf = int(appel_id_pdf) if appel_id_pdf else None
+    except (TypeError, ValueError):
+        appel_id_pdf = None
 
-    d = _saisie_grille_data(residence, year, month, type_charge)
+    d = _saisie_grille_data(residence, year, month, type_charge, appel_id=appel_id_pdf)
 
     def money(v): return f"{float(v):,.2f}"
 
