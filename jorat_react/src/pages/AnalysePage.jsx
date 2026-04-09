@@ -51,22 +51,20 @@ export default function AnalysePage() {
             <h1 className="text-white font-bold text-lg leading-tight">Situation</h1>
           </div>
         </div>
-        <p className="text-white/50 text-[10px] mt-2">Finances · Suivi · Rapports · Graphes</p>
+        <p className="text-white/50 text-[10px] mt-2">Finances · Suivi · Rapports</p>
       </div>
 
       <div className="px-4 -mt-5 space-y-4">
 
         {/* ── Finances ────────────────────────────────────── */}
         <Section title="Finances">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <NavCard onClick={() => navigate("/caisse")} label="Caisse"
               icon={<><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M7 15h.01M12 15h.01"/></>} />
             <NavCard onClick={() => navigate("/depenses")} label="Dépenses"
               icon={<><path d="M12 5v14M19 12l-7 7-7-7"/></>} />
             <NavCard onClick={() => navigate("/paiements")} label="Cotisations"
               icon={<><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></>} />
-            <NavCard onClick={() => navigate("/etat-mensuel")} label="Mensuel"
-              icon={<><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>} />
           </div>
         </Section>
 
@@ -79,21 +77,6 @@ export default function AnalysePage() {
               icon={<><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/></>} />
             <NavCard onClick={() => navigate("/rapport-financier")} label="Rapport"
               icon={<><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>} />
-          </div>
-        </Section>
-
-        {/* ── Graphes ──────────────────────────────────────── */}
-        <Section title="Graphes">
-          <div className="grid grid-cols-3 gap-2">
-            <NavCard onClick={() => navigate("/graphe-depenses")} label="Dépenses"
-              color="#DC2626" bg="bg-red-50"
-              icon={<><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>} />
-            <NavCard onClick={() => navigate("/graphe-paiements")} label="Paiements"
-              color="#059669" bg="bg-emerald-50"
-              icon={<><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h20"/></>} />
-            <NavCard onClick={() => navigate("/graphe-caisse")} label="Caisse"
-              color="#2563EB" bg="bg-blue-50"
-              icon={<><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></>} />
           </div>
         </Section>
 

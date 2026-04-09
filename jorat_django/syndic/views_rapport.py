@@ -843,6 +843,7 @@ def situation_paiements_view(request):
             "lot_id":    lot.id,
             "lot":       lot.numero_lot,
             "nom":       nom,
+            "groupe":    lot.groupe.nom_groupe if lot.groupe else "",
             "total_du":  total_du_year,
             "paiements": segments,
         })
