@@ -590,24 +590,21 @@ export default function SaisieGrilleePage() {
                         </td>
                         <td className="px-2 py-2 text-slate-500 text-[11px] truncate max-w-[130px]">{row.nom}</td>
                         {row.paid.map((isPaid, mi) => {
-                          const isSel      = sel.has(mi);
-                          const isLocked   = row.paidAny[mi]; // paid globally (even if after filter date)
-                          const isFutur    = mi > month && !isLocked; // future & truly unpaid
+                          const isSel    = sel.has(mi);
+                          const isLocked = row.paidAny[mi]; // paid globally → not clickable
                           return (
                             <td key={mi} className={`py-2 text-center px-0.5 ${mi === month ? "bg-indigo-50/30" : ""}`}>
                               {isPaid ? (
                                 // Paid and visible in current filter → green
                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold select-none">✓</span>
                               ) : isLocked ? (
-                                // Paid globally but not shown (payment is after filter date) → gray lock
+                                // Paid globally but after filter date → gray ✓ locked
                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-400 text-[9px] font-bold select-none cursor-not-allowed" title="Déjà payé">✓</span>
-                              ) : isFutur ? (
-                                // Future month, not yet paid → locked dash
-                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-200 text-[10px] select-none cursor-not-allowed">—</span>
                               ) : isSel ? (
                                 <button onClick={() => toggleMonth(row.lot_id, mi)}
                                   className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400 text-white text-[9px] font-bold hover:bg-amber-500 active:scale-90 transition">✓</button>
                               ) : (
+                                // Unpaid → always clickable regardless of filter month
                                 <button onClick={() => toggleMonth(row.lot_id, mi)}
                                   className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-300 hover:bg-amber-100 hover:text-amber-400 active:scale-90 transition">—</button>
                               )}
