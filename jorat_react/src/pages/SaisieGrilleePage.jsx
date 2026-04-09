@@ -200,7 +200,6 @@ export default function SaisieGrilleePage() {
   const [selected, setSelected] = useState({});   // { lotId: Set<monthIndex> }
   const [amounts,  setAmounts]  = useState({});   // { lotId: string }
   const [saving,   setSaving]   = useState({});
-  const [saved,    setSaved]    = useState({});
   const [collapsedGroups, setCollapsedGroups] = useState(new Set()); // collapsed group names
 
   // dépenses + paiements du mois
@@ -212,6 +211,9 @@ export default function SaisieGrilleePage() {
   const [depenses,     setDepenses]     = useState([]);
   const [paiementsMois, setPaiementsMois] = useState([]);
   const [loadingDep,   setLoadingDep]   = useState(false);
+  const [editingDep,   setEditingDep]   = useState(null);  // id en cours d'édition
+  const [editForm,     setEditForm]     = useState({});
+  const [savingEdit,   setSavingEdit]   = useState(false);
 
   // ── Load reference data once ──────────────────────────────────
   useEffect(() => {
@@ -285,7 +287,7 @@ export default function SaisieGrilleePage() {
   }, [year, typeCharge]);
 
   useEffect(() => {
-    setSelected({}); setAmounts({}); setSaved({});
+    setSelected({}); setAmounts({});
     setCrossData(null);
     fetchGrille();
   }, [fetchGrille]);
@@ -354,7 +356,6 @@ export default function SaisieGrilleePage() {
     const row = rows.find(r => r.lot_id === lotId);
     // Refuse toggle if month is already paid globally
     if (row?.paidAny[mi]) return;
-    setSaved(p => ({ ...p, [lotId]: false }));
     setSelected(prev => {
       const s = new Set(prev[lotId] || []);
       if (s.has(mi)) s.delete(mi); else s.add(mi);
@@ -367,7 +368,7 @@ export default function SaisieGrilleePage() {
   // date du paiement = 1er du mois sélectionné
   const payDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
 
-  const saveLot = async (lotId) => {
+  const saveLot = async (lotId, { skipRefresh = false } = {}) => {
     const amount = parseFloat(amounts[lotId] || 0);
     if (!amount || amount <= 0) return;
     setSaving(p => ({ ...p, [lotId]: true }));
@@ -387,20 +388,12 @@ export default function SaisieGrilleePage() {
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
         body: JSON.stringify(ventilerBody),
       });
-      // Refresh details per lot after payment
-      if (typeCharge === "FOND" && selectedAppel) {
-        fetch(`${API}/details-appel/?appel=${selectedAppel}&page_size=9999`, { credentials: "include" })
-          .then(r => r.ok ? r.json() : null)
-          .then(d => {
-            const list = Array.isArray(d) ? d : (d?.results ?? []);
-            const map = {};
-            list.forEach(dt => { map[String(dt.lot)] = { montant: parseFloat(dt.montant || 0), montant_recu: parseFloat(dt.montant_recu || 0) }; });
-            setDetailsByLot(map);
-          }).catch(() => {});
-      }
-      setSaved(p => ({ ...p, [lotId]: true }));
       setSelected(p => ({ ...p, [lotId]: new Set() }));
       setAmounts(p => ({ ...p, [lotId]: "" }));
+      if (!skipRefresh) {
+        fetchGrille();
+        fetchDepenses();
+      }
     } finally {
       setSaving(p => ({ ...p, [lotId]: false }));
     }
@@ -411,14 +404,105 @@ export default function SaisieGrilleePage() {
       const s = selected[r.lot_id];
       return s && s.size > 0 && parseFloat(amounts[r.lot_id] || 0) > 0;
     });
-    for (const row of toSave) await saveLot(row.lot_id);
+    for (const row of toSave) await saveLot(row.lot_id, { skipRefresh: true });
+    // Refresh details fond if needed
+    if (typeCharge === "FOND" && selectedAppel) {
+      fetch(`${API}/details-appel/?appel=${selectedAppel}&page_size=9999`, { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const list = Array.isArray(d) ? d : (d?.results ?? []);
+          const map = {};
+          list.forEach(dt => { map[String(dt.lot)] = { montant: parseFloat(dt.montant || 0), montant_recu: parseFloat(dt.montant_recu || 0) }; });
+          setDetailsByLot(map);
+        }).catch(() => {});
+    }
     fetchGrille();
+    fetchDepenses();
+  };
+
+  const undoMonthPaiement = async (lotId, mi) => {
+    const row = rows.find(r => r.lot_id === lotId);
+    if (!row || !row.monthlyAmt) return;
+    if (!confirm(`Annuler le paiement de ${MOIS[mi]} ${year} pour ce lot ?`)) return;
+
+    const m   = String(month + 1).padStart(2, "0");
+    const deb = `${year}-${m}-01`;
+    const fin = `${year}-${m}-${String(lastDay(year, month)).padStart(2, "0")}`;
+
+    const res  = await fetch(`${API}/paiements/?lot=${lotId}&date_debut=${deb}&date_fin=${fin}&page_size=9999`, { credentials: "include" });
+    const data = res.ok ? await res.json() : null;
+    const list = Array.isArray(data) ? data : (data?.results ?? []);
+    if (list.length === 0) return;
+
+    const totalAmt = list.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+    const newAmt   = Math.round((totalAmt - row.monthlyAmt) * 100) / 100;
+
+    // Supprimer tous les paiements de ce mois pour ce lot
+    for (const p of list) {
+      await fetch(`${API}/paiements/${p.id}/`, { method: "DELETE", credentials: "include", headers: { "X-CSRFToken": getCsrf() } });
+    }
+
+    // Si un solde reste, recréer un paiement réduit et le ventiler
+    if (newAmt > 0.001) {
+      const createRes = await fetch(`${API}/paiements/`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({ lot: lotId, montant: String(newAmt), date_paiement: payDate, reference: "" }),
+      });
+      if (createRes.ok) {
+        const newPmt = await createRes.json();
+        const ventilerBody = typeCharge === "FOND" && selectedAppel
+          ? { appel_id: Number(selectedAppel) }
+          : { exercice: year, type_charge: typeCharge };
+        await fetch(`${API}/paiements/${newPmt.id}/ventiler/`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+          body: JSON.stringify(ventilerBody),
+        });
+      }
+    }
+
+    fetchGrille();
+    fetchDepenses();
   };
 
   const deleteDepense = async (id) => {
     if (!confirm("Supprimer cette dépense ?")) return;
     await fetch(`${API}/depenses/${id}/`, { method: "DELETE", credentials: "include", headers: { "X-CSRFToken": getCsrf() } });
     fetchDepenses();
+  };
+
+  const startEdit = async (d) => {
+    const res  = await fetch(`${API}/depenses/${d.id}/`, { credentials: "include" });
+    const full = res.ok ? await res.json() : d;
+    setEditForm({
+      libelle:      full.libelle      || "",
+      montant:      String(full.montant || ""),
+      date_depense: full.date_depense  || "",
+      categorie:    String(full.categorie    || ""),
+      fournisseur:  String(full.fournisseur  || ""),
+      compte:       String(full.compte       || ""),
+    });
+    setEditingDep(d.id);
+  };
+
+  const saveEdit = async () => {
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`${API}/depenses/${editingDep}/`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify({
+          libelle:      editForm.libelle,
+          montant:      editForm.montant,
+          date_depense: editForm.date_depense,
+          categorie:    editForm.categorie    || null,
+          fournisseur:  editForm.fournisseur  || null,
+          compte:       editForm.compte       || null,
+        }),
+      });
+      if (res.ok) { setEditingDep(null); fetchDepenses(); }
+    } finally { setSavingEdit(false); }
   };
 
   const selectedLots  = rows.filter(r => (selected[r.lot_id]?.size || 0) > 0);
@@ -615,11 +699,10 @@ export default function SaisieGrilleePage() {
                           const sel      = selected[row.lot_id] || new Set();
                           const hasSel   = sel.size > 0;
                           const isSaving = saving[row.lot_id];
-                          const isSaved  = saved[row.lot_id];
                           const amount   = amounts[row.lot_id] || "";
                           return (
                             <tr key={ri} className={`border-b border-slate-50 transition-colors ${
-                              hasSel ? "bg-amber-50/40" : isSaved ? "bg-emerald-50/30" : "hover:bg-slate-50/50"}`}>
+                              hasSel ? "bg-amber-50/40" : "hover:bg-slate-50/50"}`}>
                               <td className="px-3 py-2 sticky left-0 bg-inherit z-10">
                                 <span className="font-black text-indigo-700">{row.lot}</span>
                               </td>
@@ -632,7 +715,12 @@ export default function SaisieGrilleePage() {
                                 return (
                                   <td key={mi} className={`py-2 text-center px-0.5 ${mi === month ? "bg-indigo-50/30" : ""}`}>
                                     {isThisMonth ? (
-                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold select-none" title="Payé ce mois">✓</span>
+                                      <button onClick={() => undoMonthPaiement(row.lot_id, mi)}
+                                        title="Payé ce mois — cliquer pour annuler ce mois"
+                                        className="relative group/cell inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold hover:bg-red-400 transition select-none">
+                                        <span className="group-hover/cell:hidden">✓</span>
+                                        <span className="hidden group-hover/cell:inline font-bold">×</span>
+                                      </button>
                                     ) : isBefore ? (
                                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-[9px] font-semibold select-none" title="Payé avant ce mois">✓</span>
                                     ) : isLocked ? (
@@ -652,8 +740,6 @@ export default function SaisieGrilleePage() {
                                   <input type="number" min={0} step="1" value={amount}
                                     onChange={e => setAmounts(a => ({ ...a, [row.lot_id]: e.target.value }))}
                                     className="w-24 border border-amber-200 rounded-lg px-2 py-1 text-xs text-right font-mono bg-amber-50 focus:outline-none focus:ring-1 focus:ring-amber-400" />
-                                ) : isSaved ? (
-                                  <span className="text-[10px] font-semibold text-emerald-600">✓ Enregistré</span>
                                 ) : row.monthlyAmt > 0 ? (
                                   <span className="text-[10px] text-slate-300 font-mono">{fmt(row.monthlyAmt)}/mois</span>
                                 ) : null}
@@ -672,15 +758,19 @@ export default function SaisieGrilleePage() {
                                 </>);
                               })()}
                               <td className="px-1 py-1.5 text-center">
-                                {hasSel && (
-                                  <button onClick={() => saveLot(row.lot_id)}
-                                    disabled={isSaving || !amount || parseFloat(amount) <= 0}
-                                    className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-40 active:scale-90 transition">
-                                    {isSaving
-                                      ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-                                      : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() => hasSel && saveLot(row.lot_id)}
+                                  disabled={isSaving || !hasSel || !amount || parseFloat(amount) <= 0}
+                                  title={hasSel ? "Enregistrer le paiement" : "Sélectionnez des mois"}
+                                  className={`inline-flex items-center justify-center w-6 h-6 rounded-full transition active:scale-90 ${
+                                    hasSel && amount && parseFloat(amount) > 0
+                                      ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm"
+                                      : "bg-slate-100 text-slate-300 cursor-default"
+                                  }`}>
+                                  {isSaving
+                                    ? <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                                    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3"><polyline points="20 6 9 17 4 12"/></svg>}
+                                </button>
                               </td>
                             </tr>
                           );
@@ -721,21 +811,63 @@ export default function SaisieGrilleePage() {
             <>
               <div className="p-2 space-y-1">
                 {depenses.map(d => (
-                  <div key={d.id} className="flex items-center gap-2 rounded-lg bg-red-50/40 px-2.5 py-1.5 hover:bg-red-50 group transition">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 truncate">{d.libelle}</p>
-                      <p className="text-[10px] text-slate-400">{d.date_depense}
-                        {d.categorie_nom ? <span className="ml-1">· {d.categorie_nom}</span> : ""}
-                        {d.fournisseur_nom ? <span className="ml-1">· {d.fournisseur_nom}</span> : ""}
-                      </p>
-                    </div>
-                    <span className="text-xs font-bold font-mono text-red-500 shrink-0">{fmt(d.montant)}</span>
-                    <button onClick={() => deleteDepense(d.id)}
-                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition shrink-0 ml-1">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-                        <path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/>
-                      </svg>
-                    </button>
+                  <div key={d.id} className="rounded-lg overflow-hidden">
+                    {editingDep === d.id ? (
+                      /* ── Inline edit form ── */
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-2">
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <input value={editForm.libelle} onChange={e => setEditForm(f => ({ ...f, libelle: e.target.value }))}
+                            placeholder="Libellé" className={INP + " col-span-2"} />
+                          <input type="number" value={editForm.montant} onChange={e => setEditForm(f => ({ ...f, montant: e.target.value }))}
+                            placeholder="Montant" className={INP} />
+                          <input type="date" value={editForm.date_depense} onChange={e => setEditForm(f => ({ ...f, date_depense: e.target.value }))}
+                            className={INP} />
+                          <select value={editForm.categorie} onChange={e => setEditForm(f => ({ ...f, categorie: e.target.value }))} className={SEL}>
+                            <option value="">Catégorie…</option>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+                          </select>
+                          <select value={editForm.fournisseur} onChange={e => setEditForm(f => ({ ...f, fournisseur: e.target.value }))} className={SEL}>
+                            <option value="">Fournisseur…</option>
+                            {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom_societe || `${f.nom} ${f.prenom || ""}`.trim()}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex gap-1.5 justify-end">
+                          <button onClick={() => setEditingDep(null)}
+                            className="px-3 py-1 text-[10px] font-semibold bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition">
+                            Annuler
+                          </button>
+                          <button onClick={saveEdit} disabled={savingEdit}
+                            className="px-3 py-1 text-[10px] font-semibold bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 transition">
+                            {savingEdit ? "…" : "Enregistrer"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── Normal row ── */
+                      <div className="flex items-center gap-2 bg-red-50/40 px-2.5 py-1.5 hover:bg-red-50 group transition">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-slate-800 truncate">{d.libelle}</p>
+                          <p className="text-[10px] text-slate-400">{d.date_depense}
+                            {d.categorie_nom ? <span className="ml-1">· {d.categorie_nom}</span> : ""}
+                            {d.fournisseur_nom ? <span className="ml-1">· {d.fournisseur_nom}</span> : ""}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold font-mono text-red-500 shrink-0">{fmt(d.montant)}</span>
+                        <button onClick={() => startEdit(d)}
+                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-500 transition shrink-0">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                        <button onClick={() => deleteDepense(d.id)}
+                          className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition shrink-0">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                            <path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/>
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
