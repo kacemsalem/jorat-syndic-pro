@@ -374,23 +374,34 @@ export default function SaisieGrilleePage() {
     cutoff.setHours(23, 59, 59, 999);
     return crossData.lots.map(lot => {
       const totalDu = parseFloat(lot.total_du || 0);
+
+      // Filtered payments (up to cutoff) → green display
       const filteredPaiements = (lot.paiements || []).filter(p =>
         !p.date || new Date(p.date) <= cutoff
       );
-      const totalPaid = filteredPaiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-      const monthsCovered = totalDu > 0 ? (totalPaid / totalDu) * 12 : 0;
-      const paid = Array(12).fill(false).map((_, i) => i < monthsCovered);
-      return { ...lot, paid, monthlyAmt: totalDu / 12, totalDu };
+      const totalPaidFiltered = filteredPaiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+      const monthsCoveredFiltered = totalDu > 0 ? (totalPaidFiltered / totalDu) * 12 : 0;
+
+      // ALL payments (regardless of date) → lock determination
+      const totalPaidAll = (lot.paiements || []).reduce((s, p) => s + parseFloat(p.montant || 0), 0);
+      const monthsCoveredAll = totalDu > 0 ? (totalPaidAll / totalDu) * 12 : 0;
+
+      const paid    = Array(12).fill(false).map((_, i) => i < monthsCoveredFiltered);
+      const paidAny = Array(12).fill(false).map((_, i) => i < monthsCoveredAll);
+
+      return { ...lot, paid, paidAny, monthlyAmt: totalDu / 12, totalDu };
     });
   }, [crossData, year, month]);
 
   const toggleMonth = (lotId, mi) => {
+    const row = rows.find(r => r.lot_id === lotId);
+    // Refuse toggle if month is already paid globally
+    if (row?.paidAny[mi]) return;
     setSaved(p => ({ ...p, [lotId]: false }));
     setSelected(prev => {
       const s = new Set(prev[lotId] || []);
       if (s.has(mi)) s.delete(mi); else s.add(mi);
       const next = { ...prev, [lotId]: s };
-      const row = rows.find(r => r.lot_id === lotId);
       if (row) setAmounts(a => ({ ...a, [lotId]: s.size > 0 ? String(Math.round(row.monthlyAmt * s.size)) : "" }));
       return next;
     });
@@ -579,13 +590,19 @@ export default function SaisieGrilleePage() {
                         </td>
                         <td className="px-2 py-2 text-slate-500 text-[11px] truncate max-w-[130px]">{row.nom}</td>
                         {row.paid.map((isPaid, mi) => {
-                          const isSel   = sel.has(mi);
-                          const isFutur = mi > month; // après le mois sélectionné → verrouillé
+                          const isSel      = sel.has(mi);
+                          const isLocked   = row.paidAny[mi]; // paid globally (even if after filter date)
+                          const isFutur    = mi > month && !isLocked; // future & truly unpaid
                           return (
                             <td key={mi} className={`py-2 text-center px-0.5 ${mi === month ? "bg-indigo-50/30" : ""}`}>
                               {isPaid ? (
+                                // Paid and visible in current filter → green
                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold select-none">✓</span>
+                              ) : isLocked ? (
+                                // Paid globally but not shown (payment is after filter date) → gray lock
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-400 text-[9px] font-bold select-none cursor-not-allowed" title="Déjà payé">✓</span>
                               ) : isFutur ? (
+                                // Future month, not yet paid → locked dash
                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-200 text-[10px] select-none cursor-not-allowed">—</span>
                               ) : isSel ? (
                                 <button onClick={() => toggleMonth(row.lot_id, mi)}
