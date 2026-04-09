@@ -698,6 +698,13 @@ def situation_paiements_view(request):
     if type_charge not in ("CHARGE", "FOND"):
         type_charge = "CHARGE"
 
+    # Filtre optionnel sur un appel de fond spécifique
+    appel_id = request.query_params.get("appel_id")
+    try:
+        appel_id = int(appel_id) if appel_id else None
+    except (TypeError, ValueError):
+        appel_id = None
+
     cutoff = datetime.date(year, 12, 31)
 
     lots_qs = (
@@ -708,23 +715,26 @@ def situation_paiements_view(request):
     )
     lot_ids = list(lots_qs.values_list("id", flat=True))
 
-    # ── Charges par (lot_id, exercice) filtrées par type ─────
+    # ── Charges par (lot_id, exercice) ───────────────────────────
     from django.db.models import Sum as DSum
-    charges_rows = (
-        DetailAppelCharge.objects
-        .filter(lot__in=lot_ids, appel__type_charge=type_charge)
-        .values("lot_id", "appel__exercice")
-        .annotate(total=DSum("montant"))
-    )
+    if appel_id:
+        charges_qs = DetailAppelCharge.objects.filter(lot__in=lot_ids, appel__id=appel_id)
+    else:
+        charges_qs = DetailAppelCharge.objects.filter(lot__in=lot_ids, appel__type_charge=type_charge)
+    charges_rows = charges_qs.values("lot_id", "appel__exercice").annotate(total=DSum("montant"))
     charges_map = {}  # {lot_id: {exercice: total}}
     for row in charges_rows:
         charges_map.setdefault(row["lot_id"], {})[row["appel__exercice"]] = float(row["total"])
 
-    # ── Montants ventilés live ──────────────────────────────────────────────
+    # ── Montants ventilés live ────────────────────────────────────
     aff_map = {}  # {lot_id: [(date, pmt_id, montant)]}
+    if appel_id:
+        aff_filter = dict(paiement__lot__in=lot_ids, detail__appel__id=appel_id)
+    else:
+        aff_filter = dict(paiement__lot__in=lot_ids, detail__appel__type_charge=type_charge)
     for row in (
         AffectationPaiement.objects
-        .filter(paiement__lot__in=lot_ids, detail__appel__type_charge=type_charge)
+        .filter(**aff_filter)
         .values("paiement__lot_id", "paiement__id", "paiement__date_paiement")
         .annotate(total=DSum("montant_affecte"))
         .order_by("paiement__lot_id", "paiement__date_paiement", "paiement__id")
@@ -735,24 +745,27 @@ def situation_paiements_view(request):
             float(row["total"]),
         ))
 
-    # ── Montants ventilés archivés ─────────────────────────────────────────
+    # ── Montants ventilés archivés ────────────────────────────────
+    if appel_id:
+        arch_aff_filter = dict(archive_paiement__lot__in=lot_ids, detail__appel__id=appel_id)
+    else:
+        arch_aff_filter = dict(archive_paiement__lot__in=lot_ids, detail__appel__type_charge=type_charge)
     for row in (
         ArchiveAffectationPaiement.objects
-        .filter(archive_paiement__lot__in=lot_ids, detail__appel__type_charge=type_charge)
+        .filter(**arch_aff_filter)
         .values("archive_paiement__lot_id", "archive_paiement__id", "archive_paiement__date_paiement")
         .annotate(total=DSum("montant_affecte"))
         .order_by("archive_paiement__lot_id", "archive_paiement__date_paiement", "archive_paiement__id")
     ):
-        # offset archive ids to avoid collision with live ids
         aff_map.setdefault(row["archive_paiement__lot_id"], []).append((
             row["archive_paiement__date_paiement"],
-            -row["archive_paiement__id"],  # négatif pour différencier
+            -row["archive_paiement__id"],
             float(row["total"]),
         ))
 
-    # ── Paiements NON ventilés live — inclus dans CHARGE ──────────────────
+    # ── Paiements NON ventilés live — inclus dans CHARGE seulement (pas si appel_id) ──
     unvent_map = {}  # {lot_id: [(date, pmt_id, montant)]}
-    if type_charge == "CHARGE":
+    if type_charge == "CHARGE" and not appel_id:
         has_aff = set(
             AffectationPaiement.objects
             .filter(paiement__lot__in=lot_ids)
@@ -848,7 +861,7 @@ def situation_paiements_view(request):
             "paiements": segments,
         })
 
-    # Années disponibles pour ce type (exercices ayant au moins un appel)
+    # Années disponibles (tous les appels du type, pas uniquement l'appel sélectionné)
     available_years = sorted(
         DetailAppelCharge.objects
         .filter(lot__in=lot_ids, appel__type_charge=type_charge)

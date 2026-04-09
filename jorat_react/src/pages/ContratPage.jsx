@@ -344,10 +344,6 @@ export default function ContratPage() {
       {/* Header */}
       <div className="bg-gradient-to-br from-teal-600 to-teal-700 px-4 pt-5 pb-14">
         <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => navigate("/depenses")}
-            className="flex items-center gap-1 text-white/70 text-[10px] font-semibold hover:text-white transition">
-            ← Dépenses
-          </button>
           <button onClick={() => navigate("/saisie-grille")}
             className="flex items-center gap-1 text-white/70 text-[10px] font-semibold hover:text-white transition">
             ← Saisie

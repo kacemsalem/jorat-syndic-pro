@@ -294,10 +294,6 @@ export default function ModelesDepensePage() {
       {/* Header */}
       <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 px-4 pt-5 pb-14">
         <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => navigate("/depenses")}
-            className="flex items-center gap-1 text-slate-700 text-[10px] font-semibold hover:text-slate-900 transition">
-            ← Dépenses
-          </button>
           <button onClick={() => navigate("/saisie-grille")}
             className="flex items-center gap-1 text-slate-700 text-[10px] font-semibold hover:text-slate-900 transition">
             ← Saisie

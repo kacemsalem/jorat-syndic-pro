@@ -399,8 +399,8 @@ export default function PaiementPage() {
   return (
     <div className="bg-slate-100 min-h-screen -m-3 sm:-m-6 pb-24">
       <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 pt-4 pb-12">
-        <h1 className="text-white font-bold text-lg">Saisie de paiement</h1>
-        <p className="text-white/60 text-[11px] mt-0.5">Enregistrer et ventiler un paiement</p>
+        <h1 className="text-white font-bold text-lg">Détail paiement</h1>
+        <p className="text-white/60 text-[11px] mt-0.5">Consulter et modifier un paiement</p>
       </div>
       <div className="px-4 -mt-6 space-y-4 pb-24 max-w-5xl mx-auto">
 
@@ -473,32 +473,19 @@ export default function PaiementPage() {
 
           <div className="grid lg:grid-cols-2 gap-4">
 
-            {/* ── Formulaire compact ── */}
+            {/* ── Formulaire modification seulement ── */}
             <div className="space-y-3">
-              <div className={`bg-white rounded-2xl shadow-sm border p-4 space-y-3 ${editingPaiement ? "border-amber-300 ring-1 ring-amber-200" : "border-slate-100"}`}>
+              {editingPaiement ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-amber-300 ring-1 ring-amber-200 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    {editingPaiement ? "Modifier le paiement" : "Nouveau paiement"}
-                  </h2>
-                  {editingPaiement && (
-                    <button onClick={cancelEdit} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded-lg hover:bg-slate-100 transition">
-                      Annuler
-                    </button>
-                  )}
+                  <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Modifier le paiement</h2>
+                  <button onClick={cancelEdit} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded-lg hover:bg-slate-100 transition">
+                    Annuler
+                  </button>
                 </div>
 
                 {error && <Alert type="error">⚠️ {error}</Alert>}
                 {info  && <Alert type="success">{info}</Alert>}
-
-                {/* Type d'appel */}
-                <div className="flex rounded-xl overflow-hidden border border-slate-200 text-sm">
-                  {[{ value: "CHARGE", label: "Appel de charge" }, { value: "FOND", label: "Appel de fond" }].map(({ value, label }) => (
-                    <button key={value} type="button" onClick={() => setTypeAppel(value)}
-                      className={`flex-1 py-1.5 text-xs font-medium transition ${typeAppel === value ? "bg-indigo-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
 
                 {/* Row: montant + date */}
                 <div className="grid grid-cols-2 gap-2">
@@ -543,17 +530,27 @@ export default function PaiementPage() {
                   </select>
                 </Field>
 
-                <button
-                  onClick={editingPaiement ? handleUpdate : () => setShowSaveConfirm(true)}
-                  disabled={saving || !form.montant}
-                  className={`w-full py-2 rounded-xl font-semibold text-sm transition disabled:opacity-50 ${
-                    editingPaiement ? "bg-amber-500 text-white hover:bg-amber-600" : "bg-indigo-600 text-white hover:bg-indigo-700"
-                  }`}>
-                  {saving
-                    ? (editingPaiement ? "Modification…" : "Enregistrement…")
-                    : (editingPaiement ? "Enregistrer les modifications" : "Enregistrer le paiement")
-                  }
+                <button onClick={handleUpdate} disabled={saving || !form.montant}
+                  className="w-full py-2 rounded-xl font-semibold text-sm transition disabled:opacity-50 bg-amber-500 text-white hover:bg-amber-600">
+                  {saving ? "Modification…" : "Enregistrer les modifications"}
                 </button>
+              </div>
+              ) : (
+              <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex items-center gap-3 text-slate-400">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.25 2.25 0 1 1 3.182 3.182L7.5 20.213l-4 1 1-4 12.362-12.726z"/>
+                </svg>
+                <p className="text-xs">Cliquez sur <span className="font-semibold text-slate-600">Modifier</span> sur un paiement pour l'éditer</p>
+              </div>
+              )}
+              {/* ── Type d'appel (pour filtrer la situation) ── */}
+              <div className="flex rounded-xl overflow-hidden border border-slate-200 text-sm">
+                {[{ value: "CHARGE", label: "Appel de charge" }, { value: "FOND", label: "Appel de fond" }].map(({ value, label }) => (
+                  <button key={value} type="button" onClick={() => setTypeAppel(value)}
+                    className={`flex-1 py-1.5 text-xs font-medium transition ${typeAppel === value ? "bg-indigo-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+                    {label}
+                  </button>
+                ))}
               </div>
 
               {/* ── Situation lot ── */}

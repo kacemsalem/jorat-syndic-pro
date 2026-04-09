@@ -332,7 +332,7 @@ export default function SaisieParMoisPage() {
                     </div>
                     <span className="text-xs font-bold font-mono text-emerald-600 shrink-0">{fmt(p.montant)}</span>
                     <button onClick={() => deletePaiement(p.id)}
-                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition shrink-0 ml-1">
+                      className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 text-red-400 hover:text-red-600 transition shrink-0 ml-1">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
                         <path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/>
                       </svg>
@@ -372,7 +372,7 @@ export default function SaisieParMoisPage() {
                     </div>
                     <span className="text-xs font-bold font-mono text-red-500 shrink-0">{fmt(d.montant)}</span>
                     <button onClick={() => deleteDepense(d.id)}
-                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition shrink-0 ml-1">
+                      className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 text-red-400 hover:text-red-600 transition shrink-0 ml-1">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
                         <path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/>
                       </svg>

@@ -16,52 +16,58 @@ function lastDay(year, month) {
 
 // ── Styles ───────────────────────────────────────────────────────
 const INP = "w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
-const INP_AUTO = "w-full border border-blue-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-blue-50";
 const SEL = "w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
 
 // ── Enhanced Dépense form ─────────────────────────────────────────
-function DepenseForm({ categories, fournisseurs, modeles, contrats, comptes, defaultDate, onAdded }) {
-  const EMPTY = { source: "", libelle: "", montant: "", date_depense: defaultDate, categorie: "", fournisseur: "", compte: "", facture_reference: "", modele_depense: "" };
+function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, onNewCategorie, onNewFournisseur, onNewCompte }) {
+  const EMPTY = { libelle: "", montant: "", date_depense: defaultDate, categorie: "", fournisseur: "", compte: "", facture_reference: "" };
   const [form,    setForm]    = useState(EMPTY);
-  const [autoFld, setAutoFld] = useState({ libelle: false, categorie: false, fournisseur: false, compte: false, montant: false });
   const [saving,  setSaving]  = useState(false);
   const [err,     setErr]     = useState("");
+
+  // Quick-add inline
+  const [quickAdd,    setQuickAdd]    = useState(null); // "categorie" | "fournisseur" | "compte"
+  const [quickVal,    setQuickVal]    = useState("");   // nom / nom_societe / libelle compte
+  const [quickVal2,   setQuickVal2]   = useState("");   // code pour compte
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [quickErr,    setQuickErr]    = useState("");
+
+  const openQuick = (field) => { setQuickAdd(field); setQuickVal(""); setQuickVal2(""); setQuickErr(""); };
+  const closeQuick = () => { setQuickAdd(null); setQuickVal(""); setQuickVal2(""); setQuickErr(""); };
+
+  const submitQuick = async () => {
+    if (!quickVal.trim()) { setQuickErr("Champ requis."); return; }
+    if (quickAdd === "compte" && !quickVal2.trim()) { setQuickErr("Libellé requis."); return; }
+    setQuickSaving(true); setQuickErr("");
+    try {
+      let url, body;
+      if (quickAdd === "categorie") {
+        url = `${API}/categories-depense/`;
+        body = { nom: quickVal.trim() };
+      } else if (quickAdd === "fournisseur") {
+        url = `${API}/fournisseurs/`;
+        body = { nom: quickVal.trim(), nom_societe: quickVal.trim() };
+      } else {
+        url = `${API}/comptes-comptables/`;
+        body = { code: quickVal.trim(), libelle: quickVal2.trim() };
+      }
+      const res = await fetch(url, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const d = await res.json(); setQuickErr(Object.values(d).flat().join(" ")); return; }
+      const item = await res.json();
+      if (quickAdd === "categorie")   { onNewCategorie(item);   setForm(f => ({ ...f, categorie:   String(item.id) })); }
+      if (quickAdd === "fournisseur") { onNewFournisseur(item); setForm(f => ({ ...f, fournisseur: String(item.id) })); }
+      if (quickAdd === "compte")      { onNewCompte(item);      setForm(f => ({ ...f, compte:       String(item.id) })); }
+      closeQuick();
+    } finally { setQuickSaving(false); }
+  };
 
   useEffect(() => { setForm(f => ({ ...f, date_depense: defaultDate })); }, [defaultDate]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  // Auto-fill from source (modèle or contrat)
-  const handleSource = (val) => {
-    set("source", val);
-    if (!val) { setAutoFld({ libelle: false, categorie: false, fournisseur: false, compte: false, montant: false }); return; }
-    if (val.startsWith("m_")) {
-      const m = modeles.find(x => String(x.id) === val.slice(2));
-      if (m) {
-        setForm(f => ({
-          ...f, source: val,
-          modele_depense: String(m.id),
-          libelle:     m.nom,
-          categorie:   m.categorie         ? String(m.categorie)         : f.categorie,
-          fournisseur: m.fournisseur        ? String(m.fournisseur)       : f.fournisseur,
-          compte:      m.compte_comptable   ? String(m.compte_comptable)  : f.compte,
-        }));
-        setAutoFld({ libelle: !!m.nom, categorie: !!m.categorie, fournisseur: !!m.fournisseur, compte: !!m.compte_comptable, montant: false });
-      }
-    } else if (val.startsWith("c_")) {
-      const c = contrats.find(x => String(x.id) === val.slice(2));
-      if (c) {
-        setForm(f => ({
-          ...f, source: val,
-          modele_depense: "",
-          libelle:     c.libelle    || f.libelle,
-          fournisseur: c.fournisseur ? String(c.fournisseur) : f.fournisseur,
-          montant:     c.montant     ? String(c.montant)     : f.montant,
-        }));
-        setAutoFld({ libelle: !!c.libelle, categorie: false, fournisseur: !!c.fournisseur, compte: false, montant: !!c.montant });
-      }
-    }
-  };
 
   const submit = async () => {
     if (!form.libelle.trim()) { setErr("Libellé requis."); return; }
@@ -78,96 +84,118 @@ function DepenseForm({ categories, fournisseurs, modeles, contrats, comptes, def
           categorie:         form.categorie      || null,
           fournisseur:       form.fournisseur     || null,
           compte:            form.compte          || null,
-          modele_depense:    form.modele_depense  || null,
           facture_reference: form.facture_reference || "",
         }),
       });
       if (!res.ok) { const d = await res.json(); setErr(Object.values(d).flat().join(" ")); return; }
       setForm({ ...EMPTY, date_depense: defaultDate });
-      setAutoFld({ libelle: false, categorie: false, fournisseur: false, compte: false, montant: false });
       onAdded();
     } finally { setSaving(false); }
   };
 
-  // grouped modèles by catégorie
-  const modelesByGroup = useMemo(() => {
-    const map = {};
-    modeles.forEach(m => { const k = m.categorie_nom || "Autres"; (map[k] = map[k] || []).push(m); });
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
-  }, [modeles]);
-
   return (
     <div className="space-y-2 p-3 bg-red-50/60 rounded-xl border border-red-100">
-      {/* Header avec boutons raccourcis */}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Nouvelle dépense</p>
-        <div className="flex gap-1.5">
-          <button type="button" onClick={() => window.open("/modeles-depense", "_blank")}
-            className="px-2 py-1 text-[10px] font-semibold bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition flex items-center gap-1">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-            </svg>
-            Modèles
-          </button>
-          <button type="button" onClick={() => window.open("/contrats", "_blank")}
-            className="px-2 py-1 text-[10px] font-semibold bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition flex items-center gap-1">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-            </svg>
-            Contrats
-          </button>
-        </div>
-      </div>
+      <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Nouvelle dépense</p>
       {err && <p className="text-[11px] text-red-500">{err}</p>}
-
-      {/* Source : modèle ou contrat */}
-      <select value={form.source} onChange={e => handleSource(e.target.value)} className={SEL}>
-        <option value="">— Choisir un modèle / contrat —</option>
-        {modelesByGroup.map(([grp, items]) => (
-          <optgroup key={grp} label={`Modèles — ${grp}`}>
-            {items.map(m => <option key={m.id} value={`m_${m.id}`}>{m.nom}</option>)}
-          </optgroup>
-        ))}
-        {contrats.length > 0 && (
-          <optgroup label="Contrats">
-            {contrats.map(c => <option key={c.id} value={`c_${c.id}`}>{c.libelle}</option>)}
-          </optgroup>
-        )}
-      </select>
 
       {/* Libellé */}
       <input placeholder="Libellé *" value={form.libelle}
-        onChange={e => { set("libelle", e.target.value); setAutoFld(a => ({ ...a, libelle: false })); }}
-        className={autoFld.libelle ? INP_AUTO : INP} />
+        onChange={e => set("libelle", e.target.value)}
+        className={INP} />
 
       {/* Montant + Date */}
       <div className="grid grid-cols-2 gap-2">
         <input type="number" min={0} step="0.01" placeholder="Montant MAD"
-          value={form.montant} onChange={e => { set("montant", e.target.value); setAutoFld(a => ({ ...a, montant: false })); }}
-          className={autoFld.montant ? INP_AUTO : INP} />
+          value={form.montant} onChange={e => set("montant", e.target.value)}
+          className={INP} />
         <input type="date" value={form.date_depense} onChange={e => set("date_depense", e.target.value)} className={INP} />
       </div>
 
       {/* Catégorie */}
-      <select value={form.categorie} onChange={e => { set("categorie", e.target.value); setAutoFld(a => ({ ...a, categorie: false })); }}
-        className={autoFld.categorie ? INP_AUTO : SEL}>
-        <option value="">— Catégorie —</option>
-        {categories.map(c => <option key={c.id} value={String(c.id)}>{c.nom}</option>)}
-      </select>
+      <div className="space-y-1">
+        <div className="flex gap-1">
+          <select value={form.categorie} onChange={e => set("categorie", e.target.value)}
+            className={`flex-1 ${SEL}`}>
+            <option value="">— Catégorie —</option>
+            {categories.map(c => <option key={c.id} value={String(c.id)}>{c.nom}</option>)}
+          </select>
+          <button type="button" onClick={() => quickAdd === "categorie" ? closeQuick() : openQuick("categorie")}
+            className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-bold transition shrink-0 ${quickAdd === "categorie" ? "bg-slate-200 border-slate-300 text-slate-600" : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"}`}>
+            {quickAdd === "categorie" ? "×" : "+"}
+          </button>
+        </div>
+        {quickAdd === "categorie" && (
+          <div className="flex gap-1 items-center pl-0.5">
+            <input autoFocus value={quickVal} onChange={e => setQuickVal(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && submitQuick()}
+              placeholder="Nom catégorie…" className={INP + " flex-1"} />
+            <button type="button" onClick={submitQuick} disabled={quickSaving}
+              className="shrink-0 px-2 py-1 text-[10px] font-bold bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition">
+              {quickSaving ? "…" : "OK"}
+            </button>
+          </div>
+        )}
+        {quickAdd === "categorie" && quickErr && <p className="text-[10px] text-red-500 pl-0.5">{quickErr}</p>}
+      </div>
 
       {/* Fournisseur */}
-      <select value={form.fournisseur} onChange={e => { set("fournisseur", e.target.value); setAutoFld(a => ({ ...a, fournisseur: false })); }}
-        className={autoFld.fournisseur ? INP_AUTO : SEL}>
-        <option value="">— Fournisseur —</option>
-        {fournisseurs.map(f => <option key={f.id} value={String(f.id)}>{f.nom_societe || f.nom_complet || f.nom}</option>)}
-      </select>
+      <div className="space-y-1">
+        <div className="flex gap-1">
+          <select value={form.fournisseur} onChange={e => set("fournisseur", e.target.value)}
+            className={`flex-1 ${SEL}`}>
+            <option value="">— Fournisseur —</option>
+            {fournisseurs.map(f => <option key={f.id} value={String(f.id)}>{f.nom_societe || f.nom_complet || f.nom}</option>)}
+          </select>
+          <button type="button" onClick={() => quickAdd === "fournisseur" ? closeQuick() : openQuick("fournisseur")}
+            className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-bold transition shrink-0 ${quickAdd === "fournisseur" ? "bg-slate-200 border-slate-300 text-slate-600" : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"}`}>
+            {quickAdd === "fournisseur" ? "×" : "+"}
+          </button>
+        </div>
+        {quickAdd === "fournisseur" && (
+          <div className="flex gap-1 items-center pl-0.5">
+            <input autoFocus value={quickVal} onChange={e => setQuickVal(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && submitQuick()}
+              placeholder="Nom / Société…" className={INP + " flex-1"} />
+            <button type="button" onClick={submitQuick} disabled={quickSaving}
+              className="shrink-0 px-2 py-1 text-[10px] font-bold bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition">
+              {quickSaving ? "…" : "OK"}
+            </button>
+          </div>
+        )}
+        {quickAdd === "fournisseur" && quickErr && <p className="text-[10px] text-red-500 pl-0.5">{quickErr}</p>}
+      </div>
 
       {/* Compte comptable */}
-      <select value={form.compte} onChange={e => { set("compte", e.target.value); setAutoFld(a => ({ ...a, compte: false })); }}
-        className={autoFld.compte ? INP_AUTO : SEL}>
-        <option value="">— Compte comptable —</option>
-        {comptes.map(c => <option key={c.id} value={String(c.id)}>{c.code} — {c.libelle}</option>)}
-      </select>
+      <div className="space-y-1">
+        <div className="flex gap-1">
+          <select value={form.compte} onChange={e => set("compte", e.target.value)}
+            className={`flex-1 ${SEL}`}>
+            <option value="">— Compte comptable —</option>
+            {comptes.map(c => <option key={c.id} value={String(c.id)}>{c.code} — {c.libelle}</option>)}
+          </select>
+          <button type="button" onClick={() => quickAdd === "compte" ? closeQuick() : openQuick("compte")}
+            className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-bold transition shrink-0 ${quickAdd === "compte" ? "bg-slate-200 border-slate-300 text-slate-600" : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"}`}>
+            {quickAdd === "compte" ? "×" : "+"}
+          </button>
+        </div>
+        {quickAdd === "compte" && (
+          <div className="flex gap-1 items-center pl-0.5">
+            <input autoFocus value={quickVal} onChange={e => setQuickVal(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && document.getElementById("quick-compte-lib")?.focus()}
+              maxLength={8} placeholder="XXXXXX"
+              className="w-20 shrink-0 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white font-mono" />
+            <input id="quick-compte-lib" value={quickVal2} onChange={e => setQuickVal2(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && submitQuick()}
+              placeholder="Libellé du compte…"
+              className="flex-1 min-w-0 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
+            <button type="button" onClick={submitQuick} disabled={quickSaving}
+              className="shrink-0 px-2 py-1 text-[10px] font-bold bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition">
+              {quickSaving ? "…" : "OK"}
+            </button>
+          </div>
+        )}
+        {quickAdd === "compte" && quickErr && <p className="text-[10px] text-red-500 pl-0.5">{quickErr}</p>}
+      </div>
 
       {/* Référence facture (optionnel) */}
       <input placeholder="Réf. facture (optionnel)" value={form.facture_reference}
@@ -205,8 +233,6 @@ export default function SaisieGrilleePage() {
   // dépenses + paiements du mois
   const [categories,   setCategories]   = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
-  const [modeles,      setModeles]      = useState([]);
-  const [contrats,     setContrats]     = useState([]);
   const [comptes,      setComptes]      = useState([]);
   const [depenses,     setDepenses]     = useState([]);
   const [paiementsMois, setPaiementsMois] = useState([]);
@@ -233,16 +259,6 @@ export default function SaisieGrilleePage() {
     fetch(`${API}/fournisseurs/?page_size=9999`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => setFournisseurs(Array.isArray(d) ? d : (d?.results ?? [])))
-      .catch(() => {});
-
-    fetch(`${API}/modeles-depense/?actif=true&page_size=9999`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => setModeles(Array.isArray(d) ? d : (d?.results ?? [])))
-      .catch(() => {});
-
-    fetch(`${API}/contrats/?page_size=9999`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => setContrats(Array.isArray(d) ? d : (d?.results ?? [])))
       .catch(() => {});
 
     fetch(`${API}/comptes-comptables/?page_size=9999`, { credentials: "include" })
@@ -280,11 +296,27 @@ export default function SaisieGrilleePage() {
   // ── Grille data ───────────────────────────────────────────────
   const fetchGrille = useCallback(() => {
     setLoading(true);
-    fetch(`${API}/situation-paiements/?year=${year}&type_charge=${typeCharge}`, { credentials: "include" })
+    const appelParam = typeCharge === "FOND" && selectedAppel ? `&appel_id=${selectedAppel}` : "";
+    fetch(`${API}/situation-paiements/?year=${year}&type_charge=${typeCharge}${appelParam}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { setCrossData(d); setLoading(false); })
+      .then(d => {
+        if (!d) { setLoading(false); return; }
+        setCrossData(d);
+        // Mettre à jour les années disponibles depuis les exercices réels des appels
+        if (Array.isArray(d.years) && d.years.length > 0) {
+          setAvailableYears(prev => {
+            const merged = Array.from(new Set([...d.years, ...prev])).sort((a, b) => b - a);
+            return merged;
+          });
+          // Si l'année courante n'est pas dans les exercices, basculer vers le plus récent
+          if (!d.years.includes(year)) {
+            setYear(d.years[d.years.length - 1]);
+          }
+        }
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
-  }, [year, typeCharge]);
+  }, [year, typeCharge, selectedAppel]);
 
   useEffect(() => {
     setSelected({}); setAmounts({});
@@ -367,6 +399,8 @@ export default function SaisieGrilleePage() {
 
   // date du paiement = 1er du mois sélectionné
   const payDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const MOIS_CODES = ["JAN","FEV","MAR","AVR","MAI","JUN","JUL","AOU","SEP","OCT","NOV","DEC"];
+  const periodeComptable = MOIS_CODES[month];
 
   const saveLot = async (lotId, { skipRefresh = false } = {}) => {
     const amount = parseFloat(amounts[lotId] || 0);
@@ -376,7 +410,7 @@ export default function SaisieGrilleePage() {
       const res = await fetch(`${API}/paiements/`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ lot: lotId, montant: String(amount), date_paiement: payDate, reference: "" }),
+        body: JSON.stringify({ lot: lotId, montant: String(amount), date_paiement: payDate, reference: "", mois: periodeComptable }),
       });
       if (!res.ok) { const d = await res.json(); alert(Object.values(d).flat().join(" ")); return; }
       const created = await res.json();
@@ -447,7 +481,7 @@ export default function SaisieGrilleePage() {
       const createRes = await fetch(`${API}/paiements/`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
-        body: JSON.stringify({ lot: lotId, montant: String(newAmt), date_paiement: payDate, reference: "" }),
+        body: JSON.stringify({ lot: lotId, montant: String(newAmt), date_paiement: payDate, reference: "", mois: periodeComptable }),
       });
       if (createRes.ok) {
         const newPmt = await createRes.json();
@@ -537,7 +571,7 @@ export default function SaisieGrilleePage() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
             <p className="text-white/60 text-[9px] font-bold uppercase tracking-wider">Gestion</p>
-            <h1 className="text-white font-bold text-lg leading-tight">Saisie en grille</h1>
+            <h1 className="text-white font-bold text-lg leading-tight">Saisie</h1>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {/* Année */}
@@ -718,8 +752,8 @@ export default function SaisieGrilleePage() {
                                       <button onClick={() => undoMonthPaiement(row.lot_id, mi)}
                                         title="Payé ce mois — cliquer pour annuler ce mois"
                                         className="relative group/cell inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold hover:bg-red-400 transition select-none">
-                                        <span className="group-hover/cell:hidden">✓</span>
-                                        <span className="hidden group-hover/cell:inline font-bold">×</span>
+                                        <span className="[@media(hover:hover)]:group-hover/cell:hidden">✓</span>
+                                        <span className="hidden [@media(hover:hover)]:group-hover/cell:inline font-bold">×</span>
                                       </button>
                                     ) : isBefore ? (
                                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-[9px] font-semibold select-none" title="Payé avant ce mois">✓</span>
@@ -792,8 +826,11 @@ export default function SaisieGrilleePage() {
       <div className="px-2 sm:px-4 mt-4 max-w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         <DepenseForm categories={categories} fournisseurs={fournisseurs}
-          modeles={modeles} contrats={contrats} comptes={comptes}
-          defaultDate={defaultDate} onAdded={fetchDepenses} />
+          comptes={comptes}
+          defaultDate={defaultDate} onAdded={fetchDepenses}
+          onNewCategorie={item => setCategories(prev => [...prev, item])}
+          onNewFournisseur={item => setFournisseurs(prev => [...prev, item])}
+          onNewCompte={item => setComptes(prev => [...prev, item])} />
 
         <div className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 bg-red-50 border-b border-red-100 flex items-center justify-between">
@@ -854,14 +891,14 @@ export default function SaisieGrilleePage() {
                         </div>
                         <span className="text-xs font-bold font-mono text-red-500 shrink-0">{fmt(d.montant)}</span>
                         <button onClick={() => startEdit(d)}
-                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-500 transition shrink-0">
+                          className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 text-slate-400 hover:text-amber-500 transition shrink-0">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                           </svg>
                         </button>
                         <button onClick={() => deleteDepense(d.id)}
-                          className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition shrink-0">
+                          className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 text-red-400 hover:text-red-600 transition shrink-0">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
                             <path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/>
                           </svg>
