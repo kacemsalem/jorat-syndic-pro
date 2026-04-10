@@ -2,6 +2,7 @@
 Rapport Financier — vues séparées (JSON, Excel, PDF)
 """
 import io
+import logging
 import datetime
 import re
 from decimal import Decimal
@@ -13,6 +14,8 @@ from django.http import HttpResponse
 from django.db.models import Sum, OuterRef, Subquery
 
 from django.db.models import Prefetch
+logger = logging.getLogger(__name__)
+
 from .models import CaisseMouvement, Depense, Recette, Paiement, Lot, DetailAppelCharge, AffectationPaiement, ArchivePaiement, ArchiveAffectationPaiement
 from .views import get_user_residence
 
@@ -963,7 +966,7 @@ def send_email_view(request):
     body     = request.data.get("body", "").strip()
 
     if not to_email or not subject or not body:
-        return Response({"error": "Champs manquants (to, subject, body)."}, status=400)
+        return Response({"detail": "Champs manquants (to, subject, body)."}, status=400)
 
     # Récupérer les SMTP de la résidence active de l'utilisateur
     from_email = None
@@ -982,8 +985,8 @@ def send_email_view(request):
                 fail_silently=False,
             )
             from_email = residence.email
-    except Exception:
-        pass  # fallback sur les settings Django
+    except Exception as e:
+        logger.warning("SMTP résidence non disponible, fallback settings Django: %s", e)
 
     try:
         msg = EmailMessage(
@@ -996,7 +999,7 @@ def send_email_view(request):
         msg.send(fail_silently=False)
         return Response({"ok": True})
     except Exception as e:
-        return Response({"error": str(e)}, status=500)
+        return Response({"detail": str(e)}, status=500)
 
 
 # ============================================================

@@ -20,6 +20,11 @@ jorat_react/dist/
 jorat_react/.env
 jorat_react/.env.local
 
+# Backups / dumps de données (contiennent des données réelles)
+jorat_django/backup*.json
+jorat_django/backup*.json.gz
+jorat_django/*.dump
+
 # Docker
 *.log
 

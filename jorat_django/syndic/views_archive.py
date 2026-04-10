@@ -307,8 +307,12 @@ def archive_restore(request, pk):
                         detail=aaf.detail,
                         montant_affecte=aaf.montant_affecte,
                     )
-                except Exception:
-                    pass  # detail deleted or constraint issue — skip gracefully
+                except Exception as e:
+                    logger.warning(
+                        "archive_restore: AffectationPaiement non recréée "
+                        "archive=%s paiement_original=%s detail=%s err=%s",
+                        archive.pk, ap.original_id, aaf.detail_id, e,
+                    )
 
         # ── Restore Recettes ────────────────────────────────────
         for ar in archive.recettes.all():

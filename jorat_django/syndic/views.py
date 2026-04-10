@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -40,6 +41,8 @@ from .models import (
     ModeleDepense,
     Contrat,
 )
+logger = logging.getLogger(__name__)
+
 from .serializers import (
     ResidenceSerializer,
     BureauSyndicalSerializer,
@@ -69,6 +72,20 @@ from .serializers import (
     ContratSerializer,
     SuiviLotSerializer,
 )
+
+
+# ============================================================
+# Base ViewSet — logging automatique des suppressions
+# ============================================================
+class BaseViewSet(ModelViewSet):
+    """Ajoute un log INFO sur chaque perform_destroy."""
+    def perform_destroy(self, instance):
+        logger.info(
+            "DELETE %s id=%s user=%s",
+            instance.__class__.__name__, instance.pk,
+            self.request.user.username,
+        )
+        super().perform_destroy(instance)
 
 
 # ============================================================
@@ -136,7 +153,7 @@ def me_view(request):
 # ============================================================
 # Residence
 # ============================================================
-class ResidenceViewSet(ModelViewSet):
+class ResidenceViewSet(BaseViewSet):
     serializer_class = ResidenceSerializer
     pagination_class = None
     queryset         = Residence.objects.all()
@@ -165,7 +182,7 @@ class ResidenceViewSet(ModelViewSet):
 # ============================================================
 # Groupe
 # ============================================================
-class GroupeViewSet(ModelViewSet):
+class GroupeViewSet(BaseViewSet):
     serializer_class = GroupeSerializer
     pagination_class = None
     queryset         = Groupe.objects.all()
@@ -180,7 +197,7 @@ class GroupeViewSet(ModelViewSet):
 # ============================================================
 # Lot
 # ============================================================
-class LotViewSet(ModelViewSet):
+class LotViewSet(BaseViewSet):
     serializer_class = LotSerializer
     pagination_class = None
     queryset         = Lot.objects.all()
@@ -216,7 +233,7 @@ class LotViewSet(ModelViewSet):
 # ============================================================
 # Personne
 # ============================================================
-class PersonneViewSet(ModelViewSet):
+class PersonneViewSet(BaseViewSet):
     pagination_class = None
     queryset         = Personne.objects.all()
 
@@ -254,7 +271,7 @@ class PersonneViewSet(ModelViewSet):
 # ============================================================
 # Paiement
 # ============================================================
-class PaiementViewSet(ModelViewSet):
+class PaiementViewSet(BaseViewSet):
     serializer_class = PaiementSerializer
     pagination_class = None
     queryset         = Paiement.objects.all()
@@ -421,6 +438,8 @@ class PaiementViewSet(ModelViewSet):
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         paiement = self.get_object()
+        logger.info("DELETE Paiement id=%s lot_id=%s montant=%s user=%s",
+                    paiement.pk, paiement.lot_id, paiement.montant, request.user.username)
         for affectation in list(paiement.affectations.select_related("detail").all()):
             affectation.delete()
         paiement.delete()
@@ -430,7 +449,7 @@ class PaiementViewSet(ModelViewSet):
 # ============================================================
 # AffectationPaiement
 # ============================================================
-class AffectationPaiementViewSet(ModelViewSet):
+class AffectationPaiementViewSet(BaseViewSet):
     serializer_class = AffectationPaiementSerializer
     pagination_class = None
     queryset         = AffectationPaiement.objects.all()
@@ -454,7 +473,7 @@ class AffectationPaiementViewSet(ModelViewSet):
 # ============================================================
 # AppelCharge
 # ============================================================
-class AppelChargeViewSet(ModelViewSet):
+class AppelChargeViewSet(BaseViewSet):
     serializer_class = AppelChargeSerializer
     pagination_class = None
     queryset         = AppelCharge.objects.all()
@@ -512,7 +531,8 @@ class AppelChargeViewSet(ModelViewSet):
                 montant_total = Decimal(str(montant_total))
                 appel.montant_total_appel = montant_total
                 appel.save(update_fields=["montant_total_appel"])
-            except Exception:
+            except Exception as e:
+                logger.warning("repartir_tantiemes: montant_total invalide appel=%s valeur=%r err=%s", appel.pk, montant_total, e)
                 return Response({"detail": "montant_total invalide."}, status=400)
         else:
             montant_total = appel.montant_total_appel
@@ -548,7 +568,7 @@ class AppelChargeViewSet(ModelViewSet):
 # ============================================================
 # DetailAppelCharge
 # ============================================================
-class DetailAppelChargeViewSet(ModelViewSet):
+class DetailAppelChargeViewSet(BaseViewSet):
     serializer_class = DetailAppelChargeSerializer
     pagination_class = None
     queryset         = DetailAppelCharge.objects.all()
@@ -651,7 +671,7 @@ class DetailAppelChargeViewSet(ModelViewSet):
 # ============================================================
 # CategorieDepense
 # ============================================================
-class CategorieDepenseViewSet(ModelViewSet):
+class CategorieDepenseViewSet(BaseViewSet):
     serializer_class = CategorieDepenseSerializer
     pagination_class = None
     queryset         = CategorieDepense.objects.all()
@@ -680,7 +700,7 @@ class CategorieDepenseViewSet(ModelViewSet):
 # ============================================================
 # Fournisseur
 # ============================================================
-class FournisseurViewSet(ModelViewSet):
+class FournisseurViewSet(BaseViewSet):
     serializer_class = FournisseurSerializer
     pagination_class = None
     queryset         = Fournisseur.objects.all()
@@ -706,7 +726,7 @@ class FournisseurViewSet(ModelViewSet):
 # ============================================================
 # CompteComptable
 # ============================================================
-class CompteComptableViewSet(ModelViewSet):
+class CompteComptableViewSet(BaseViewSet):
     serializer_class = CompteComptableSerializer
     pagination_class = None
     queryset         = CompteComptable.objects.all()
@@ -752,7 +772,7 @@ class _PageBy100(PageNumberPagination):
 _DepensePagination = _PageBy100
 
 
-class DepenseViewSet(ModelViewSet):
+class DepenseViewSet(BaseViewSet):
     serializer_class = DepenseSerializer
     pagination_class = _DepensePagination
     queryset         = Depense.objects.all()
@@ -847,7 +867,7 @@ class DepenseViewSet(ModelViewSet):
 # ============================================================
 # FamilleDepense
 # ============================================================
-class FamilleDepenseViewSet(ModelViewSet):
+class FamilleDepenseViewSet(BaseViewSet):
     serializer_class = FamilleDepenseSerializer
     pagination_class = None
     queryset         = FamilleDepense.objects.all()
@@ -869,7 +889,7 @@ class FamilleDepenseViewSet(ModelViewSet):
 # ============================================================
 # ModeleDepense
 # ============================================================
-class ModeleDepenseViewSet(ModelViewSet):
+class ModeleDepenseViewSet(BaseViewSet):
     serializer_class = ModeleDepenseSerializer
     pagination_class = None
     queryset         = ModeleDepense.objects.all()
@@ -931,7 +951,7 @@ class ModeleDepenseViewSet(ModelViewSet):
 # ============================================================
 # Contrat
 # ============================================================
-class ContratViewSet(ModelViewSet):
+class ContratViewSet(BaseViewSet):
     serializer_class = ContratSerializer
     pagination_class = None
     queryset         = Contrat.objects.all()
@@ -993,7 +1013,7 @@ class ContratViewSet(ModelViewSet):
 # ============================================================
 # Recette
 # ============================================================
-class RecetteViewSet(ModelViewSet):
+class RecetteViewSet(BaseViewSet):
     serializer_class = RecetteSerializer
     pagination_class = _PageBy100
     queryset         = Recette.objects.all()
@@ -1034,7 +1054,7 @@ class RecetteViewSet(ModelViewSet):
 # ============================================================
 # CaisseMouvement
 # ============================================================
-class CaisseMouvementViewSet(ModelViewSet):
+class CaisseMouvementViewSet(BaseViewSet):
     serializer_class = CaisseMouvementSerializer
     pagination_class = _PageBy100
     queryset         = CaisseMouvement.objects.all()
@@ -1124,7 +1144,7 @@ class CaisseMouvementViewSet(ModelViewSet):
 # ============================================================
 # Gouvernance — BureauSyndical
 # ============================================================
-class BureauSyndicalViewSet(ModelViewSet):
+class BureauSyndicalViewSet(BaseViewSet):
     serializer_class = BureauSyndicalSerializer
     pagination_class = None
     queryset         = BureauSyndical.objects.all()
@@ -1145,7 +1165,7 @@ class BureauSyndicalViewSet(ModelViewSet):
 # ============================================================
 # Gouvernance — AssembleeGenerale
 # ============================================================
-class AssembleeGeneraleViewSet(ModelViewSet):
+class AssembleeGeneraleViewSet(BaseViewSet):
     serializer_class = AssembleeGeneraleSerializer
     pagination_class = None
     queryset         = AssembleeGenerale.objects.all()
@@ -1224,15 +1244,15 @@ class AssembleeGeneraleViewSet(ModelViewSet):
                     statut="ENVOYE",
                 )
                 nb_sent += 1
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Notification AG non créée pour lot %s: %s", lot.pk, e)
         return Response({"sent": nb_sent, "convocation_envoyee_le": ag.convocation_envoyee_le})
 
 
 # ============================================================
 # Gouvernance — Resolution
 # ============================================================
-class ResolutionViewSet(ModelViewSet):
+class ResolutionViewSet(BaseViewSet):
     serializer_class = ResolutionSerializer
     pagination_class = None
     queryset         = Resolution.objects.all()
@@ -1253,7 +1273,7 @@ class ResolutionViewSet(ModelViewSet):
 # ============================================================
 # Gouvernance — DocumentGouvernance
 # ============================================================
-class DocumentGouvernanceViewSet(ModelViewSet):
+class DocumentGouvernanceViewSet(BaseViewSet):
     serializer_class = DocumentGouvernanceSerializer
     pagination_class = None
     queryset         = DocumentGouvernance.objects.all()
@@ -1270,7 +1290,7 @@ class DocumentGouvernanceViewSet(ModelViewSet):
             raise ValidationError("Aucune résidence associée.")
         serializer.save(residence=residence)
 
-class MandatBureauSyndicalViewSet(ModelViewSet):
+class MandatBureauSyndicalViewSet(BaseViewSet):
     serializer_class = MandatBureauSyndicalSerializer
     pagination_class = None
     queryset         = MandatBureauSyndical.objects.all()
@@ -1299,7 +1319,7 @@ class MandatBureauSyndicalViewSet(ModelViewSet):
         serializer.save(residence=residence, actif=True)
 
 
-class MandatBureauMembreViewSet(ModelViewSet):
+class MandatBureauMembreViewSet(BaseViewSet):
     serializer_class = MandatBureauMembreSerializer
     pagination_class = None
     queryset         = MandatBureauMembre.objects.all()
@@ -1320,7 +1340,7 @@ class MandatBureauMembreViewSet(ModelViewSet):
 # ============================================================
 # Gouvernance — Travaux
 # ============================================================
-class TravauxViewSet(ModelViewSet):
+class TravauxViewSet(BaseViewSet):
     serializer_class = TravauxSerializer
     pagination_class = None
     queryset         = Travaux.objects.all()
@@ -1345,7 +1365,7 @@ class TravauxViewSet(ModelViewSet):
 # ============================================================
 # Notifications
 # ============================================================
-class NotificationViewSet(ModelViewSet):
+class NotificationViewSet(BaseViewSet):
     serializer_class = NotificationSerializer
     pagination_class = None
     queryset         = Notification.objects.all()
@@ -1377,7 +1397,7 @@ class NotificationViewSet(ModelViewSet):
 # Suivi par lot
 # ============================================================
 
-class SuiviLotViewSet(ModelViewSet):
+class SuiviLotViewSet(BaseViewSet):
     serializer_class = SuiviLotSerializer
     pagination_class = None
 

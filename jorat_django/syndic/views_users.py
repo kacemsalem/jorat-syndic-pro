@@ -1,11 +1,14 @@
 """
 Gestion des utilisateurs de résidence (admin only).
 """
+import logging
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+logger = logging.getLogger(__name__)
 
 from .models import ResidenceMembership, Lot
 from .views import get_user_residence
@@ -128,6 +131,8 @@ def residence_user_detail(request, pk):
         return Response({"detail": "Vous ne pouvez pas supprimer votre propre compte."}, status=400)
 
     if request.method == "DELETE":
+        logger.info("DELETE User id=%s username=%s residence=%s by=%s",
+                    m.user.pk, m.user.username, residence.pk, request.user.username)
         m.user.delete()
         return Response(status=204)
 
