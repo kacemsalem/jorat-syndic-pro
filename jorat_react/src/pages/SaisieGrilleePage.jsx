@@ -19,6 +19,16 @@ const INP = "w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs foc
 const SEL = "w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
 
 // ── Enhanced Dépense form ─────────────────────────────────────────
+const ExtLink = ({ href }) => (
+  <a href={href} target="_blank" rel="noreferrer"
+    title="Ouvrir la page de gestion"
+    className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:border-blue-300 hover:text-blue-500 transition shrink-0">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+    </svg>
+  </a>
+);
+
 function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, onNewCategorie, onNewFournisseur, onNewCompte }) {
   const EMPTY = { libelle: "", montant: "", date_depense: defaultDate, categorie: "", fournisseur: "", compte: "", facture_reference: "" };
   const [form,    setForm]    = useState(EMPTY);
@@ -123,6 +133,7 @@ function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, 
             className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-bold transition shrink-0 ${quickAdd === "categorie" ? "bg-slate-200 border-slate-300 text-slate-600" : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"}`}>
             {quickAdd === "categorie" ? "×" : "+"}
           </button>
+          <ExtLink href="/categories-depense" />
         </div>
         {quickAdd === "categorie" && (
           <div className="flex gap-1 items-center pl-0.5">
@@ -150,6 +161,7 @@ function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, 
             className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-bold transition shrink-0 ${quickAdd === "fournisseur" ? "bg-slate-200 border-slate-300 text-slate-600" : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"}`}>
             {quickAdd === "fournisseur" ? "×" : "+"}
           </button>
+          <ExtLink href="/fournisseurs" />
         </div>
         {quickAdd === "fournisseur" && (
           <div className="flex gap-1 items-center pl-0.5">
@@ -177,6 +189,7 @@ function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, 
             className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-bold transition shrink-0 ${quickAdd === "compte" ? "bg-slate-200 border-slate-300 text-slate-600" : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"}`}>
             {quickAdd === "compte" ? "×" : "+"}
           </button>
+          <ExtLink href="/comptes-comptables" />
         </div>
         {quickAdd === "compte" && (
           <div className="flex gap-1 items-center pl-0.5">
@@ -222,7 +235,6 @@ export default function SaisieGrilleePage() {
   // Appels de fond (FOND mode only)
   const [appelsFond,      setAppelsFond]      = useState([]);
   const [selectedAppel,   setSelectedAppel]   = useState("");   // appel id (string)
-  const [detailsByLot,    setDetailsByLot]    = useState({});   // { lot_id: { montant, montant_recu } }
 
   // grille state
   const [selected, setSelected] = useState({});   // { lotId: Set<monthIndex> }
@@ -489,17 +501,6 @@ export default function SaisieGrilleePage() {
           return s && s.size > 0 && parseFloat(amounts[r.lot_id] || 0) > 0;
         });
     for (const row of toSave) await saveLot(row.lot_id, { skipRefresh: true });
-    // Refresh details fond if needed
-    if (typeCharge === "FOND" && selectedAppel) {
-      fetch(`${API}/details-appel/?appel=${selectedAppel}&page_size=9999`, { credentials: "include" })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => {
-          const list = Array.isArray(d) ? d : (d?.results ?? []);
-          const map = {};
-          list.forEach(dt => { map[String(dt.lot)] = { montant: parseFloat(dt.montant || 0), montant_recu: parseFloat(dt.montant_recu || 0) }; });
-          setDetailsByLot(map);
-        }).catch(() => {});
-    }
     fetchGrille();
     fetchDepenses();
   };
