@@ -727,11 +727,19 @@ def situation_paiements_view(request):
         charges_map.setdefault(row["lot_id"], {})[row["appel__exercice"]] = float(row["total"])
 
     # ── Montants ventilés live ────────────────────────────────────
+    # Filtrer par exercice=year pour rester cohérent avec la ventilation
+    # (ventiler() cible un exercice précis via exercice=year).
+    # Sans ce filtre, cumul_before consomme le paiement 2026 pour couvrir
+    # la dette 2025 même quand la ventilation l'a explicitement affecté à 2026.
     aff_map = {}  # {lot_id: [(date, pmt_id, montant)]}
     if appel_id:
         aff_filter = dict(paiement__lot__in=lot_ids, detail__appel__id=appel_id)
     else:
-        aff_filter = dict(paiement__lot__in=lot_ids, detail__appel__type_charge=type_charge)
+        aff_filter = dict(
+            paiement__lot__in=lot_ids,
+            detail__appel__type_charge=type_charge,
+            detail__appel__exercice=year,
+        )
     for row in (
         AffectationPaiement.objects
         .filter(**aff_filter)
@@ -749,7 +757,11 @@ def situation_paiements_view(request):
     if appel_id:
         arch_aff_filter = dict(archive_paiement__lot__in=lot_ids, detail__appel__id=appel_id)
     else:
-        arch_aff_filter = dict(archive_paiement__lot__in=lot_ids, detail__appel__type_charge=type_charge)
+        arch_aff_filter = dict(
+            archive_paiement__lot__in=lot_ids,
+            detail__appel__type_charge=type_charge,
+            detail__appel__exercice=year,
+        )
     for row in (
         ArchiveAffectationPaiement.objects
         .filter(**arch_aff_filter)
@@ -846,31 +858,19 @@ def situation_paiements_view(request):
         # Filtrer : uniquement les paiements jusqu'à la fin de l'année demandée
         payments_up_to = [(d, pid, amt) for d, pid, amt in raw_payments if d <= cutoff]
 
-        # Cumul des charges AVANT l'année demandée
-        cumul_before = sum(v for y, v in charges_by_year.items() if y < year)
-
-        # Cumul payé (vers ce type) jusqu'à fin de l'année
+        # aff_map est maintenant limité à l'exercice=year, donc pas de cumul_before
+        # (les paiements non-ventilés restants dans unvent_map restent inclus sans carry-over)
         cumul_paid = sum(amt for _, _, amt in payments_up_to)
-
-        available = cumul_paid - cumul_before
-        effective = max(0.0, min(total_du_year, available))
+        effective  = max(0.0, min(total_du_year, cumul_paid))
 
         # Segments pour la timeline
         segments = []
         if effective > 0:
-            to_skip   = cumul_before
             remaining = total_du_year
 
             for date, _, p_amt in payments_up_to:
                 if remaining <= 0:
                     break
-                if to_skip > 0:
-                    if p_amt <= to_skip:
-                        to_skip -= p_amt
-                        continue
-                    else:
-                        p_amt  -= to_skip
-                        to_skip = 0
                 contribution = min(p_amt, remaining)
                 if contribution > 0:
                     segments.append({
@@ -1139,9 +1139,9 @@ def _saisie_grille_data(residence, year, month, type_charge, appel_id=None):
             total_du    = charges_map.get(lot.id, 0.0)
             total_paye  = paye_map.get(lot.id, 0.0)
             reste       = total_du - total_paye
-            months_covered = (total_paye / total_du * 12) if total_du > 0 else 0.0
+            months_covered = round(total_paye / total_du * 12, 10) if total_du > 0 else 0.0
             paye_before    = paye_before_map.get(lot.id, 0.0)
-            months_before  = (paye_before / total_du * 12) if total_du > 0 else 0.0
+            months_before  = round(paye_before / total_du * 12, 10) if total_du > 0 else 0.0
             paid            = [i < months_covered for i in range(12)]
             paid_before     = [i < months_before for i in range(12)]
             paid_this_month = [(months_before <= i < months_covered) for i in range(12)]

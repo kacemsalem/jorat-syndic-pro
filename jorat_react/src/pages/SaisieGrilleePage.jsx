@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 
 const API = "/api";
 const MOIS     = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
@@ -18,9 +18,75 @@ function lastDay(year, month) {
 const INP = "w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
 const SEL = "w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
 
+// ── Custom select (même rendu PC & mobile) ────────────────────────
+// options: [{value, label}]  OU  [{group, items:[{value,label}]}]
+function CustomSelect({ value, onChange, placeholder, options, className = "" }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const fn = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setQ(""); } };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, [open]);
+
+  const isGrouped = options.length > 0 && options[0].group !== undefined;
+  const allFlat   = isGrouped ? options.flatMap(g => g.items) : options;
+  const filtered  = q ? allFlat.filter(o => o.label.toLowerCase().includes(q.toLowerCase())) : null;
+  const selected  = allFlat.find(o => String(o.value) === String(value));
+  const label     = selected ? selected.label : placeholder;
+
+  const pick = (v) => { onChange(v); setOpen(false); setQ(""); };
+
+  const rowCls = (v) =>
+    `px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 ${String(v) === String(value) ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-700"}`;
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button type="button" onClick={() => { setOpen(o => !o); setQ(""); }}
+        className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white text-left flex items-center justify-between gap-1 focus:outline-none focus:ring-1 focus:ring-blue-400">
+        <span className={`truncate ${selected ? "text-slate-800" : "text-slate-400"}`}>{label}</span>
+        <svg className={`w-3 h-3 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden">
+          {allFlat.length > 6 && (
+            <div className="p-1.5 border-b border-slate-100">
+              <input autoFocus value={q} onChange={e => setQ(e.target.value)}
+                placeholder="Rechercher…"
+                className="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+          )}
+          <div className="max-h-52 overflow-y-auto">
+            <div onClick={() => pick("")}
+              className={`px-3 py-2 text-xs cursor-pointer hover:bg-slate-50 ${!value ? "text-blue-600 font-medium" : "text-slate-400"}`}>
+              {placeholder}
+            </div>
+            {(filtered ?? (isGrouped ? null : options))?.map(o => (
+              <div key={o.value} onClick={() => pick(String(o.value))} className={rowCls(o.value)}>{o.label}</div>
+            ))}
+            {!filtered && isGrouped && options.map((g, gi) => (
+              <div key={gi}>
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50 border-t border-slate-100">{g.group}</div>
+                {g.items.map(o => (
+                  <div key={o.value} onClick={() => pick(String(o.value))} className={rowCls(o.value)}>{o.label}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Enhanced Dépense form ─────────────────────────────────────────
 const ExtLink = ({ href }) => (
-  <a href={href} target="_blank" rel="noreferrer"
+  <a href={href}
     title="Ouvrir la page de gestion"
     className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:border-blue-300 hover:text-blue-500 transition shrink-0">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
@@ -29,11 +95,67 @@ const ExtLink = ({ href }) => (
   </a>
 );
 
-function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, onNewCategorie, onNewFournisseur, onNewCompte }) {
-  const EMPTY = { libelle: "", montant: "", date_depense: defaultDate, categorie: "", fournisseur: "", compte: "", facture_reference: "" };
+function DepenseForm({ categories, fournisseurs, modeles, contrats, comptes, defaultDate, onAdded, onNewCategorie, onNewFournisseur, onNewCompte }) {
+  const EMPTY = { source: "", libelle: "", montant: "", date_depense: defaultDate, categorie: "", fournisseur: "", compte: "", facture_reference: "", modele_depense: "" };
   const [form,    setForm]    = useState(EMPTY);
+  const [autoFld, setAutoFld] = useState({ libelle: false, categorie: false, fournisseur: false, compte: false, montant: false });
   const [saving,  setSaving]  = useState(false);
   const [err,     setErr]     = useState("");
+
+  // Grouped modèles for optgroups
+  const modelesByGroup = useMemo(() => {
+    const groups = {};
+    modeles.forEach(m => {
+      const g = m.categorie_nom || "Sans catégorie";
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(m);
+    });
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [modeles]);
+
+  const handleSource = (val) => {
+    setForm(f => ({ ...f, source: val }));
+    if (!val) return;
+    const [type, id] = val.split(":");
+    if (type === "modele") {
+      const m = modeles.find(x => String(x.id) === id);
+      if (!m) return;
+      setForm(f => ({
+        ...f, source: val,
+        libelle:     m.nom              || f.libelle,
+        categorie:   m.categorie        ? String(m.categorie)        : f.categorie,
+        fournisseur: m.fournisseur      ? String(m.fournisseur)      : f.fournisseur,
+        compte:      m.compte_comptable ? String(m.compte_comptable) : f.compte,
+        modele_depense: id,
+      }));
+      setAutoFld({
+        libelle:     !!m.nom,
+        categorie:   !!m.categorie,
+        fournisseur: !!m.fournisseur,
+        compte:      !!m.compte_comptable,
+        montant:     false,
+      });
+    } else if (type === "contrat") {
+      const c = contrats.find(x => String(x.id) === id);
+      if (!c) return;
+      setForm(f => ({
+        ...f, source: val,
+        libelle:     c.libelle    || f.libelle,
+        categorie:   c.categorie  ? String(c.categorie) : f.categorie,
+        fournisseur: c.fournisseur ? String(c.fournisseur) : f.fournisseur,
+        compte:      c.compte     ? String(c.compte) : f.compte,
+        montant:     c.montant    ? String(c.montant) : f.montant,
+        modele_depense: "",
+      }));
+      setAutoFld({
+        libelle:     !!c.libelle,
+        categorie:   !!c.categorie,
+        fournisseur: !!c.fournisseur,
+        compte:      !!c.compte,
+        montant:     !!c.montant,
+      });
+    }
+  };
 
   // Quick-add inline
   const [quickAdd,    setQuickAdd]    = useState(null); // "categorie" | "fournisseur" | "compte"
@@ -95,10 +217,12 @@ function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, 
           fournisseur:       form.fournisseur     || null,
           compte:            form.compte          || null,
           facture_reference: form.facture_reference || "",
+          modele_depense:    form.modele_depense  || null,
         }),
       });
       if (!res.ok) { const d = await res.json(); setErr(Object.values(d).flat().join(" ")); return; }
       setForm({ ...EMPTY, date_depense: defaultDate });
+      setAutoFld({ libelle: false, categorie: false, fournisseur: false, compte: false, montant: false });
       onAdded();
     } finally { setSaving(false); }
   };
@@ -108,27 +232,62 @@ function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, 
       <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Nouvelle dépense</p>
       {err && <p className="text-[11px] text-red-500">{err}</p>}
 
+      {/* Source : Modèle ou Contrat */}
+      <div className="flex gap-1">
+        <CustomSelect
+          value={form.source}
+          onChange={handleSource}
+          placeholder="— Modèle / Contrat (optionnel) —"
+          className={`flex-1 min-w-0 ${form.source ? "ring-1 ring-blue-200 rounded-lg" : ""}`}
+          options={[
+            ...(modeles.length > 0 ? [{
+              group: "Modèles de dépense",
+              items: modelesByGroup.flatMap(([, items]) =>
+                items.map(m => ({ value: `modele:${m.id}`, label: m.nom }))
+              ),
+            }] : []),
+            ...(contrats.length > 0 ? [{
+              group: "Contrats",
+              items: contrats.map(c => ({
+                value: `contrat:${c.id}`,
+                label: c.libelle || c.reference || `Contrat #${c.id}`,
+              })),
+            }] : []),
+          ]}
+        />
+        <a href="/modeles-depense"
+          className="shrink-0 px-2 py-1.5 text-[10px] font-semibold border border-slate-200 rounded-lg bg-white text-slate-500 hover:border-blue-300 hover:text-blue-500 transition whitespace-nowrap">
+          Modèles
+        </a>
+        <a href="/contrats"
+          className="shrink-0 px-2 py-1.5 text-[10px] font-semibold border border-slate-200 rounded-lg bg-white text-slate-500 hover:border-blue-300 hover:text-blue-500 transition whitespace-nowrap">
+          Contrats
+        </a>
+      </div>
+
       {/* Libellé */}
       <input placeholder="Libellé *" value={form.libelle}
-        onChange={e => set("libelle", e.target.value)}
-        className={INP} />
+        onChange={e => { set("libelle", e.target.value); setAutoFld(a => ({ ...a, libelle: false })); }}
+        className={`${INP} ${autoFld.libelle ? "border-blue-300 ring-1 ring-blue-200" : ""}`} />
 
       {/* Montant + Date */}
       <div className="grid grid-cols-2 gap-2">
         <input type="number" min={0} step="0.01" placeholder="Montant MAD"
-          value={form.montant} onChange={e => set("montant", e.target.value)}
-          className={INP} />
+          value={form.montant} onChange={e => { set("montant", e.target.value); setAutoFld(a => ({ ...a, montant: false })); }}
+          className={`${INP} ${autoFld.montant ? "border-blue-300 ring-1 ring-blue-200" : ""}`} />
         <input type="date" value={form.date_depense} onChange={e => set("date_depense", e.target.value)} className={INP} />
       </div>
 
       {/* Catégorie */}
       <div className="space-y-1">
         <div className="flex gap-1">
-          <select value={form.categorie} onChange={e => set("categorie", e.target.value)}
-            className={`flex-1 ${SEL}`}>
-            <option value="">— Catégorie —</option>
-            {categories.map(c => <option key={c.id} value={String(c.id)}>{c.nom}</option>)}
-          </select>
+          <CustomSelect
+            value={form.categorie}
+            onChange={v => { set("categorie", v); setAutoFld(a => ({ ...a, categorie: false })); }}
+            placeholder="— Catégorie —"
+            className={`flex-1 min-w-0 ${autoFld.categorie ? "ring-1 ring-blue-200 rounded-lg" : ""}`}
+            options={categories.map(c => ({ value: String(c.id), label: c.nom }))}
+          />
           <button type="button" onClick={() => quickAdd === "categorie" ? closeQuick() : openQuick("categorie")}
             className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-bold transition shrink-0 ${quickAdd === "categorie" ? "bg-slate-200 border-slate-300 text-slate-600" : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"}`}>
             {quickAdd === "categorie" ? "×" : "+"}
@@ -152,11 +311,13 @@ function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, 
       {/* Fournisseur */}
       <div className="space-y-1">
         <div className="flex gap-1">
-          <select value={form.fournisseur} onChange={e => set("fournisseur", e.target.value)}
-            className={`flex-1 ${SEL}`}>
-            <option value="">— Fournisseur —</option>
-            {fournisseurs.map(f => <option key={f.id} value={String(f.id)}>{f.nom_societe || f.nom_complet || f.nom}</option>)}
-          </select>
+          <CustomSelect
+            value={form.fournisseur}
+            onChange={v => { set("fournisseur", v); setAutoFld(a => ({ ...a, fournisseur: false })); }}
+            placeholder="— Fournisseur —"
+            className={`flex-1 min-w-0 ${autoFld.fournisseur ? "ring-1 ring-blue-200 rounded-lg" : ""}`}
+            options={fournisseurs.map(f => ({ value: String(f.id), label: f.nom_societe || f.nom_complet || f.nom }))}
+          />
           <button type="button" onClick={() => quickAdd === "fournisseur" ? closeQuick() : openQuick("fournisseur")}
             className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-bold transition shrink-0 ${quickAdd === "fournisseur" ? "bg-slate-200 border-slate-300 text-slate-600" : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"}`}>
             {quickAdd === "fournisseur" ? "×" : "+"}
@@ -180,11 +341,13 @@ function DepenseForm({ categories, fournisseurs, comptes, defaultDate, onAdded, 
       {/* Compte comptable */}
       <div className="space-y-1">
         <div className="flex gap-1">
-          <select value={form.compte} onChange={e => set("compte", e.target.value)}
-            className={`flex-1 ${SEL}`}>
-            <option value="">— Compte comptable —</option>
-            {comptes.map(c => <option key={c.id} value={String(c.id)}>{c.code} — {c.libelle}</option>)}
-          </select>
+          <CustomSelect
+            value={form.compte}
+            onChange={v => { set("compte", v); setAutoFld(a => ({ ...a, compte: false })); }}
+            placeholder="— Compte comptable —"
+            className={`flex-1 min-w-0 ${autoFld.compte ? "ring-1 ring-blue-200 rounded-lg" : ""}`}
+            options={comptes.map(c => ({ value: String(c.id), label: `${c.code} — ${c.libelle}` }))}
+          />
           <button type="button" onClick={() => quickAdd === "compte" ? closeQuick() : openQuick("compte")}
             className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-bold transition shrink-0 ${quickAdd === "compte" ? "bg-slate-200 border-slate-300 text-slate-600" : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"}`}>
             {quickAdd === "compte" ? "×" : "+"}
@@ -245,6 +408,8 @@ export default function SaisieGrilleePage() {
   // dépenses + paiements du mois
   const [categories,   setCategories]   = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
+  const [modeles,      setModeles]      = useState([]);
+  const [contrats,     setContrats]     = useState([]);
   const [comptes,      setComptes]      = useState([]);
   const [depenses,     setDepenses]     = useState([]);
   const [paiementsMois, setPaiementsMois] = useState([]);
@@ -276,6 +441,16 @@ export default function SaisieGrilleePage() {
     fetch(`${API}/comptes-comptables/?page_size=9999`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => setComptes(Array.isArray(d) ? d : (d?.results ?? [])))
+      .catch(() => {});
+
+    fetch(`${API}/modeles-depense/?actif=true&page_size=9999`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setModeles(Array.isArray(d) ? d : (d?.results ?? [])))
+      .catch(() => {});
+
+    fetch(`${API}/contrats/?page_size=9999`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setContrats(Array.isArray(d) ? d : (d?.results ?? [])))
       .catch(() => {});
   }, []);
 
@@ -381,6 +556,9 @@ export default function SaisieGrilleePage() {
     cutoff.setHours(23, 59, 59, 999);
     const monthStart = new Date(year, month, 1);
     monthStart.setHours(0, 0, 0, 0);
+    // Arrondi à 10 décimales pour éviter les erreurs virgule flottante
+    // (ex : 11.9999999999 → 12, mais 11.0 reste 11.0)
+    const r10 = x => Math.round(x * 1e10) / 1e10;
     return crossData.lots.map(lot => {
       const totalDu = parseFloat(lot.total_du || 0);
 
@@ -388,23 +566,23 @@ export default function SaisieGrilleePage() {
         p.date && new Date(p.date) < monthStart
       );
       const totalPaidBefore = paidBeforePmnts.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-      const monthsCoveredBefore = totalDu > 0 ? (totalPaidBefore / totalDu) * 12 : 0;
+      const monthsCoveredBefore = totalDu > 0 ? r10((totalPaidBefore / totalDu) * 12) : 0;
 
       const filteredPaiements = (lot.paiements || []).filter(p =>
         !p.date || new Date(p.date) <= cutoff
       );
       const totalPaidFiltered = filteredPaiements.reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-      const monthsCoveredFiltered = totalDu > 0 ? (totalPaidFiltered / totalDu) * 12 : 0;
+      const monthsCoveredFiltered = totalDu > 0 ? r10((totalPaidFiltered / totalDu) * 12) : 0;
 
       const totalPaidAll = (lot.paiements || []).reduce((s, p) => s + parseFloat(p.montant || 0), 0);
-      const monthsCoveredAll = totalDu > 0 ? (totalPaidAll / totalDu) * 12 : 0;
+      const monthsCoveredAll = totalDu > 0 ? r10((totalPaidAll / totalDu) * 12) : 0;
 
       const paid          = Array(12).fill(false).map((_, i) => i < monthsCoveredFiltered);
       const paidBefore    = Array(12).fill(false).map((_, i) => i < monthsCoveredBefore);
       const paidThisMonth = Array(12).fill(false).map((_, i) => i >= monthsCoveredBefore && i < monthsCoveredFiltered);
       const paidAny       = Array(12).fill(false).map((_, i) => i < monthsCoveredAll);
 
-      return { ...lot, paid, paidBefore, paidThisMonth, paidAny, monthlyAmt: totalDu / 12, totalDu };
+      return { ...lot, paid, paidBefore, paidThisMonth, paidAny, monthlyAmt: totalDu / 12, totalDu, totalPaye: totalPaidAll };
     });
   }, [crossData, year, month, typeCharge, selectedAppel]);
 
@@ -445,13 +623,11 @@ export default function SaisieGrilleePage() {
   const saveLot = async (lotId, { skipRefresh = false } = {}) => {
     const amount = parseFloat(amounts[lotId] || 0);
     if (!amount || amount <= 0) return;
-    // Contrôle : ne pas dépasser le solde restant pour les appels de fond
-    if (typeCharge === "FOND" && selectedAppel) {
-      const row = rows.find(r => r.lot_id === lotId);
-      if (row) {
-        const reste = (row.totalDu || 0) - (row.totalPaye || 0);
-        if (amount > reste + 0.005) { alert(`Montant maximum autorisé : ${reste.toFixed(2)} MAD`); return; }
-      }
+    // Contrôle : ne pas dépasser le solde restant
+    const row = rows.find(r => r.lot_id === lotId);
+    if (row && row.totalDu > 0) {
+      const reste = Math.max(0, (row.totalDu || 0) - (row.totalPaye || 0));
+      if (amount > reste + 0.005) { alert(`Montant maximum autorisé : ${fmt(reste)} MAD`); return; }
     }
     setSaving(p => ({ ...p, [lotId]: true }));
     try {
@@ -925,11 +1101,20 @@ export default function SaisieGrilleePage() {
                                   );
                                 })}
                                 <td className="px-2 py-1.5 text-right">
-                                  {hasSel ? (
-                                    <input type="number" min={0} step="1" value={amount}
-                                      onChange={e => setAmounts(a => ({ ...a, [row.lot_id]: e.target.value }))}
-                                      className="w-24 border border-amber-200 rounded-lg px-2 py-1 text-xs text-right font-mono bg-amber-50 focus:outline-none focus:ring-1 focus:ring-amber-400" />
-                                  ) : row.monthlyAmt > 0 ? (
+                                  {hasSel ? (() => {
+                                    const maxAmt = Math.max(0, (row.totalDu || 0) - (row.totalPaye || 0));
+                                    const over = parseFloat(amount) > maxAmt + 0.005;
+                                    return (
+                                      <div className="flex flex-col items-end gap-0.5">
+                                        <input type="number" min={0} step="1" value={amount}
+                                          onChange={e => setAmounts(a => ({ ...a, [row.lot_id]: e.target.value }))}
+                                          className={`w-24 border rounded-lg px-2 py-1 text-xs text-right font-mono focus:outline-none focus:ring-1 ${
+                                            over ? "border-red-300 bg-red-50 focus:ring-red-400 text-red-600" : "border-amber-200 bg-amber-50 focus:ring-amber-400"
+                                          }`} />
+                                        {over && <span className="text-[9px] text-red-500 font-medium">Max {fmt(maxAmt)}</span>}
+                                      </div>
+                                    );
+                                  })() : row.monthlyAmt > 0 ? (
                                     <span className="text-[10px] text-slate-300 font-mono">{fmt(row.monthlyAmt)}/mois</span>
                                   ) : null}
                                 </td>
@@ -969,6 +1154,7 @@ export default function SaisieGrilleePage() {
       <div className="px-2 sm:px-4 mt-4 max-w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         <DepenseForm categories={categories} fournisseurs={fournisseurs}
+          modeles={modeles} contrats={contrats}
           comptes={comptes}
           defaultDate={defaultDate} onAdded={fetchDepenses}
           onNewCategorie={item => setCategories(prev => [...prev, item])}

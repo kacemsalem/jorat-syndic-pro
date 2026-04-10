@@ -1,21 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const FAMILLE_OPTIONS = [
-  { value: "PERSONNEL",      label: "Personnel" },
-  { value: "SECURITE",       label: "Sécurité" },
-  { value: "NETTOYAGE",      label: "Nettoyage" },
-  { value: "JARDINAGE",      label: "Jardinage" },
-  { value: "ENERGIE",        label: "Énergie" },
-  { value: "MAINTENANCE",    label: "Maintenance" },
-  { value: "TRAVAUX",        label: "Travaux" },
-  { value: "ADMIN",          label: "Administratif" },
-  { value: "EQUIPEMENT",     label: "Équipement" },
-  { value: "ANIMATION",      label: "Animation" },
-  { value: "ASSURANCE_TAXE", label: "Assurance & Taxes" },
-  { value: "DIVERS",         label: "Divers" },
-];
-
 const TYPE_OPTIONS = [
   { value: "SYSTEMATIQUE", label: "Systématique" },
   { value: "EVENTUELLE",   label: "Éventuelle" },
@@ -26,28 +11,13 @@ const NATURE_OPTIONS = [
   { value: "INVESTISSEMENT",  label: "Investissement" },
 ];
 
-const FAMILLE_COLORS = {
-  PERSONNEL:      "bg-blue-100 text-blue-700",
-  SECURITE:       "bg-red-100 text-red-700",
-  NETTOYAGE:      "bg-emerald-100 text-emerald-700",
-  JARDINAGE:      "bg-green-100 text-green-700",
-  ENERGIE:        "bg-yellow-100 text-yellow-700",
-  MAINTENANCE:    "bg-indigo-100 text-indigo-700",
-  TRAVAUX:        "bg-orange-100 text-orange-700",
-  ADMIN:          "bg-slate-100 text-slate-600",
-  EQUIPEMENT:     "bg-violet-100 text-violet-700",
-  ANIMATION:      "bg-pink-100 text-pink-700",
-  ASSURANCE_TAXE: "bg-sky-100 text-sky-700",
-  DIVERS:         "bg-slate-100 text-slate-500",
-};
-
 function getCsrf() {
   return document.cookie.split("; ").find(r => r.startsWith("csrftoken="))?.split("=")[1] || "";
 }
 
 const inputCls = "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 transition bg-white";
 
-const EMPTY_FORM = { nom: "", famille: "DIVERS", type_depense: "EVENTUELLE", nature: "FONCTIONNEMENT", compte_defaut: "", actif: true };
+const EMPTY_FORM = { nom: "", type_depense: "EVENTUELLE", nature: "FONCTIONNEMENT", compte_defaut: "", actif: true };
 
 export default function CategoriesDepensePage() {
   const navigate = useNavigate();
@@ -62,7 +32,6 @@ export default function CategoriesDepensePage() {
   const [form,       setForm]       = useState(EMPTY_FORM);
   const [saving,     setSaving]     = useState(false);
   const [search,     setSearch]     = useState("");
-  const [filterFamille, setFilterFamille] = useState("");
 
   const fetchAll = () => {
     setLoading(true);
@@ -85,7 +54,7 @@ export default function CategoriesDepensePage() {
 
   const selectItem = (cat) => {
     setEditItem(cat);
-    setForm({ nom: cat.nom, famille: cat.famille, type_depense: cat.type_depense, nature: cat.nature, compte_defaut: cat.compte_defaut || "", actif: cat.actif });
+    setForm({ nom: cat.nom, type_depense: cat.type_depense, nature: cat.nature, compte_defaut: cat.compte_defaut || "", actif: cat.actif });
     setError(""); setInfo("");
   };
 
@@ -122,13 +91,9 @@ export default function CategoriesDepensePage() {
     fetchAll();
   };
 
-  const filtered = categories.filter(c => {
-    const matchFamille = !filterFamille || c.famille === filterFamille;
-    const matchSearch  = !search ||
-      c.nom.toLowerCase().includes(search.toLowerCase()) ||
-      c.famille_label?.toLowerCase().includes(search.toLowerCase());
-    return matchFamille && matchSearch;
-  });
+  const filtered = search
+    ? categories.filter(c => c.nom.toLowerCase().includes(search.toLowerCase()))
+    : categories;
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -170,14 +135,6 @@ export default function CategoriesDepensePage() {
             <input className={inputCls} value={form.nom}
               onChange={e => setForm(f => ({ ...f, nom: e.target.value }))}
               placeholder="Ex: Gardiennage, Eau, EDF…" />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Famille</label>
-            <select className={inputCls} value={form.famille}
-              onChange={e => setForm(f => ({ ...f, famille: e.target.value }))}>
-              {FAMILLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -236,27 +193,13 @@ export default function CategoriesDepensePage() {
               className="text-xs border border-slate-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-200 w-40" />
           </div>
 
-          {/* Filtre famille */}
-          <div className="flex flex-wrap gap-1.5">
-            <button onClick={() => setFilterFamille("")}
-              className={`text-[10px] px-2.5 py-1 rounded-lg font-medium border transition ${!filterFamille ? "bg-amber-500 border-amber-500 text-white" : "bg-white border-slate-200 text-slate-500 hover:border-amber-300"}`}>
-              Toutes
-            </button>
-            {FAMILLE_OPTIONS.map(f => (
-              <button key={f.value} onClick={() => setFilterFamille(f.value === filterFamille ? "" : f.value)}
-                className={`text-[10px] px-2.5 py-1 rounded-lg font-medium border transition ${filterFamille === f.value ? "bg-amber-500 border-amber-500 text-white" : "bg-white border-slate-200 text-slate-500 hover:border-amber-300"}`}>
-                {f.label}
-              </button>
-            ))}
-          </div>
-
           {loading ? (
             <p className="text-center text-slate-400 text-sm py-8">Chargement…</p>
           ) : (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
               {filtered.length === 0 ? (
                 <p className="text-center text-slate-400 text-sm py-8">
-                  {search || filterFamille ? "Aucun résultat." : "Aucune catégorie enregistrée."}
+                  {search ? "Aucun résultat." : "Aucune catégorie enregistrée."}
                 </p>
               ) : filtered.map(cat => (
                 <div key={cat.id} onClick={() => selectItem(cat)}
@@ -270,11 +213,8 @@ export default function CategoriesDepensePage() {
                       {cat.nom?.[0]?.toUpperCase() ?? "?"}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-800 truncate max-w-[150px]">{cat.nom}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${FAMILLE_COLORS[cat.famille] || "bg-slate-100 text-slate-500"}`}>
-                          {cat.famille_label}
-                        </span>
+                      <p className="text-sm font-semibold text-slate-800 truncate max-w-[160px]">{cat.nom}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[10px] text-slate-400">{cat.type_depense_label}</span>
                         {!cat.actif && <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-400">Inactif</span>}
                       </div>
