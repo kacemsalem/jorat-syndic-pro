@@ -292,18 +292,6 @@ export default function SaisieGrilleePage() {
       }).catch(() => {});
   }, [typeCharge, year]);
 
-  // ── Details per lot for selected appel ───────────────────────
-  useEffect(() => {
-    if (!selectedAppel) { setDetailsByLot({}); return; }
-    fetch(`${API}/details-appel/?appel=${selectedAppel}&page_size=9999`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        const list = Array.isArray(d) ? d : (d?.results ?? []);
-        const map = {};
-        list.forEach(dt => { map[String(dt.lot)] = { montant: parseFloat(dt.montant || 0), montant_recu: parseFloat(dt.montant_recu || 0) }; });
-        setDetailsByLot(map);
-      }).catch(() => {});
-  }, [selectedAppel]);
 
   // ── Grille data ───────────────────────────────────────────────
   const fetchGrille = useCallback(() => {
