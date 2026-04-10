@@ -134,14 +134,9 @@ export default function CategoriesDepensePage() {
     <div className="max-w-5xl mx-auto">
       <div className="mb-5">
         <div className="flex items-center gap-3 mb-2">
-          <button onClick={() => navigate("/depenses", { state: { openForm: true } })}
+          <button onClick={() => navigate("/saisie-grille")}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-600 transition-colors font-medium">
-            ← Retour Dépenses
-          </button>
-          <span className="text-slate-200">|</span>
-          <button onClick={() => navigate("/modeles-depense", { state: { openForm: true } })}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-600 transition-colors font-medium">
-            ← Retour Modèles dépenses
+            ← Retour Saisie
           </button>
         </div>
         <h1 className="text-xl font-bold text-slate-800">Catégories de dépenses</h1>
