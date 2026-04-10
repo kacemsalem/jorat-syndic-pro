@@ -528,9 +528,11 @@ export default function SaisieGrilleePage() {
 
     if (typeCharge === "FOND" && selectedAppel) {
       // ── FOND : logique mois-direct ──────────────────────────────
-      const monthStart = new Date(year, month, 1);
+      const currentYearF = new Date().getFullYear();
+      const effMonthF = year < currentYearF ? 11 : month;
+      const monthStart = new Date(year, effMonthF, 1);
       monthStart.setHours(0, 0, 0, 0);
-      const cutoff = new Date(year, month + 1, 0);
+      const cutoff = new Date(year, effMonthF + 1, 0);
       cutoff.setHours(23, 59, 59, 999);
 
       return crossData.lots.map(lot => {
@@ -552,9 +554,13 @@ export default function SaisieGrilleePage() {
     }
 
     // ── CHARGE : carry-over (mensualités) ───────────────────────
-    const cutoff = new Date(year, month + 1, 0);
+    // Pour les années passées, utiliser décembre comme mois de référence
+    // (le mois courant ne doit pas tronquer les paiements historiques).
+    const currentYear = new Date().getFullYear();
+    const effectiveMonth = year < currentYear ? 11 : month;
+    const cutoff = new Date(year, effectiveMonth + 1, 0);
     cutoff.setHours(23, 59, 59, 999);
-    const monthStart = new Date(year, month, 1);
+    const monthStart = new Date(year, effectiveMonth, 1);
     monthStart.setHours(0, 0, 0, 0);
     // Arrondi à 10 décimales pour éviter les erreurs virgule flottante
     // (ex : 11.9999999999 → 12, mais 11.0 reste 11.0)
