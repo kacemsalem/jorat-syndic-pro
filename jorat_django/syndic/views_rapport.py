@@ -818,6 +818,7 @@ def situation_paiements_view(request):
     _MOIS_CODES = ["JAN","FEV","MAR","AVR","MAI","JUN","JUL","AOU","SEP","OCT","NOV","DEC"]
     fond_pmt_map = {}   # {lot_id: [{id, mois, montant, date}]}
     if type_charge == "FOND" and appel_id:
+        # Paiements live
         for row in (
             AffectationPaiement.objects
             .filter(paiement__lot__in=lot_ids, detail__appel__id=appel_id)
@@ -828,7 +829,6 @@ def situation_paiements_view(request):
             )
             .order_by("paiement__lot_id", "paiement__date_paiement")
         ):
-            # Si mois non renseigné, le déduire de date_paiement
             mois = row["paiement__mois"]
             if not mois:
                 dt = row["paiement__date_paiement"]
@@ -838,6 +838,27 @@ def situation_paiements_view(request):
                 "mois":    mois,
                 "montant": float(row["montant_affecte"]),
                 "date":    str(row["paiement__date_paiement"]),
+            })
+        # Paiements archivés (même appel)
+        for row in (
+            ArchiveAffectationPaiement.objects
+            .filter(archive_paiement__lot__in=lot_ids, detail__appel__id=appel_id)
+            .values(
+                "archive_paiement__lot_id", "archive_paiement__id",
+                "archive_paiement__mois", "archive_paiement__date_paiement",
+                "montant_affecte",
+            )
+            .order_by("archive_paiement__lot_id", "archive_paiement__date_paiement")
+        ):
+            mois = row["archive_paiement__mois"]
+            if not mois:
+                dt = row["archive_paiement__date_paiement"]
+                mois = _MOIS_CODES[dt.month - 1] if dt else ""
+            fond_pmt_map.setdefault(row["archive_paiement__lot_id"], []).append({
+                "id":      -row["archive_paiement__id"],   # négatif = archivé
+                "mois":    mois,
+                "montant": float(row["montant_affecte"]),
+                "date":    str(row["archive_paiement__date_paiement"]),
             })
 
     # ── Construction résultat ─────────────────────────────────
